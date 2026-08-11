@@ -720,15 +720,23 @@ msgstr "Anzeige"
 msgid "Show Boundaries"
 msgstr "Grenzen anzeigen"
 
-#: admin/src/integrator/AdminIntegratorSettings.ts:660
-#: src/control/Control.BackstageView.ts:867
+#. UNO command .uno:ShowBoundaries ContextLabel (toolbar button label)
+msgid "Boundaries"
+msgstr "Begrenzungen"
+
+#: admin/src/integrator/AdminIntegratorSettings.ts:648
+#: src/control/Control.BackstageView.ts:824
 msgid "Drawing"
 msgstr "Zeichnung"
 
-#: admin/src/integrator/AdminIntegratorSettings.ts:661
-#: src/control/Control.NotebookbarDraw.js:1265
-#: src/control/Control.NotebookbarDraw.js:1546
-#: src/control/Control.NotebookbarWriter.js:1247
+#. UNO command .uno:InsertPagebreak Label (menu/toolbar label)
+msgid "~Page Break"
+msgstr "~Seitenumbruch"
+
+#: admin/src/integrator/AdminIntegratorSettings.ts:645
+#: src/control/Control.NotebookbarDraw.js:1245
+#: src/control/Control.NotebookbarDraw.js:1526
+#: src/control/Control.NotebookbarWriter.js:1235
 msgid "Page"
 msgstr "Seite"
 
