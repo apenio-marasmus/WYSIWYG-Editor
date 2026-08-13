@@ -280,6 +280,9 @@ msgstr "Rechts-nach-links"
 msgid "~Image"
 msgstr "~Bild"
 
+msgid "Image"
+msgstr "Bild"
+
 #. UNO command .uno:LeftPara Label
 msgid "Left"
 msgstr "Linksbündig"
@@ -1077,10 +1080,12 @@ msgid ""
 "Upload a packaged extension as a .zip; its contents (manifest.json, ...) "
 "are unpacked on the server."
 msgstr ""
+"Eine als ZIP verpackte Erweiterung hochladen; ihr Inhalt (manifest.json, "
+"...) wird auf dem Server entpackt."
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:999
 msgid "Upload Extension"
-msgstr "Upload-Erweiterung"
+msgstr "Erweiterung hochladen"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:1089
 msgid "Settings are only available to signed-in users."
@@ -1267,7 +1272,7 @@ msgstr "z. B."
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:2608
 msgid "Leave empty if your server does not require one"
-msgstr ""
+msgstr "Leer lassen, wenn Ihr Server keinen benötigt"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:2627
 msgid ""
@@ -1330,6 +1335,8 @@ msgstr "Modelle zum Auswählen abrufen"
 #: src/control/Control.AIChatSidebar.ts:2190
 msgid "API quota exceeded - check your plan and billing details"
 msgstr ""
+"API-Kontingent überschritten – überprüfen Sie Ihren Tarif und Ihre "
+"Abrechnungsdetails"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:3343
 msgid "Could not fetch models (HTTP {0}). Check the provider URL and API key."
@@ -1684,7 +1691,7 @@ msgstr "Aktuelle Version"
 
 #: src/canvas/sections/OtherViewCellCursorSection.ts:185
 msgid "%n more"
-msgstr ""
+msgstr "%n weitere"
 
 #: src/canvas/sections/ShapeHandlesSection.ts:538
 msgid "Document contains unsupported media"
@@ -1800,7 +1807,7 @@ msgstr "Den folgenden Text prägnanter formulieren"
 
 #: src/control/Control.AIChatSidebar.ts:137
 msgid "Make it more concise"
-msgstr ""
+msgstr "Prägnanter formulieren"
 
 #: src/control/Control.AIChatSidebar.ts:140
 msgid "Summarize the key points of this text"
@@ -1808,7 +1815,7 @@ msgstr "Die wichtigsten Punkte dieses Textes zusammenfassen"
 
 #: src/control/Control.AIChatSidebar.ts:141
 msgid "Summarize this text"
-msgstr "Fasse diesen Text zusammen"
+msgstr "Diesen Text zusammenfassen"
 
 #: src/control/Control.AIChatSidebar.ts:144
 msgid "Expand and add more detail to this text"
@@ -1824,7 +1831,7 @@ msgstr "Grammatik-, Rechtschreib- und Zeichensetzungsfehler korrigieren"
 
 #: src/control/Control.AIChatSidebar.ts:149
 msgid "Fix grammar & spelling"
-msgstr ""
+msgstr "Grammatik und Rechtschreibung korrigieren"
 
 #: src/control/Control.AIChatSidebar.ts:164
 msgid "Natural"
@@ -1852,7 +1859,7 @@ msgstr "Lässig"
 
 #: src/control/Control.AIChatSidebar.ts:411
 msgid "Best"
-msgstr ""
+msgstr "Sehr gut"
 
 #: src/control/Control.AIChatSidebar.ts:413
 #: src/control/Control.NotebookbarCalc.js:1040
@@ -1861,7 +1868,7 @@ msgstr "Gut"
 
 #: src/control/Control.AIChatSidebar.ts:415
 msgid "Poor"
-msgstr ""
+msgstr "Schlecht"
 
 #: src/control/Control.AIChatSidebar.ts:417
 msgid "Unknown"
@@ -2142,7 +2149,11 @@ msgstr "Weniger anzeigen"
 msgid "See more"
 msgstr "Mehr anzeigen"
 
-#: src/control/Control.AIChatSidebar.ts:1988
+#: src/control/Control.AIChatSidebar.ts:1798
+msgid "Design template choice cancelled."
+msgstr "Auswahl der Designvorlage abgebrochen."
+
+#: src/control/Control.AIChatSidebar.ts:1935
 msgid "Image inserted at cursor"
 msgstr "Bild am Cursor eingefügt"
 
@@ -2159,6 +2170,8 @@ msgid ""
 "The request timed out. You can increase the request timeout in the AI "
 "section of the settings."
 msgstr ""
+"Zeitüberschreitung der Anfrage. Sie können das Zeitlimit für Anfragen im "
+"Abschnitt „KI-Assistent“ der Einstellungen erhöhen."
 
 #: src/control/Control.AIChatSidebar.ts:2144
 msgid "Request too large"
@@ -2524,6 +2537,12 @@ msgstr "Der Inhalt der Auswahl konnte nicht analysiert werden"
 #: src/control/Control.AIChatSidebar.ts:3218
 msgid "Design (optional):"
 msgstr ""
+"Wählen Sie ein Design für Ihre Präsentation aus oder fahren Sie ohne Design "
+"fort:"
+
+#: src/control/Control.AIChatSidebar.ts:2930
+msgid "No template"
+msgstr "Keine Vorlage"
 
 #: src/control/Control.AIChatSidebar.ts:3235
 msgid "No design"
@@ -2531,9 +2550,13 @@ msgstr ""
 
 #: src/control/Control.AIChatSidebar.ts:3236
 msgid "Continue without a design template"
-msgstr ""
+msgstr "Ohne Designvorlage fortfahren"
 
-#: src/control/Control.AIChatSidebar.ts:3302
+#: src/control/Control.AIChatSidebar.ts:2959
+msgid "Design template: %1"
+msgstr "Designvorlage: %1"
+
+#: src/control/Control.AIChatSidebar.ts:3089
 msgid ""
 "Here is a proposed outline. Edit the titles or descriptions, remove slides "
 "you do not want, then approve to build the deck:"
@@ -2559,7 +2582,11 @@ msgstr ""
 msgid "Remove slide %1"
 msgstr ""
 
-#: src/control/Control.AIChatSidebar.ts:3457
+#: src/control/Control.AIChatSidebar.ts:2960
+msgid "Continuing without a design template."
+msgstr "Ohne Designvorlage wird fortgefahren."
+
+#: src/control/Control.AIChatSidebar.ts:3244
 msgid "Slide title"
 msgstr ""
 
@@ -3062,104 +3089,104 @@ msgstr "Weitere Informationen zur Eigenschaft"
 
 #: src/control/backstage/OpenView.tsx:43
 msgid "Open a document from your computer or a cloud location."
-msgstr ""
+msgstr "Öffnen Sie ein Dokument von Ihrem Computer oder einem Cloud-Speicherort."
 
 #: src/control/backstage/OpenView.tsx:47
 msgid "Open File from Computer"
-msgstr ""
+msgstr "Datei vom Computer öffnen"
 
 #: src/control/backstage/OpenView.tsx:65
 msgid "Add Cloud +"
-msgstr ""
+msgstr "Cloud hinzufügen +"
 
 #: src/control/backstage/CloudDialogs.tsx:90
 msgid "Edit account"
-msgstr ""
+msgstr "Konto bearbeiten"
 
 #: src/control/backstage/CloudDialogs.tsx:90
 msgid "Add new account"
-msgstr ""
+msgstr "Neues Konto hinzufügen"
 
 #: src/control/backstage/CloudDialogs.tsx:104
 msgid "Server URL"
-msgstr ""
+msgstr "Server-URL"
 
 #: src/control/backstage/CloudDialogs.tsx:109
 msgid "Enter server URL"
-msgstr ""
+msgstr "Server-URL eingeben"
 
 #: src/control/backstage/CloudDialogs.tsx:117
 msgid "Display name"
-msgstr ""
+msgstr "Anzeigename"
 
 #: src/control/backstage/CloudDialogs.tsx:123
 msgid "Enter display name"
-msgstr ""
+msgstr "Anzeigenamen eingeben"
 
 #: src/control/backstage/CloudDialogs.tsx:130
 msgid "Name displayed in your cloud list (max. 40 characters)."
-msgstr ""
+msgstr "Name, der in Ihrer Cloud-Liste angezeigt wird (max. 40 Zeichen)."
 
 #: src/control/backstage/CloudDialogs.tsx:143
 msgid "Save changes"
-msgstr ""
+msgstr "Änderungen speichern"
 
 #: src/control/backstage/CloudDialogs.tsx:143
 msgid "Add Account"
-msgstr ""
+msgstr "Konto hinzufügen"
 
 #: src/control/backstage/CloudDialogs.tsx:184
 msgid "Remove account"
-msgstr ""
+msgstr "Konto entfernen"
 
 #: src/control/backstage/CloudDialogs.tsx:186
 msgid "Disconnects this cloud"
-msgstr ""
+msgstr "Trennt diese Cloud"
 
 #: src/control/backstage/CloudDialogs.tsx:214
 msgid "New account successfully added"
-msgstr ""
+msgstr "Neues Konto erfolgreich hinzugefügt"
 
 #: src/control/backstage/CloudDialogs.tsx:219
 msgid "You can now access your files from this cloud."
-msgstr ""
+msgstr "Sie können jetzt auf Ihre Dateien in dieser Cloud zugreifen."
 
 #: src/control/backstage/CloudDialogs.tsx:242
 msgid "Open Files"
-msgstr ""
+msgstr "Dateien öffnen"
 
 #: src/control/backstage/CloudDialogs.tsx:268
 msgid "Remove this account?"
-msgstr ""
+msgstr "Dieses Konto entfernen?"
 
 #: src/control/backstage/CloudDialogs.tsx:273
 msgid "You'll be disconnected from this cloud account."
-msgstr ""
+msgstr "Die Verbindung zu diesem Cloud-Konto wird getrennt."
 
 #: src/control/backstage/CloudDialogs.tsx:316
 msgid "Nextcloud"
-msgstr ""
+msgstr "Nextcloud"
 
 #: src/control/backstage/CloudDialogs.tsx:317
 msgid "OpenCloud"
-msgstr ""
+msgstr "OpenCloud"
 
 #: src/control/backstage/CloudDialogs.tsx:318
 msgid "Seafile"
-msgstr ""
+msgstr "Seafile"
 
 #: src/control/DropFileOverlay.tsx:30
 msgid "Drop file to open"
-msgstr ""
+msgstr "Datei zum Öffnen ablegen"
 
 #: src/control/AccessibilityNotice.tsx:34
 #: src/control/AccessibilityNotice.tsx:64
 msgid "This mobile view is not fully accessible."
-msgstr ""
+msgstr "Diese mobile Ansicht ist nicht vollständig barrierefrei."
 
 #: src/control/AccessibilityNotice.tsx:43
 msgid "Accessibility statement"
-msgstr ""
+msgstr "Erklärung zur Barrierefreiheit"
 
 #: src/control/AccessibilityNotice.tsx:50
 #: src/control/jsdialog/Util.SnackbarController.ts:122
@@ -4397,11 +4424,11 @@ msgstr "Ergebnisse"
 
 #: src/control/Control.NavigatorPanel.ts:317
 msgid "Maximize to grid"
-msgstr ""
+msgstr "Auf Raster maximieren"
 
 #: src/control/Control.NavigatorPanel.ts:629
 msgid "Find and Replace"
-msgstr ""
+msgstr "Suchen und Ersetzen"
 
 #: src/control/Control.NavigatorPanel.ts:638
 #: src/control/jsdialog/Widget.Combobox.js:499
@@ -4641,7 +4668,7 @@ msgstr ""
 #: src/control/Control.NotebookbarBuilder.js:203
 #: src/control/Control.NotebookbarBuilder.js:784
 msgid "Unsaved changes. Save"
-msgstr ""
+msgstr "Ungespeicherte Änderungen. Speichern"
 
 #: src/control/Control.NotebookbarBuilder.js:267
 msgid "Click to expand"
@@ -4681,7 +4708,7 @@ msgstr "Bild (.png)"
 
 #: src/control/Control.NotebookbarBuilder.js:782
 msgid "Unsaved changes."
-msgstr ""
+msgstr "Ungespeicherte Änderungen."
 
 #: src/control/Control.NotebookbarCalc.js:29
 #: src/control/Control.NotebookbarDraw.js:63
@@ -5677,7 +5704,7 @@ msgstr "Tabellen kopieren…"
 
 #: src/control/Control.Tabs.js:364
 msgid "{0}, protected"
-msgstr ""
+msgstr "{0}, geschützt"
 
 #: src/control/Control.Tabs.js:686
 msgid "Are you sure you want to delete sheet, {sheet}?"
@@ -5757,6 +5784,8 @@ msgid ""
 "An embedded script uses the legacy com.sun.star UNO API, which may be "
 "removed in future releases."
 msgstr ""
+"Ein eingebettetes Skript verwendet die veraltete com.sun.star-UNO-API, die "
+"in zukünftigen Versionen entfernt werden könnte."
 
 #: src/control/Control.UIManager.ts:2709
 msgid "Confirm password"
@@ -6054,63 +6083,69 @@ msgstr "Geben Sie einen Dateinamen ein"
 
 #: src/control/Permission.js:424 src/control/Permission.js:578
 msgid "How would you like to edit?"
-msgstr ""
+msgstr "Wie möchten Sie bearbeiten?"
 
 #: src/control/Permission.js:425
 msgid ""
 "Other users are viewing this document. Choose how you'd like to continue:"
 msgstr ""
+"Andere Benutzer sehen dieses Dokument. Wählen Sie, wie Sie fortfahren "
+"möchten:"
 
 #: src/control/Permission.js:430
 msgid "Edit locally"
-msgstr ""
+msgstr "Lokal bearbeiten"
 
 #: src/control/Permission.js:431
 msgid "Changes sync when you save"
-msgstr ""
+msgstr "Änderungen werden beim Speichern synchronisiert"
 
 #: src/control/Permission.js:437
 msgid "Collaborative editing"
-msgstr ""
+msgstr "Gemeinsame Bearbeitung"
 
 #: src/control/Permission.js:438 src/control/Permission.js:470
 msgid "Edit together in real-time"
-msgstr ""
+msgstr "Gemeinsam in Echtzeit bearbeiten"
 
 #: src/control/Permission.js:460
 msgid "Keep viewing local copy"
-msgstr ""
+msgstr "Lokale Kopie weiter anzeigen"
 
 #: src/control/Permission.js:461
 msgid "Continue with your version"
-msgstr ""
+msgstr "Mit Ihrer Version fortfahren"
 
 #: src/control/Permission.js:469
 msgid "Join collaborative editing"
-msgstr ""
+msgstr "An gemeinsamer Bearbeitung teilnehmen"
 
 #: src/control/Permission.js:495
 msgid "Waiting for changes to be saved..."
-msgstr ""
+msgstr "Warten auf das Speichern der Änderungen ..."
 
 #: src/control/Permission.js:579
 msgid ""
 "Other users are editing this document. Choose how you'd like to continue:"
 msgstr ""
+"Andere Benutzer bearbeiten dieses Dokument. Wählen Sie, wie Sie fortfahren "
+"möchten:"
 
 #: src/control/Permission.js:595
 msgid "started editing"
-msgstr ""
+msgstr "hat mit der Bearbeitung begonnen"
 
 #: src/control/Permission.js:596
 msgid "{0} started editing"
-msgstr ""
+msgstr "{0} hat mit der Bearbeitung begonnen"
 
 #: src/control/Permission.js:597
 msgid ""
 "Someone else is now editing this document. Choose how you'd like to "
 "continue:"
 msgstr ""
+"Jemand anderes bearbeitet jetzt dieses Dokument. Wählen Sie, wie Sie "
+"fortfahren möchten:"
 
 #: src/control/Permission.js:630
 msgid "Save as ODF format"
@@ -6259,7 +6294,7 @@ msgstr "Umbenennen …"
 
 #: src/control/Toolbar.js:853
 msgid "Unable to share"
-msgstr ""
+msgstr "Freigabe nicht möglich"
 
 #: src/control/VRuler.ts:198 src/control/VRuler.ts:432
 msgid "Top Margin"
@@ -6902,11 +6937,11 @@ msgstr "Funktionen für Tabellenzellen"
 
 #: src/control/jsdialog/Widget.HTMLContent.ts:72
 msgid "Size of selected shape"
-msgstr ""
+msgstr "Größe der ausgewählten Form"
 
 #: src/control/jsdialog/Widget.HTMLContent.ts:73
 msgid "Shape Size"
-msgstr ""
+msgstr "Formgröße"
 
 #: src/control/jsdialog/Widget.HTMLContent.ts:79
 msgid "Sheet Navigation"
@@ -7157,8 +7192,8 @@ msgstr "Server wird heruntergefahren"
 msgid ""
 "AI is not configured. Go to File > Options > AI Assistant to set it up."
 msgstr ""
-"KI ist nicht konfiguriert. Gehen Sie zu „Datei → Optionen → "
-"Ansichtseinstellungen“, um sie einzurichten."
+"KI ist nicht konfiguriert. Gehen Sie zu „Datei → Optionen → KI-Assistent“, "
+"um sie einzurichten."
 
 #: src/docdispatcher.ts:897
 msgid "Are you sure you want to delete this slide?"
@@ -7558,7 +7593,7 @@ msgstr ""
 
 #: src/map/Clipboard.js:203
 msgid "Copying from the document has been disabled by your administrator"
-msgstr ""
+msgstr "Das Kopieren aus dem Dokument wurde von Ihrem Administrator deaktiviert"
 
 #: src/map/Clipboard.js:316
 msgid "warning: copy/paste request timed out"
@@ -7716,7 +7751,7 @@ msgstr "Fensterpräsentation: "
 #: src/map/handler/Map.SlideShow.js:210
 #: src/slideshow/SlideShowPresenter.ts:1231
 msgid "Presenting in another window"
-msgstr ""
+msgstr "Präsentation in einem anderen Fenster"
 
 #: src/map/handler/Map.SlideShow.js:211
 #: src/slideshow/SlideShowPresenter.ts:1232
@@ -7788,6 +7823,8 @@ msgstr "Willkommensdialog"
 #: src/map/handler/Map.Settings.ts:159
 msgid "Settings saved. Add an API key to use the AI assistant."
 msgstr ""
+"Einstellungen gespeichert. Fügen Sie einen API-Schlüssel hinzu, um den KI-"
+"Assistenten zu verwenden."
 
 #: src/map/handler/Map.Settings.ts:164
 msgid "Settings saved"
@@ -7902,11 +7939,11 @@ msgstr "Herauszoomen"
 
 #: src/slideshow/PresenterConsole.js:47
 msgid "Preview of the current slide"
-msgstr ""
+msgstr "Vorschau der aktuellen Folie"
 
 #: src/slideshow/PresenterConsole.js:48
 msgid "Preview of the next slide"
-msgstr ""
+msgstr "Vorschau der nächsten Folie"
 
 #: src/slideshow/PresenterConsole.js:211
 msgid "Preview Slide {1}"
@@ -7914,11 +7951,11 @@ msgstr "Vorschau-Folie {1}"
 
 #: src/slideshow/PresenterConsole.js:815
 msgid "You are leaving the presentation."
-msgstr ""
+msgstr "Sie verlassen die Präsentation."
 
 #: src/slideshow/PresenterConsole.js:816
 msgid "The link is not valid."
-msgstr ""
+msgstr "Der Link ist ungültig."
 
 #: src/slideshow/PresenterConsole.js:1148
 #: src/slideshow/SlideShowPresenter.ts:930
@@ -8082,11 +8119,11 @@ msgstr "Gelbe Idee"
 
 #: introdocs/introdocs.js:5 introdocs/introdocs.js:8
 msgid "Welcome to Spreadsheet"
-msgstr ""
+msgstr "Willkommen in der Tabellenkalkulation"
 
 #: introdocs/introdocs.js:13 introdocs/introdocs.js:16
 msgid "Welcome to Presentation"
-msgstr ""
+msgstr "Willkommen in der Präsentation"
 
 #: welcome/welcome.html%2Bhtml.head.title:9-3
 msgid "Apenio Office Welcome"
