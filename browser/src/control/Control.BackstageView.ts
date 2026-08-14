@@ -213,7 +213,7 @@ class BackstageView extends window.L.Class {
 				label: _('About'),
 				type: 'action',
 				actionType: 'about',
-				visible: !this.isStarterMode,
+				visible: !this.isStarterMode && window.enableAbout,
 			},
 		];
 	}
