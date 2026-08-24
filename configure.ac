@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.63])
 
-AC_INIT([coolwsd], [26.04.4.0], [https://github.com/CollaboraOnline/online/issues], [coolwsd], [https://www.collaboraoffice.org/])
+AC_INIT([coolwsd], [26.04.4.0], [https://github.com/apenio-marasmus/Apenio-Office/issues], [coolwsd], [https://github.com/apenio-marasmus/Apenio-Office])
 LT_INIT([shared, disable-static, dlopen])
 
 AM_INIT_AUTOMAKE([1.10 foreign subdir-objects tar-pax -Wno-portability])
@@ -55,7 +55,7 @@ AC_SUBST([COOLWSD_VERSION_MICRO])
 AC_SUBST([COOLWSD_VERSION_NANO])
 AC_SUBST([COOLWSD_VERSION])
 
-AC_DEFINE_UNQUOTED([COOLWSD_VERSION],[["$COOLWSD_VERSION"]],[Collabora Online WebSocket server version])
+AC_DEFINE_UNQUOTED([COOLWSD_VERSION],[["$COOLWSD_VERSION"]],[Apenio WYSIWYG WebSocket server version])
 
 # try to add a git hash for a version if we're developing
 COOLWSD_VERSION_HASH="$COOLWSD_VERSION"
@@ -65,7 +65,7 @@ if test "z$git_hash" != "z"; then
 fi
 AC_SUBST([COOLWSD_VERSION_HASH])
 
-AC_DEFINE_UNQUOTED([COOLWSD_VERSION_HASH],[["$COOLWSD_VERSION_HASH"]],[Collabora Online git hash if present])
+AC_DEFINE_UNQUOTED([COOLWSD_VERSION_HASH],[["$COOLWSD_VERSION_HASH"]],[Apenio WYSIWG git hash if present])
 
 AC_CONFIG_SRCDIR([wsd/COOLWSD.cpp])
 
@@ -161,6 +161,10 @@ AC_ARG_ENABLE([developer],
 AC_ARG_ENABLE([debug],
               AS_HELP_STRING([--enable-debug],
                              [Enable a debugging build]))
+
+AC_ARG_ENABLE([about],
+              AS_HELP_STRING([--disable-about],
+                             [Disable the About dialog and menu entry]))
 
 AC_ARG_ENABLE([hardening-flags],
               AS_HELP_STRING([--disable-hardening-flags],
@@ -1187,7 +1191,7 @@ if test "$enable_windowsapp" = "yes" -a -z "$with_app_name"; then
    AC_MSG_ERROR([You must use --with-app-name])
 fi
 
-APP_NAME="Collabora Online Development Edition"
+APP_NAME="Apenio WYSIWYG"
 if test -n "$with_app_name"; then
    APP_NAME="$with_app_name"
 fi
@@ -1217,7 +1221,7 @@ else
 fi
 AC_SUBST(VENDOR)
 
-INFO_URL='https://www.collaboraoffice.org/'
+INFO_URL='https://github.com/apenio-marasmus/Apenio-Office'
 if test -n "$with_info_url" -a "$with_info_url" != "no"; then
     INFO_URL="$with_info_url"
 fi
@@ -1384,6 +1388,10 @@ WELCOME_CONFIG_FRAGMENT=
 HOME_MODE_CONFIGURATION=
 ENABLE_WELCOME_MESSAGE=0
 WELCOME_URL=
+ENABLE_ABOUT=1
+if test "$enable_about" = "no"; then
+    ENABLE_ABOUT=0
+fi
 CONFIG_INTERFACE_FRAGMENT=
 if test -n "$with_welcome_url"; then
     WELCOME_URL=$with_welcome_url
@@ -1407,6 +1415,7 @@ AM_SUBST_NOTMAKE(HOME_MODE_CONFIGURATION)
 AC_SUBST([CONFIG_INTERFACE_FRAGMENT])
 AM_SUBST_NOTMAKE(CONFIG_INTERFACE_FRAGMENT)
 AC_DEFINE_UNQUOTED([ENABLE_WELCOME_MESSAGE],$ENABLE_WELCOME_MESSAGE,[Should the Release notes message be shown on upgrade])
+AC_DEFINE_UNQUOTED([ENABLE_ABOUT],$ENABLE_ABOUT,[Whether to show the About dialog and menu entry])
 AM_CONDITIONAL([ENABLE_WELCOME_MESSAGE], [test "$ENABLE_WELCOME_MESSAGE" = "1"])
 AC_DEFINE_UNQUOTED([WELCOME_URL],["$WELCOME_URL"],[The welcome url of the build.])
 

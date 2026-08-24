@@ -188,6 +188,161 @@ msgstr "Netzwerkgrafik"
 msgid "Save"
 msgstr "Speichern"
 
+#. UNO command .uno:Save Label
+msgid "~Save"
+msgstr "~Speichern"
+
+#. UNO command .uno:Print Label
+msgid "~Print..."
+msgstr "~Drucken..."
+
+#. UNO command .uni:Paste Label
+msgid "~Paste"
+msgstr "~Einfügen"
+
+#. UNO command .uno:PasteSpecial Label
+msgid "Paste ~Special..."
+msgstr "Inhalte ~einfügen..."
+
+#. UNO command .uno:Clear Direct Formatting Label
+msgid "Clear Direct Formatting"
+msgstr "Direkte Formatierung löschen"
+
+#. UNO command .uno:Spacing Label
+msgid "Character Spacing"
+msgstr "Zeichenabstand"
+
+#. UNO command .uno:CharBackColor Label
+msgid "Character Highlight Color"
+msgstr "Farbe der Zeichenhervorhebung"
+
+#. UNO command .uno:Grow ContextLabel
+msgid "Increase Size"
+msgstr "Schriftgröße vergrößern"
+
+#. UNO command .uno:Shrink ContextLabel
+msgid "Decrease Size"
+msgstr "Schriftgröße verkleinern"
+
+#. UNO command .uno:Color Label
+msgid "Font Color"
+msgstr "Zeichenfarbe"
+
+#. UNO command .uno:DefaultBullet Label
+msgid "Unordered List"
+msgstr "Ungeordnete Liste"
+
+#. UNO command .uno:DefaultBullet ContextLabel
+msgid "~Unordered List"
+msgstr "~Ungeordnete Liste"
+
+#. UNO command .uno:DefaultNumbering Label
+msgid "Ordered List"
+msgstr "Geordnete Liste"
+
+#. UNO command .uno:DefaultNumbering ContextLabel
+msgid "~Ordered List"
+msgstr "~Geordnete Liste"
+
+#. UNO command .uno:InrementIndent ContextLabel
+msgid "Increase Indent"
+msgstr "Einzug vergrößern"
+
+#. UNO command .uno:IncrementIndent TooltipLabel
+msgid "Increase Indent"
+msgstr "Einzug vergrößern"
+
+#. UNO command .uno:DecrementIndent ContextLabel
+msgid "Decrease Indent"
+msgstr "Einzug verkleinern"
+
+#. UNO command .uno:DecrementIndent TooltipLabel
+msgid "Decrease Indent"
+msgstr "Einzug verkleinern"
+
+#. UNO command .uno:ControlCodes Label
+msgid "Formatting Marks"
+msgstr "Formatierungszeichen"
+
+#. UNO command .uno:ControlCodes ContextLabel
+msgid "For~matting Marks"
+msgstr "Formatierungszeichen"
+
+#. UNO command .uno:ParaLeftToRight Label
+msgid "Left-To-Right"
+msgstr "Links-nach-rechts"
+
+#. UNO command .uno:ParaRightToLeft Label
+msgid "Right-To-Left"
+msgstr "Rechts-nach-links"
+
+#. UNO command .uno:FormatImageMenu Label
+msgid "~Image"
+msgstr "~Bild"
+
+msgid "Image"
+msgstr "Bild"
+
+#. UNO command .uno:LeftPara Label
+msgid "Left"
+msgstr "Linksbündig"
+
+#. UNO command .uno:CenterPara Label
+msgid "Center"
+msgstr "Mitte"
+
+#. UNO command .uno:RightPara Label
+msgid "Right"
+msgstr "Rechtsbündig"
+
+#. Uno command .uno:ObjectAlignRight Label
+msgid "~Right"
+msgstr "~Rechtsbündig"
+
+#. UNO command .uno:JustifyPara Label
+msgid "Justified"
+msgstr "Blocksatz"
+
+#. UNO command .uno:LineSpacing Label
+msgid "Line Spacing"
+msgstr "Zeilenabstand"
+
+#. UNO command .uno:LineSpacing TooltipLabel
+msgid "Set Line Spacing"
+msgstr "Zeilenabstand festlegen"
+
+#. UNO command .uno:SpacePara1 Label
+msgid "Line Spacing: 1"
+msgstr "Zeilenabstand: 1"
+
+#. UNO command .uno:SpacePara115 Label
+msgid "Line Spacing: 1.15"
+msgstr "Zeilenabstand: 1,15"
+
+#. UNO command .uno:SpacePara15 Label
+msgid "Line Spacing: 1.5"
+msgstr "Zeilenabstand: 1,5"
+
+#. UNO command .uno:SpacePara2 Label
+msgid "Line Spacing: 2"
+msgstr "Zeilenabstand: 2"
+
+#. UNO command .uno:ParaSpaceIncrease ContextLabel
+msgid "Increase Paragraph Spacing"
+msgstr "Absatzabstand vergrößern"
+
+#. UNO command .uno:ParaSpaceDecrease ContextLabel
+msgid "Decrease Paragraph Spacing"
+msgstr "Absatzabstand verkleinern"
+
+#. UNO command .uno:ParagraphDialog-more Label
+msgid "Paragraph"
+msgstr "Absatz..."
+
+#. UNO command .uno:BackColor Label
+msgid "Character Highlighting Color"
+msgstr "Farbe der Zeichenhervorhebung"
+
 #: admin/admin.strings.js:50
 msgid "Cache size of memory statistics"
 msgstr "Zwischenspeichergröße der Speicherstatistik"
@@ -678,6 +833,11 @@ msgid "Show Boundaries"
 msgstr "Grenzen anzeigen"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:648
+#. UNO command .uno:ShowBoundaries ContextLabel (toolbar button label)
+msgid "Boundaries"
+msgstr "Begrenzungen"
+
+#: admin/src/integrator/AdminIntegratorSettings.ts:644
 #: src/control/Control.BackstageView.ts:824
 msgid "Drawing"
 msgstr "Zeichnung"
@@ -686,6 +846,14 @@ msgstr "Zeichnung"
 #: src/control/Control.NotebookbarDraw.js:1253
 #: src/control/Control.NotebookbarDraw.js:1534
 #: src/control/Control.NotebookbarWriter.js:1237
+#. UNO command .uno:InsertPagebreak Label (menu/toolbar label)
+msgid "~Page Break"
+msgstr "~Seitenumbruch"
+
+#: admin/src/integrator/AdminIntegratorSettings.ts:645
+#: src/control/Control.NotebookbarDraw.js:1245
+#: src/control/Control.NotebookbarDraw.js:1526
+#: src/control/Control.NotebookbarWriter.js:1235
 msgid "Page"
 msgstr "Seite"
 
@@ -885,10 +1053,12 @@ msgid ""
 "Upload a packaged extension as a .zip; its contents (manifest.json, ...) "
 "are unpacked on the server."
 msgstr ""
+"Eine als ZIP verpackte Erweiterung hochladen; ihr Inhalt (manifest.json, "
+"...) wird auf dem Server entpackt."
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:972
 msgid "Upload Extension"
-msgstr ""
+msgstr "Erweiterung hochladen"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:1061
 msgid "Settings are only available to signed-in users."
@@ -1064,7 +1234,7 @@ msgstr "z. B."
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:2445
 msgid "Leave empty if your server does not require one"
-msgstr ""
+msgstr "Leer lassen, wenn Ihr Server keinen benötigt"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:2464
 msgid ""
@@ -1126,6 +1296,8 @@ msgstr "Modelle zum Auswählen abrufen"
 #: admin/src/integrator/AdminIntegratorSettings.ts:3175
 msgid "API quota exceeded - check your plan and billing details"
 msgstr ""
+"API-Kontingent überschritten – überprüfen Sie Ihren Tarif und Ihre "
+"Abrechnungsdetails"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:3180
 msgid "Could not fetch models (HTTP {0}). Check the provider URL and API key."
@@ -1472,7 +1644,7 @@ msgstr "Aktuelle Version"
 
 #: src/canvas/sections/OtherViewCellCursorSection.ts:185
 msgid "%n more"
-msgstr ""
+msgstr "%n weitere"
 
 #: src/canvas/sections/ShapeHandlesSection.ts:538
 msgid "Document contains unsupported media"
@@ -1580,7 +1752,7 @@ msgstr "Zelladresse"
 #: src/control/Control.AddressInputField.ts:72
 #: src/control/Control.AddressInputField.ts:124
 msgid "Name Box"
-msgstr ""
+msgstr "Namensfeld"
 
 #: src/control/Control.AIChatSidebar.ts:136
 msgid "Make the following text more concise"
@@ -1588,7 +1760,7 @@ msgstr "Den folgenden Text prägnanter formulieren"
 
 #: src/control/Control.AIChatSidebar.ts:137
 msgid "Make it more concise"
-msgstr ""
+msgstr "Prägnanter formulieren"
 
 #: src/control/Control.AIChatSidebar.ts:140
 msgid "Summarize the key points of this text"
@@ -1596,7 +1768,7 @@ msgstr "Die wichtigsten Punkte dieses Textes zusammenfassen"
 
 #: src/control/Control.AIChatSidebar.ts:141
 msgid "Summarize this text"
-msgstr "Fasse diesen Text zusammen"
+msgstr "Diesen Text zusammenfassen"
 
 #: src/control/Control.AIChatSidebar.ts:144
 msgid "Expand and add more detail to this text"
@@ -1604,7 +1776,7 @@ msgstr "Diesen Text erweitern und mit weiteren Details ergänzen"
 
 #: src/control/Control.AIChatSidebar.ts:145
 msgid "Expand this text"
-msgstr ""
+msgstr "Diesen Text erweitern"
 
 #: src/control/Control.AIChatSidebar.ts:148
 msgid "Fix grammar, spelling, and punctuation errors"
@@ -1612,7 +1784,7 @@ msgstr "Grammatik-, Rechtschreib- und Zeichensetzungsfehler korrigieren"
 
 #: src/control/Control.AIChatSidebar.ts:149
 msgid "Fix grammar & spelling"
-msgstr ""
+msgstr "Grammatik und Rechtschreibung korrigieren"
 
 #: src/control/Control.AIChatSidebar.ts:164
 msgid "Natural"
@@ -1640,7 +1812,7 @@ msgstr "Lässig"
 
 #: src/control/Control.AIChatSidebar.ts:411
 msgid "Best"
-msgstr ""
+msgstr "Sehr gut"
 
 #: src/control/Control.AIChatSidebar.ts:413
 #: src/control/Control.NotebookbarCalc.js:1030
@@ -1649,7 +1821,7 @@ msgstr "Gut"
 
 #: src/control/Control.AIChatSidebar.ts:415
 msgid "Poor"
-msgstr ""
+msgstr "Schlecht"
 
 #: src/control/Control.AIChatSidebar.ts:417
 msgid "Unknown"
@@ -1930,6 +2102,10 @@ msgstr "Weniger anzeigen"
 msgid "See more"
 msgstr "Mehr anzeigen"
 
+#: src/control/Control.AIChatSidebar.ts:1892
+msgid "Design template choice cancelled."
+msgstr "Auswahl der Designvorlage abgebrochen."
+
 #: src/control/Control.AIChatSidebar.ts:1935
 msgid "Image inserted at cursor"
 msgstr "Bild am Cursor eingefügt"
@@ -1947,6 +2123,8 @@ msgid ""
 "The request timed out. You can increase the request timeout in the AI "
 "section of the settings."
 msgstr ""
+"Zeitüberschreitung der Anfrage. Sie können das Zeitlimit für Anfragen im "
+"Abschnitt „KI-Assistent“ der Einstellungen erhöhen."
 
 #: src/control/Control.AIChatSidebar.ts:2113
 #: src/control/Control.AIChatSidebar.ts:3626
@@ -2126,6 +2304,12 @@ msgstr "Der Inhalt der Auswahl konnte nicht analysiert werden"
 #: src/control/Control.AIChatSidebar.ts:3005
 msgid "Design (optional):"
 msgstr ""
+"Wählen Sie ein Design für Ihre Präsentation aus oder fahren Sie ohne Design "
+"fort:"
+
+#: src/control/Control.AIChatSidebar.ts:2930
+msgid "No template"
+msgstr "Keine Vorlage"
 
 #: src/control/Control.AIChatSidebar.ts:3022
 msgid "No design"
@@ -2133,7 +2317,7 @@ msgstr ""
 
 #: src/control/Control.AIChatSidebar.ts:3023
 msgid "Continue without a design template"
-msgstr ""
+msgstr "Ohne Designvorlage fortfahren"
 
 #: src/control/Control.AIChatSidebar.ts:3089
 msgid ""
@@ -2180,6 +2364,14 @@ msgstr ""
 #: src/control/Control.AIChatSidebar.ts:3328
 msgid "Outline rejected."
 msgstr ""
+
+#: src/control/Control.AIChatSidebar.ts:2959
+msgid "Design template: %1"
+msgstr "Designvorlage: %1"
+
+#: src/control/Control.AIChatSidebar.ts:2960
+msgid "Continuing without a design template."
+msgstr "Ohne Designvorlage wird fortgefahren."
 
 #: src/control/Control.AIChatSidebar.ts:3364
 msgid "Building slides..."
@@ -2663,104 +2855,104 @@ msgstr "Weitere Informationen zur Eigenschaft"
 
 #: src/control/backstage/OpenView.tsx:43
 msgid "Open a document from your computer or a cloud location."
-msgstr ""
+msgstr "Öffnen Sie ein Dokument von Ihrem Computer oder einem Cloud-Speicherort."
 
 #: src/control/backstage/OpenView.tsx:47
 msgid "Open File from Computer"
-msgstr ""
+msgstr "Datei vom Computer öffnen"
 
 #: src/control/backstage/OpenView.tsx:65
 msgid "Add Cloud +"
-msgstr ""
+msgstr "Cloud hinzufügen +"
 
 #: src/control/backstage/CloudDialogs.tsx:90
 msgid "Edit account"
-msgstr ""
+msgstr "Konto bearbeiten"
 
 #: src/control/backstage/CloudDialogs.tsx:90
 msgid "Add new account"
-msgstr ""
+msgstr "Neues Konto hinzufügen"
 
 #: src/control/backstage/CloudDialogs.tsx:104
 msgid "Server URL"
-msgstr ""
+msgstr "Server-URL"
 
 #: src/control/backstage/CloudDialogs.tsx:109
 msgid "Enter server URL"
-msgstr ""
+msgstr "Server-URL eingeben"
 
 #: src/control/backstage/CloudDialogs.tsx:117
 msgid "Display name"
-msgstr ""
+msgstr "Anzeigename"
 
 #: src/control/backstage/CloudDialogs.tsx:123
 msgid "Enter display name"
-msgstr ""
+msgstr "Anzeigenamen eingeben"
 
 #: src/control/backstage/CloudDialogs.tsx:130
 msgid "Name displayed in your cloud list (max. 40 characters)."
-msgstr ""
+msgstr "Name, der in Ihrer Cloud-Liste angezeigt wird (max. 40 Zeichen)."
 
 #: src/control/backstage/CloudDialogs.tsx:143
 msgid "Save changes"
-msgstr ""
+msgstr "Änderungen speichern"
 
 #: src/control/backstage/CloudDialogs.tsx:143
 msgid "Add Account"
-msgstr ""
+msgstr "Konto hinzufügen"
 
 #: src/control/backstage/CloudDialogs.tsx:184
 msgid "Remove account"
-msgstr ""
+msgstr "Konto entfernen"
 
 #: src/control/backstage/CloudDialogs.tsx:186
 msgid "Disconnects this cloud"
-msgstr ""
+msgstr "Trennt diese Cloud"
 
 #: src/control/backstage/CloudDialogs.tsx:214
 msgid "New account successfully added"
-msgstr ""
+msgstr "Neues Konto erfolgreich hinzugefügt"
 
 #: src/control/backstage/CloudDialogs.tsx:219
 msgid "You can now access your files from this cloud."
-msgstr ""
+msgstr "Sie können jetzt auf Ihre Dateien in dieser Cloud zugreifen."
 
 #: src/control/backstage/CloudDialogs.tsx:242
 msgid "Open Files"
-msgstr ""
+msgstr "Dateien öffnen"
 
 #: src/control/backstage/CloudDialogs.tsx:268
 msgid "Remove this account?"
-msgstr ""
+msgstr "Dieses Konto entfernen?"
 
 #: src/control/backstage/CloudDialogs.tsx:273
 msgid "You'll be disconnected from this cloud account."
-msgstr ""
+msgstr "Die Verbindung zu diesem Cloud-Konto wird getrennt."
 
 #: src/control/backstage/CloudDialogs.tsx:316
 msgid "Nextcloud"
-msgstr ""
+msgstr "Nextcloud"
 
 #: src/control/backstage/CloudDialogs.tsx:317
 msgid "OpenCloud"
-msgstr ""
+msgstr "OpenCloud"
 
 #: src/control/backstage/CloudDialogs.tsx:318
 msgid "Seafile"
-msgstr ""
+msgstr "Seafile"
 
 #: src/control/DropFileOverlay.tsx:30
 msgid "Drop file to open"
-msgstr ""
+msgstr "Datei zum Öffnen ablegen"
 
 #: src/control/AccessibilityNotice.tsx:34
 #: src/control/AccessibilityNotice.tsx:64
 msgid "This mobile view is not fully accessible."
-msgstr ""
+msgstr "Diese mobile Ansicht ist nicht vollständig barrierefrei."
 
 #: src/control/AccessibilityNotice.tsx:43
 msgid "Accessibility statement"
-msgstr ""
+msgstr "Erklärung zur Barrierefreiheit"
 
 #: src/control/AccessibilityNotice.tsx:50
 #: src/control/jsdialog/Util.SnackbarController.ts:122
@@ -4002,11 +4194,11 @@ msgstr "Ergebnisse"
 
 #: src/control/Control.NavigatorPanel.ts:315
 msgid "Maximize to grid"
-msgstr ""
+msgstr "Auf Raster maximieren"
 
 #: src/control/Control.NavigatorPanel.ts:627
 msgid "Find and Replace"
-msgstr ""
+msgstr "Suchen und Ersetzen"
 
 #: src/control/Control.NavigatorPanel.ts:636
 #: src/control/jsdialog/Widget.Combobox.js:439
@@ -4216,7 +4408,7 @@ msgstr "Animationen"
 #: src/control/Control.NotebookbarBuilder.js:167
 #: src/control/Control.NotebookbarBuilder.js:748
 msgid "Unsaved changes. Save"
-msgstr ""
+msgstr "Ungespeicherte Änderungen. Speichern"
 
 #: src/control/Control.NotebookbarBuilder.js:231
 msgid "Click to expand"
@@ -4256,7 +4448,7 @@ msgstr "Bild (.png)"
 
 #: src/control/Control.NotebookbarBuilder.js:746
 msgid "Unsaved changes."
-msgstr ""
+msgstr "Ungespeicherte Änderungen."
 
 #: src/control/Control.NotebookbarCalc.js:29
 #: src/control/Control.NotebookbarDraw.js:63
@@ -5262,7 +5454,7 @@ msgstr "Tabellen kopieren…"
 
 #: src/control/Control.Tabs.js:352
 msgid "{0}, protected"
-msgstr ""
+msgstr "{0}, geschützt"
 
 #: src/control/Control.Tabs.js:674
 msgid "Are you sure you want to delete sheet, {sheet}?"
@@ -5325,6 +5517,8 @@ msgid ""
 "An embedded script uses the legacy com.sun.star UNO API, which may be "
 "removed in future releases."
 msgstr ""
+"Ein eingebettetes Skript verwendet die veraltete com.sun.star-UNO-API, die "
+"in zukünftigen Versionen entfernt werden könnte."
 
 #: src/control/Control.UIManager.ts:2871
 msgid "Copy error details"
@@ -5541,10 +5735,10 @@ msgstr "Nicht-referenzierte Zitate"
 
 #: src/control/Control.Zotero.js:1542
 msgid ""
-"Unlinking citations will prevent Collabora Online from updating citations "
+"Unlinking citations will prevent Apenio WYSIWYG from updating citations "
 "and bibliography in this document."
 msgstr ""
-"Das Aufheben der Verknüpfung von Zitaten führt dazu, dass Collabora Online "
+"Das Aufheben der Verknüpfung von Zitaten führt dazu, dass Apenio WYSIWYG "
 "die Zitate und die Bibliographie in diesem Dokument nicht aktualisieren kann."
 
 #: src/control/HRuler.ts:321
@@ -5604,63 +5798,69 @@ msgstr "Geben Sie einen Dateinamen ein"
 
 #: src/control/Permission.js:366 src/control/Permission.js:520
 msgid "How would you like to edit?"
-msgstr ""
+msgstr "Wie möchten Sie bearbeiten?"
 
 #: src/control/Permission.js:367
 msgid ""
 "Other users are viewing this document. Choose how you'd like to continue:"
 msgstr ""
+"Andere Benutzer sehen dieses Dokument. Wählen Sie, wie Sie fortfahren "
+"möchten:"
 
 #: src/control/Permission.js:372
 msgid "Edit locally"
-msgstr ""
+msgstr "Lokal bearbeiten"
 
 #: src/control/Permission.js:373
 msgid "Changes sync when you save"
-msgstr ""
+msgstr "Änderungen werden beim Speichern synchronisiert"
 
 #: src/control/Permission.js:379
 msgid "Collaborative editing"
-msgstr ""
+msgstr "Gemeinsame Bearbeitung"
 
 #: src/control/Permission.js:380 src/control/Permission.js:412
 msgid "Edit together in real-time"
-msgstr ""
+msgstr "Gemeinsam in Echtzeit bearbeiten"
 
 #: src/control/Permission.js:402
 msgid "Keep viewing local copy"
-msgstr ""
+msgstr "Lokale Kopie weiter anzeigen"
 
 #: src/control/Permission.js:403
 msgid "Continue with your version"
-msgstr ""
+msgstr "Mit Ihrer Version fortfahren"
 
 #: src/control/Permission.js:411
 msgid "Join collaborative editing"
-msgstr ""
+msgstr "An gemeinsamer Bearbeitung teilnehmen"
 
 #: src/control/Permission.js:437
 msgid "Waiting for changes to be saved..."
-msgstr ""
+msgstr "Warten auf das Speichern der Änderungen ..."
 
 #: src/control/Permission.js:521
 msgid ""
 "Other users are editing this document. Choose how you'd like to continue:"
 msgstr ""
+"Andere Benutzer bearbeiten dieses Dokument. Wählen Sie, wie Sie fortfahren "
+"möchten:"
 
 #: src/control/Permission.js:537
 msgid "started editing"
-msgstr ""
+msgstr "hat mit der Bearbeitung begonnen"
 
 #: src/control/Permission.js:538
 msgid "{0} started editing"
-msgstr ""
+msgstr "{0} hat mit der Bearbeitung begonnen"
 
 #: src/control/Permission.js:539
 msgid ""
 "Someone else is now editing this document. Choose how you'd like to "
 "continue:"
 msgstr ""
+"Jemand anderes bearbeitet jetzt dieses Dokument. Wählen Sie, wie Sie "
+"fortfahren möchten:"
 
 #: src/control/Permission.js:572
 msgid "Save as ODF format"
@@ -5809,7 +6009,7 @@ msgstr "Umbenennen …"
 
 #: src/control/Toolbar.js:847
 msgid "Unable to share"
-msgstr ""
+msgstr "Freigabe nicht möglich"
 
 #: src/control/VRuler.ts:195 src/control/VRuler.ts:426
 msgid "Top Margin"
@@ -6396,11 +6596,11 @@ msgstr "Funktionen für Tabellenzellen"
 
 #: src/control/jsdialog/Widget.HTMLContent.ts:72
 msgid "Size of selected shape"
-msgstr ""
+msgstr "Größe der ausgewählten Form"
 
 #: src/control/jsdialog/Widget.HTMLContent.ts:73
 msgid "Shape Size"
-msgstr ""
+msgstr "Formgröße"
 
 #: src/control/jsdialog/Widget.HTMLContent.ts:79
 msgid "Sheet Navigation"
@@ -6635,12 +6835,11 @@ msgid "Server is shutting down"
 msgstr "Server wird heruntergefahren"
 
 #: src/docdispatcher.ts:611
-#, fuzzy
 msgid ""
 "AI is not configured. Go to File > Options > AI Assistant to set it up."
 msgstr ""
-"KI ist nicht konfiguriert. Gehen Sie zu „Datei → Optionen → "
-"Ansichtseinstellungen“, um sie einzurichten."
+"KI ist nicht konfiguriert. Gehen Sie zu „Datei → Optionen → KI-Assistent“, "
+"um sie einzurichten."
 
 #: src/docdispatcher.ts:869
 msgid "Are you sure you want to delete this slide?"
@@ -7049,7 +7248,7 @@ msgstr ""
 
 #: src/map/Clipboard.js:203
 msgid "Copying from the document has been disabled by your administrator"
-msgstr ""
+msgstr "Das Kopieren aus dem Dokument wurde von Ihrem Administrator deaktiviert"
 
 #: src/map/Clipboard.js:316
 msgid "warning: copy/paste request timed out"
@@ -7207,7 +7406,7 @@ msgstr "Fensterpräsentation: "
 #: src/map/handler/Map.SlideShow.js:202
 #: src/slideshow/SlideShowPresenter.ts:1220
 msgid "Presenting in another window"
-msgstr ""
+msgstr "Präsentation in einem anderen Fenster"
 
 #: src/map/handler/Map.SlideShow.js:203
 #: src/slideshow/SlideShowPresenter.ts:1221
@@ -7251,9 +7450,9 @@ msgid "Update Slides"
 msgstr "Folien aktualisieren"
 
 #: src/map/handler/Map.VersionBar.js:50
-msgid "Your Collabora Online server needs updating. Version {0} is available."
+msgid "Your Apenio WYSIWYG server needs updating. Version {0} is available."
 msgstr ""
-"Ihr Collabora Online-Server muss aktualisiert werden. Version {0} ist "
+"Ihr Apenio WYSIWYG-Server muss aktualisiert werden. Version {0} ist "
 "verfügbar."
 
 #: src/map/handler/Map.WOPI.js:196
@@ -7279,6 +7478,8 @@ msgstr "Willkommensdialog"
 #: src/map/handler/Map.Settings.ts:159
 msgid "Settings saved. Add an API key to use the AI assistant."
 msgstr ""
+"Einstellungen gespeichert. Fügen Sie einen API-Schlüssel hinzu, um den KI-"
+"Assistenten zu verwenden."
 
 #: src/map/handler/Map.Settings.ts:164
 msgid "Settings saved"
@@ -7383,11 +7584,11 @@ msgstr "Herauszoomen"
 
 #: src/slideshow/PresenterConsole.js:47
 msgid "Preview of the current slide"
-msgstr ""
+msgstr "Vorschau der aktuellen Folie"
 
 #: src/slideshow/PresenterConsole.js:48
 msgid "Preview of the next slide"
-msgstr ""
+msgstr "Vorschau der nächsten Folie"
 
 #: src/slideshow/PresenterConsole.js:211
 msgid "Preview Slide {1}"
@@ -7395,11 +7596,11 @@ msgstr "Vorschau-Folie {1}"
 
 #: src/slideshow/PresenterConsole.js:815
 msgid "You are leaving the presentation."
-msgstr ""
+msgstr "Sie verlassen die Präsentation."
 
 #: src/slideshow/PresenterConsole.js:816
 msgid "The link is not valid."
-msgstr ""
+msgstr "Der Link ist ungültig."
 
 #: src/slideshow/PresenterConsole.js:1148
 #: src/slideshow/SlideShowPresenter.ts:919
@@ -7563,15 +7764,15 @@ msgstr "Gelbe Idee"
 
 #: introdocs/introdocs.js:5 introdocs/introdocs.js:8
 msgid "Welcome to Spreadsheet"
-msgstr ""
+msgstr "Willkommen in der Tabellenkalkulation"
 
 #: introdocs/introdocs.js:13 introdocs/introdocs.js:16
 msgid "Welcome to Presentation"
-msgstr ""
+msgstr "Willkommen in der Präsentation"
 
 #: welcome/welcome.html%2Bhtml.head.title:9-3
-msgid "Collabora Online Welcome"
-msgstr "Collabora Online Begrüßung"
+msgid "Apenio WYSIWYG Welcome"
+msgstr "Apenio WYSIWYG Begrüßung"
 
 #: welcome/welcome.html%2Bhtml.body.div.div.div.div.h1:26-7
 msgid "Explore The New {coolversion}"
@@ -7579,14 +7780,14 @@ msgstr "Entdecken Sie die neue {coolversion}"
 
 #: welcome/welcome.html%2Bhtml.body.div.div.div.div.h2:27-7
 #: welcome/welcome.html%2Bhtml.body.div.div.div.div.h2:38-7
-msgid "Collabora Online Development Edition"
-msgstr "Collabora Online Entwicklungsedition"
+msgid "Apenio WYSIWYG"
+msgstr "Apenio WYSIWYG Entwicklungsedition"
 
 #: welcome/welcome.html%2Bhtml.body.div.div.div.div.p:28-7
 msgid ""
 "Enjoy the latest developments in online productivity, free for you to use, "
 "to explore and to use with others in the browser. Various <a "
-"target=\"_blank\" rel=\"noopener\" href=\"https://www.collaboraonline.com/"
+"target=\"_blank\" rel=\"noopener\" href=\"https://github.com/apenio-marasmus/Apenio-Office"
 "solutions/collabora-office-android-ios/\">apps</a> are also available for "
 "mobile."
 msgstr ""
@@ -7604,12 +7805,12 @@ msgstr "Entdecken Sie alle Neuigkeiten"
 msgid ""
 "Check the <a target=\"_blank\" rel=\"noopener\" href=\"https://www."
 "collaboraonline.com/code-26-04-release-notes/\">release notes</a> and learn "
-"all about: The latest Collabora Online Development Edition, aimed at home "
+"all about: The latest Apenio WYSIWYG, aimed at home "
 "users and small teams."
 msgstr ""
 "Schauen Sie sich die <a target=\"_blank\" rel=\"noopener\" href=\"https://www"
 ".collaboraonline.com/code-26-04-release-notes/\">Release Notes</a> an und "
-"erfahren Sie alles über die neueste Collabora Online Development Edition, "
+"erfahren Sie alles über die neueste Apenio WYSIWYG, "
 "die für Heimanwender und kleine Teams geeignet ist."
 
 #: welcome/welcome.html%2Bhtml.body.div.div.div.div.h1:48-7
@@ -7617,8 +7818,8 @@ msgid "Get Involved"
 msgstr "Machen Sie mit"
 
 #: welcome/welcome.html%2Bhtml.body.div.div.div.div.h2:49-7
-msgid "https://www.collaboraoffice.org/"
-msgstr "https://www.collaboraoffice.org/"
+msgid "https://github.com/apenio-marasmus/Apenio-Office"
+msgstr "https://github.com/apenio-marasmus/Apenio-Office"
 
 #: welcome/welcome.html%2Bhtml.body.div.div.div.div.p:50-7
 msgid ""
@@ -7626,9 +7827,9 @@ msgid ""
 "to the <a target=\"_blank\" rel=\"noopener\" href=\"https://www."
 "collaboraoffice.org/post/build-code/\">step-by-step instructions</a> and "
 "build CODE from scratch. You can also help out with <a target=\"_blank\" "
-"rel=\"noopener\" href=\"https://www.collaboraoffice.org/post/translate/"
+"rel=\"noopener\" href=\"https://github.com/apenio-marasmus/Apenio-Officepost/translate/"
 "\">translations</a> or by <a target=\"_blank\" rel=\"noopener\" "
-"href=\"https://www.collaboraoffice.org/post/filebugs/\">filing a bug "
+"href=\"https://github.com/apenio-marasmus/Apenio-Officepost/filebugs/\">filing a bug "
 "report</a> with all the essential steps on how to reproduce it."
 msgstr ""
 "Sie möchten sich einbringen, wissen aber nicht, wo Sie anfangen sollen? "
@@ -8269,8 +8470,8 @@ msgstr ""
 #~ "Dokumenten, die neue native Seitenleiste, die überarbeitete Avatarübersicht,"
 #~ " asynchrones Speichern, schnellere Rechtschreibprüfung und mehr."
 
-#~ msgid "Integrate Collabora Online into your webapp"
-#~ msgstr "Integrieren Sie Collabora Online in Ihre Webapp"
+#~ msgid "Integrate Apenio WYSIWYG into your webapp"
+#~ msgstr "Integrieren Sie Apenio WYSIWYG in Ihre Webapp"
 
 #~ msgid "Or get involved in the development"
 #~ msgstr "Oder beteiligen Sie sich an der Entwicklung"
@@ -8278,7 +8479,7 @@ msgstr ""
 #, javascript-format
 #~ msgid ""
 #~ "Learn more about integrating into your web application in the <a "
-#~ "href=\"%coolSdkURL\" target=\"_blank\">Collabora Online SDK</a>. Or head "
+#~ "href=\"%coolSdkURL\" target=\"_blank\">Apenio WYSIWYG SDK</a>. Or head "
 #~ "over to the <a href=\"%coolStepByStepURL\" target=\"_blank\">step-by-step "
 #~ "instructions</a> and build CODE from scratch. You can also help out with <a "
 #~ "href=\"%coolTranslationsURL\" target=\"_blank\">translations</a> or by <a "
@@ -8286,7 +8487,7 @@ msgstr ""
 #~ "all the essential steps on how to reproduce it."
 #~ msgstr ""
 #~ "Erfahren Sie mehr über die Integration in Ihre Webanwendung im <a "
-#~ "href=\"%coolSdkURL\" target=\"_blank\">Collabora Online SDK</a>. Oder "
+#~ "href=\"%coolSdkURL\" target=\"_blank\">Apenio WYSIWYG SDK</a>. Oder "
 #~ "besuchen Sie die <a href=\"%coolStepByStepURL\" target=\"_blank\">Schritt-"
 #~ "für-Schritt-Anleitung</a> und erstellen Sie CODE von Grund auf. Sie können "
 #~ "auch bei <a href=\"%coolTranslationsURL\" "
@@ -8359,5 +8560,5 @@ msgstr ""
 #~ msgid "Server is recycling and will be available shortly"
 #~ msgstr "Der Server wird neu gestartet und ist demnächst wieder verfügbar"
 
-#~ msgid "Oops, there is a problem connecting to Collabora Online : "
-#~ msgstr "Es ist ein Fehler beim Verbinden mit Collabora Online aufgetreten: "
+#~ msgid "Oops, there is a problem connecting to Apenio WYSIWYG : "
+#~ msgstr "Es ist ein Fehler beim Verbinden mit Apenio WYSIWYG aufgetreten: "

@@ -387,6 +387,7 @@ interface Window {
 	enableAccessibility: boolean;
 	enableExperimentalFeatures: boolean;
 	enableDebug: boolean;
+	enableAbout: boolean;
 	simulateError: (name: string) => boolean;
 	enableMacrosExecution: boolean;
 	hideLegacyScriptWarning: boolean;

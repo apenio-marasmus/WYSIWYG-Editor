@@ -171,7 +171,10 @@ window.L.Control.DocumentNameInput = window.L.Control.extend({
 	},
 
 	hideProgressBar: function() {
-		this.enableDocumentNameInput();
+		if (!this.map['wopi'].UserCanNotWriteRelative && !this.map.isReadOnlyMode())
+			this.enableDocumentNameInput();
+		else
+			this.disableDocumentNameInput();
 		this.progressBar.style.display = 'none';
 	},
 
