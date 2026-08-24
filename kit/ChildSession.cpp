@@ -364,10 +364,10 @@ bool ChildSession::_handleInput(const char *buffer, int length)
         }
         if (json.empty())
         {
-            LOKitHelper::ScopedString data(
+            std::string data(
                 _docManager->getLOKit()->extractRequest(getJailedFilePath().c_str()));
-            if (data)
-                json = data.get();
+            if (!data.empty())
+                json = std::move(data);
         }
         if (json.empty())
         {
@@ -423,10 +423,10 @@ bool ChildSession::_handleInput(const char *buffer, int length)
         }
         else
         {
-            LOKitHelper::ScopedString data(_docManager->getLOKit()->extractDocumentStructureRequest(
+            std::string data(_docManager->getLOKit()->extractDocumentStructureRequest(
                 getJailedFilePath().c_str(), filter.c_str()));
-            if (data)
-                json = data.get();
+            if (!data.empty())
+                json = std::move(data);
         }
 
         if (json.empty())
@@ -1717,14 +1717,9 @@ bool ChildSession::getTextSelection(const StringVector& tokens)
     Poco::JSON::Object selectionObject;
     for (const auto& type : mimeTypes)
     {
-        char* textSelection = nullptr;
-        char* usedMimeType = nullptr;
+        std::string selection;
         const COKitSelectionType selectionType
-            = getLOKitDocument()->getSelectionTypeAndText(type.c_str(),
-                                                          &textSelection, &usedMimeType);
-        std::string selection(textSelection ? textSelection : "");
-        free(textSelection);
-        free(usedMimeType);
+            = getLOKitDocument()->getSelectionTypeAndText(type.c_str(), &selection);
         if (selectionType == COKitSelectionType::COMPLEX)
         {
             // Flag complex data so the client will download async.
@@ -1754,10 +1749,8 @@ bool ChildSession::getClipboard(const StringVector& tokens)
     std::vector<std::string> specifics;
     const char **mimeTypes = nullptr; // fetch all for now.
     std::vector<const char*> inMimeTypes;
-    size_t       outCount = 0;
-    char       **outMimeTypes = nullptr;
-    size_t      *outSizes = nullptr;
-    char       **outStreams = nullptr;
+    std::vector<std::string> outMimeTypes;
+    std::vector<std::vector<char>> outStreams;
 
     std::string tagName;
     if (tokens.size() < 2 || !getTokenString(tokens[1], "name", tagName))
@@ -1784,10 +1777,9 @@ bool ChildSession::getClipboard(const StringVector& tokens)
     bool success = false;
     getLOKitDocument()->setView(_viewId);
 
-    success = getLOKitDocument()->getClipboard(mimeTypes, &outCount, &outMimeTypes,
-                                               &outSizes, &outStreams);
+    success = getLOKitDocument()->getClipboard(mimeTypes, outMimeTypes, outStreams);
 
-    if (!success || outCount == 0)
+    if (!success || outMimeTypes.size() == 0)
     {
         LOG_WRN("Get clipboard failed " << getLOKitLastError());
         sendTextFrame("clipboardcontent: error");
@@ -1795,41 +1787,36 @@ bool ChildSession::getClipboard(const StringVector& tokens)
     }
 
     size_t outGuess = 32;
-    for (size_t i = 0; i < outCount; ++i)
-        outGuess += outSizes[i] + strlen(outMimeTypes[i]) + 10;
+    for (size_t i = 0; i < outMimeTypes.size(); ++i)
+        outGuess += outStreams[i].size() + outMimeTypes[i].length() + 10;
 
     std::vector<char> output;
     output.reserve(outGuess);
 
     bool json = !specifics.empty();
     Poco::JSON::Object selectionObject;
-    LOG_TRC("Building clipboardcontent: " << outCount << " items");
-    for (size_t i = 0; i < outCount; ++i)
+    LOG_TRC("Building clipboardcontent: " << outMimeTypes.size() << " items");
+    for (size_t i = 0; i < outMimeTypes.size(); ++i)
     {
-        LOG_TRC("\t[" << i << " - type " << outMimeTypes[i] << " size " << outSizes[i]);
+        LOG_TRC("\t[" << i << " - type " << outMimeTypes[i] << " size " << outStreams[i].size());
         if (json)
         {
-            std::string selection(outStreams[i], outSizes[i]);
+            std::string selection(outStreams[i].data(), outStreams[i].size());
             selectionObject.set(outMimeTypes[i], selection);
         }
         else
         {
-            Util::vectorAppend(output, outMimeTypes[i]);
+            Util::vectorAppend(output, outMimeTypes[i].c_str());
             Util::vectorAppend(output, "\n", 1);
             std::stringstream sstream;
-            sstream << std::hex << outSizes[i];
+            sstream << std::hex << outStreams[i].size();
             std::string hex = sstream.str();
             Util::vectorAppend(output, hex.data(), hex.size());
             Util::vectorAppend(output, "\n", 1);
-            Util::vectorAppend(output, outStreams[i], outSizes[i]);
+            Util::vectorAppend(output, outStreams[i].data(), outStreams[i].size());
             Util::vectorAppend(output, "\n", 1);
         }
-        free(outMimeTypes[i]);
-        free(outStreams[i]);
     }
-    free(outSizes);
-    free(outMimeTypes);
-    free(outStreams);
     if (json)
     {
         std::stringstream selectionStream;
@@ -2471,20 +2458,17 @@ bool ChildSession::renderSearchResult(const char* buffer, int length, const Stri
 
     const auto tileMode = getLOKitDocument()->getTileMode();
 
-    unsigned char* bitmapBuffer = nullptr;
-
+    std::vector<unsigned char> bitmapBuffer;
     int width = 0;
     int height = 0;
-    size_t byteSize = 0;
+    bool success = getLOKitDocument()->renderSearchResult(arguments.c_str(), &bitmapBuffer, &width, &height);
 
-    bool success = getLOKitDocument()->renderSearchResult(arguments.c_str(), &bitmapBuffer, &width, &height, &byteSize);
-
-    if (success && byteSize > 0)
+    if (success && bitmapBuffer.size() > 0)
     {
         std::vector<char> output;
-        output.reserve(byteSize * 3 / 4); // reserve 75% of original size
+        output.reserve(bitmapBuffer.size() * 3 / 4); // reserve 75% of original size
 
-        if (Png::encodeBufferToPNG(bitmapBuffer, width, height, output, tileMode))
+        if (Png::encodeBufferToPNG(bitmapBuffer.data(), width, height, output, tileMode))
         {
             static constexpr std::string_view header = "rendersearchresult:\n";
             const size_t responseSize = header.size() + output.size();
@@ -2502,8 +2486,6 @@ bool ChildSession::renderSearchResult(const char* buffer, int length, const Stri
     {
         sendTextFrameAndLogError("error: cmd=rendersearchresult kind=failure");
     }
-
-    free(bitmapBuffer);
 
     return true;
 }
@@ -2710,10 +2692,8 @@ bool ChildSession::renderNextSlideLayer(SlideCompressor& scomp, const unsigned w
     // FIXME: we need a multi-user / view cache somewhere here (?)
     auto pixmap = std::make_shared<std::vector<unsigned char>>(static_cast<size_t>(4) * width * height);
     bool isBitmapLayer = false;
-    char* msg = nullptr;
-    done = getLOKitDocument()->renderNextSlideLayer(pixmap->data(), &isBitmapLayer, &devicePixelRatio, &msg);
-    std::string jsonMsg(msg != nullptr ? msg : "");
-    free(msg);
+    std::string jsonMsg;
+    done = getLOKitDocument()->renderNextSlideLayer(pixmap->data(), &isBitmapLayer, &devicePixelRatio, &jsonMsg);
 
     if (jsonMsg.empty())
         return true;
@@ -3525,16 +3505,14 @@ bool ChildSession::renderShapeSelection(const StringVector& tokens)
 
     getLOKitDocument()->setView(_viewId);
 
-    char* output = nullptr;
-    const std::size_t outputSize = getLOKitDocument()->renderShapeSelection(&output);
-    if (output != nullptr && outputSize > 0)
+    std::vector<char> output = getLOKitDocument()->renderShapeSelection();
+    if (output.size() > 0)
     {
         static constexpr std::string_view header = "shapeselectioncontent:\n";
-        const size_t responseSize = header.size() + outputSize;
+        const size_t responseSize = header.size() + output.size();
         std::unique_ptr<char[]> response(new char[responseSize]);
         std::memcpy(response.get(), header.data(), header.size());
-        std::memcpy(response.get() + header.size(), output, outputSize);
-        free(output);
+        std::memcpy(response.get() + header.size(), output.data(), output.size());
 
         LOG_TRC("Sending response (" << responseSize << " bytes) for shapeselectioncontent on view #" << _viewId);
         sendBinaryFrame(response.get(), responseSize);
@@ -3575,8 +3553,7 @@ bool ChildSession::getA11yFocusedParagraph()
 {
     getLOKitDocument()->setView(_viewId);
 
-    LOKitHelper::ScopedString paragraphContent(getLOKitDocument()->getA11yFocusedParagraph());
-    std::string paragraph(paragraphContent.get());
+    std::string paragraph(getLOKitDocument()->getA11yFocusedParagraph());
     sendTextFrame("a11yfocusedparagraph: " + paragraph);
     return true;
 }
@@ -3593,8 +3570,7 @@ bool ChildSession::getPresentationInfo()
 {
     getLOKitDocument()->setView(_viewId);
 
-    LOKitHelper::ScopedString info(getLOKitDocument()->getPresentationInfo());
-    std::string data(info.get());
+    std::string data(getLOKitDocument()->getPresentationInfo());
     sendTextFrame("presentationinfo: " + data);
     return true;
 }
@@ -3708,14 +3684,12 @@ bool ChildSession::getSlideSections()
 {
     getLOKitDocument()->setView(_viewId);
 
-    LOKitHelper::ScopedString info(getLOKitDocument()->getPresentationInfo());
-    if (!info)
+    std::string data(getLOKitDocument()->getPresentationInfo());
+    if (data.empty())
     {
         sendTextFrame("slidesections: []");
         return true;
     }
-
-    std::string data(info.get());
 
     // Extract just the "sections" array from the full presentation info
     try

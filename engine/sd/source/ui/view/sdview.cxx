@@ -41,6 +41,8 @@
 #include <officecfg/Office/Common.hxx>
 #include <officecfg/Office/Impress.hxx>
 #include <sfx2/dispatch.hxx>
+#include <svx/dialmgr.hxx>
+#include <svx/strings.hrc>
 #include <svx/svdpagv.hxx>
 #include <svx/svdoutl.hxx>
 #include <svx/sdr/contact/displayinfo.hxx>
@@ -796,6 +798,22 @@ SdrEndTextEditKind View::SdrEndTextEdit(bool bDontDeleteReally)
 
     SdrTextObj* pObj = GetTextEditObject();
 
+    // RestoreDefaultText below puts the prompt back before the text edit ends, which leaves
+    // SdrObjEditView::SdrEndTextEdit nothing to record, so what the object holds is recorded here.
+    // The group keeps that in one step with the change of what represents a picture placeholder.
+    SdPage* pTextPage = pObj ? dynamic_cast<SdPage*>(pObj->getSdrPageFromSdrObject()) : nullptr;
+    const bool bGroupUndo = IsUndoEnabled() && pTextPage
+                            && pTextPage->GetPresObjKind(pObj) != PresObjKind::NONE;
+    std::unique_ptr<SdrUndoObjSetText> pTextUndo;
+    if (bGroupUndo)
+    {
+        BegUndo(SvxResId(STR_UndoObjSetText), pObj->TakeObjNameSingul());
+        std::unique_ptr<SdrUndoAction> pAction(
+            GetModel().GetSdrUndoFactory().CreateUndoObjectSetText(*pObj, 0));
+        if (dynamic_cast<SdrUndoObjSetText*>(pAction.get()))
+            pTextUndo.reset(static_cast<SdrUndoObjSetText*>(pAction.release()));
+    }
+
     bool bDefaultTextRestored = RestoreDefaultText( pObj );
     const bool bSaveSetModifiedEnabled = mpDocSh && mpDocSh->IsEnableSetModified();
     if (bDefaultTextRestored)
@@ -806,6 +824,7 @@ SdrEndTextEditKind View::SdrEndTextEdit(bool bDontDeleteReally)
 
     SdrEndTextEditKind eKind = FmFormView::SdrEndTextEdit(bDontDeleteReally);
 
+    bool bTypedIntoPlaceholder = false;
     if( bDefaultTextRestored )
     {
         if (bSaveSetModifiedEnabled)
@@ -824,7 +843,18 @@ SdrEndTextEditKind View::SdrEndTextEdit(bool bDontDeleteReally)
     {
         SdrPage* pPage = pObj->getSdrPageFromSdrObject();
         if( !pPage || !pPage->IsMasterPage() )
+        {
             pObj->SetEmptyPresObj( false );
+            bTypedIntoPlaceholder = true;
+        }
+    }
+
+    // Before the swap below, so that undo restores the object first and its text afterwards.
+    if (pTextUndo && bDefaultTextRestored)
+    {
+        pTextUndo->AfterSetText();
+        if (pTextUndo->IsDifferent())
+            AddUndo(std::move(pTextUndo));
     }
 
     GetViewShell()->GetViewShellBase().GetEventMultiplexer()->MultiplexEvent(
@@ -833,6 +863,31 @@ SdrEndTextEditKind View::SdrEndTextEdit(bool bDontDeleteReally)
 
     if( pObj )
     {
+        SdPage* pPage = dynamic_cast< SdPage* >( pObj->getSdrPageFromSdrObject() );
+        if( pPage )
+            pPage->onEndTextEdit( pObj );
+
+        // A picture placeholder is represented by an outliner object as long as it holds text, the
+        // way a graphic object represents it once it holds a picture. Emptying it hands the
+        // representation back: RestoreDefaultText above has put the prompt in and marked the object
+        // empty, which is what says the text is gone. The view does the swap, so the mark follows
+        // and one undo step brings the text back with the object that held it.
+        SdrPageView* pPageView = GetSdrPageView();
+        if (pPage && pPageView && pPage->GetPresObjKind(pObj) == PresObjKind::Graphic)
+        {
+            rtl::Reference<SdrObject> xRepresentation;
+            if (bTypedIntoPlaceholder && pObj->GetObjIdentifier() == SdrObjKind::Graphic)
+                xRepresentation = pPage->MakePresObjText(*pObj);
+            else if (pObj->IsEmptyPresObj()
+                     && pObj->GetObjIdentifier() == SdrObjKind::OutlineText)
+                xRepresentation = pPage->MakePresObjPlaceholder(*pObj);
+
+            if (xRepresentation)
+                ReplaceObjectAtView(pObj, *pPageView, xRepresentation.get());
+        }
+
+        // After the swap, so that what listeners hear about the selection is the object the page
+        // ends up holding.
         if ( mpViewSh )
         {
             mpViewSh->GetViewShellBase().GetDrawController()->FireSelectionChangeListener();
@@ -841,11 +896,10 @@ SdrEndTextEditKind View::SdrEndTextEdit(bool bDontDeleteReally)
                 KitHelper::notifyOtherViews(&mpViewSh->GetViewShellBase(), COKitCallbackType::VIEW_LOCK, "rectangle", "EMPTY"_ostr);
 
         }
-
-        SdPage* pPage = dynamic_cast< SdPage* >( pObj->getSdrPageFromSdrObject() );
-        if( pPage )
-            pPage->onEndTextEdit( pObj );
     }
+
+    if (bGroupUndo)
+        EndUndo();
 
     return eKind;
 }

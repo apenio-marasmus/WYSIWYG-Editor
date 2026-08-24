@@ -1231,14 +1231,11 @@ static std::string doc_getTextSelection(COKitDocument* pThis,
 static COKitSelectionType doc_getSelectionType(COKitDocument* pThis);
 static COKitSelectionType doc_getSelectionTypeAndText(COKitDocument* pThis,
                                                       const char* pMimeType,
-                                                      char** pText,
-                                                      char** pUsedMimeType);
+                                                      std::string* pText);
 static bool doc_getClipboard (COKitDocument* pThis,
                               const char **pMimeTypes,
-                              size_t      *pOutCount,
-                              char      ***pOutMimeTypes,
-                              size_t     **pOutSizes,
-                              char      ***pOutStreams);
+                              std::vector<std::string>& rOutMimeTypes,
+                              std::vector<std::vector<char>>& rOutStreams);
 static bool doc_setClipboard (COKitDocument* pThis,
                               const size_t   nInCount,
                               const char   **pInMimeTypes,
@@ -1307,7 +1304,7 @@ static bool doc_addCertificate(COKitDocument* pThis,
 
 static int doc_getSignatureState(COKitDocument* pThis);
 
-static size_t doc_renderShapeSelection(COKitDocument* pThis, char** pOutput);
+static std::vector<char> doc_renderShapeSelection(COKitDocument* pThis);
 
 static void doc_resizeWindow(COKitDocument* pThis, unsigned nKitWindowId,
                              const int nWidth, const int nHeight);
@@ -1319,8 +1316,8 @@ static void doc_sendFormFieldEvent(COKitDocument* pThis,
                                    const char* pArguments);
 
 static bool doc_renderSearchResult(COKitDocument* pThis,
-                                 const char* pSearchResult, unsigned char** pBitmapBuffer,
-                                 int* pWidth, int* pHeight, size_t* pByteSize);
+                                 const char* pSearchResult, std::vector<unsigned char>* pBitmapBuffer,
+                                 int* pWidth, int* pHeight);
 
 static void doc_sendContentControlEvent(COKitDocument* pThis, const char* pArguments);
 
@@ -1334,11 +1331,11 @@ static void doc_setAllowManageRedlines(COKitDocument* pThis, int nId, bool allow
 
 static void doc_setAccessibilityState(COKitDocument* pThis, int nId, bool bEnabled);
 
-static char* doc_getA11yFocusedParagraph(COKitDocument* pThis);
+static std::string doc_getA11yFocusedParagraph(COKitDocument* pThis);
 
 static int doc_getA11yCaretPosition(COKitDocument* pThis);
 
-static char* doc_getPresentationInfo(COKitDocument* pThis);
+static std::string doc_getPresentationInfo(COKitDocument* pThis);
 
 static bool doc_createSlideRenderer(
     COKitDocument* pThis,
@@ -1349,7 +1346,7 @@ static bool doc_createSlideRenderer(
 static void doc_postSlideshowCleanup(COKitDocument* pThis);
 
 static bool doc_renderNextSlideLayer(
-    COKitDocument* pThis, unsigned char* pBuffer, bool* bIsBitmapLayer, double* pScale, char** pJsonMsg);
+    COKitDocument* pThis, unsigned char* pBuffer, bool* bIsBitmapLayer, double* pScale, std::string* pJsonMsg);
 
 static void doc_setViewOption(COKitDocument* pDoc, const char* pOption, const char* pValue);
 
@@ -1747,9 +1744,9 @@ int COKitDocumentImpl::getSignatureState()
     return doc_getSignatureState(this);
 }
 
-size_t COKitDocumentImpl::renderShapeSelection(char** pOutput)
+std::vector<char> COKitDocumentImpl::renderShapeSelection()
 {
-    return doc_renderShapeSelection(this, pOutput);
+    return doc_renderShapeSelection(this);
 }
 
 void COKitDocumentImpl::postWindowGestureEvent(unsigned nWindowId, const char* pType, int nX,
@@ -1768,11 +1765,11 @@ void COKitDocumentImpl::resizeWindow(unsigned nWindowId, const int width, const 
     doc_resizeWindow(this, nWindowId, width, height);
 }
 
-bool COKitDocumentImpl::getClipboard(const char **pMimeTypes, size_t      *pOutCount,
-                                      char      ***pOutMimeTypes, size_t     **pOutSizes,
-                                      char      ***pOutStreams)
+bool COKitDocumentImpl::getClipboard(const char **pMimeTypes,
+                                      std::vector<std::string>& rOutMimeTypes,
+                                      std::vector<std::vector<char>>& rOutStreams)
 {
-    return doc_getClipboard(this, pMimeTypes, pOutCount, pOutMimeTypes, pOutSizes, pOutStreams);
+    return doc_getClipboard(this, pMimeTypes, rOutMimeTypes, rOutStreams);
 }
 
 bool COKitDocumentImpl::setClipboard(const size_t   nInCount, const char   **pInMimeTypes,
@@ -1832,10 +1829,10 @@ void COKitDocumentImpl::setBlockedCommandList(int nViewId, const char* blockedCo
 }
 
 bool COKitDocumentImpl::renderSearchResult(const char* pSearchResult,
-                                            unsigned char** pBitmapBuffer, int* pWidth,
-                                            int* pHeight, size_t* pByteSize)
+                                            std::vector<unsigned char>* pBitmapBuffer, int* pWidth,
+                                            int* pHeight)
 {
-    return doc_renderSearchResult(this, pSearchResult, pBitmapBuffer, pWidth, pHeight, pByteSize);
+    return doc_renderSearchResult(this, pSearchResult, pBitmapBuffer, pWidth, pHeight);
 }
 
 void COKitDocumentImpl::sendContentControlEvent(const char* pArguments)
@@ -1843,10 +1840,9 @@ void COKitDocumentImpl::sendContentControlEvent(const char* pArguments)
     doc_sendContentControlEvent(this, pArguments);
 }
 
-COKitSelectionType COKitDocumentImpl::getSelectionTypeAndText(const char* pMimeType, char** pText,
-                                                               char** pUsedMimeType)
+COKitSelectionType COKitDocumentImpl::getSelectionTypeAndText(const char* pMimeType, std::string* pText)
 {
-    return doc_getSelectionTypeAndText(this, pMimeType, pText, pUsedMimeType);
+    return doc_getSelectionTypeAndText(this, pMimeType, pText);
 }
 
 void COKitDocumentImpl::getDataArea(long nPart, long* pCol, long* pRow)
@@ -1864,7 +1860,7 @@ void COKitDocumentImpl::setAccessibilityState(int nId, bool nEnabled)
     doc_setAccessibilityState(this, nId, nEnabled);
 }
 
-char* COKitDocumentImpl::getA11yFocusedParagraph()
+std::string COKitDocumentImpl::getA11yFocusedParagraph()
 {
     return doc_getA11yFocusedParagraph(this);
 }
@@ -1884,7 +1880,7 @@ void COKitDocumentImpl::setAllowChangeComments(int nId, const bool allow)
     doc_setAllowChangeComments(this, nId, allow);
 }
 
-char* COKitDocumentImpl::getPresentationInfo()
+std::string COKitDocumentImpl::getPresentationInfo()
 {
     return doc_getPresentationInfo(this);
 }
@@ -1903,7 +1899,7 @@ void COKitDocumentImpl::postSlideshowCleanup()
 }
 
 bool COKitDocumentImpl::renderNextSlideLayer(unsigned char* pBuffer, bool* bIsBitmapLayer,
-                                              double* pScale, char** pJsonMessage)
+                                              double* pScale, std::string* pJsonMessage)
 {
     return doc_renderNextSlideLayer(this, pBuffer, bIsBitmapLayer, pScale, pJsonMessage);
 }
@@ -3172,7 +3168,7 @@ static bool lo_signDocument(COKit* pThis,
                                    const unsigned char* pPrivateKeyBinary,
                                    const int nPrivateKeyBinarySize);
 
-static char* lo_extractRequest(COKit* pThis,
+static std::string lo_extractRequest(COKit* pThis,
                                    const char* pFilePath);
 
 static void lo_trimMemory(COKit* pThis, int nTarget);
@@ -3213,24 +3209,15 @@ static void lo_setOption(COKit* pThis, const char* pOption, const char* pValue);
 
 static void lo_dumpState(COKit* pThis, const char* pOptions, char** pState);
 
-static char* lo_extractDocumentStructureRequest(COKit* pThis, const char* pFilePath,
+static std::string lo_extractDocumentStructureRequest(COKit* pThis, const char* pFilePath,
                                                 const char* pFilter);
 
 static int lo_getDocsCount(COKit* pThis);
 
 static void lo_installClipboardProvider(COKit* pThis, const COKitClipboardProvider* pProvider);
 
-static bool lo_getGlobalClipboard(COKit* pThis, const char** pMimeTypes, size_t* pOutCount,
-                                  char*** pOutMimeTypes, size_t** pOutSizes, char*** pOutStreams);
-
-static void lo_executeScript(
-    char const * script, std::string_view source, int line, char ** result, char ** error,
-    void (*proxyCallback) (void * data, char const * payload), void * proxyCallbackData,
-    bool * usedLegacyUnoApi);
-static void lo_deliverProxyResult(char const * callId, char const * jsonValue);
-static void lo_cancelProxyCalls();
-static bool lo_isExpectedReentry();
-static bool lo_takeLegacyUnoApiUseFlag();
+static bool lo_getGlobalClipboard(COKit* pThis, const char** pMimeTypes,
+                                  std::vector<std::string>& rOutMimeTypes, std::vector<std::vector<char>>& rOutStreams);
 
 COKitImpl::COKitImpl()
     : maThread(nullptr)
@@ -3310,7 +3297,7 @@ void COKitImpl::dumpState(const char* pOptions, char** pState)
     lo_dumpState(this, pOptions, pState);
 }
 
-char* COKitImpl::extractRequest(const char* pFilePath)
+std::string COKitImpl::extractRequest(const char* pFilePath)
 {
     return lo_extractRequest(this, pFilePath);
 }
@@ -3349,7 +3336,7 @@ void COKitImpl::setForkedChild(bool bIsChild)
     lo_setForkedChild(this, bIsChild);
 }
 
-char* COKitImpl::extractDocumentStructureRequest(const char* pFilePath, const char* pFilter)
+std::string COKitImpl::extractDocumentStructureRequest(const char* pFilePath, const char* pFilter)
 {
     return lo_extractDocumentStructureRequest(this, pFilePath, pFilter);
 }
@@ -3369,35 +3356,6 @@ void COKitImpl::registerFileSaveDialogCallback(COKitFileSaveDialogCallback pCall
     lo_registerFileSaveDialogCallback(this, pCallback);
 }
 
-void COKitImpl::executeScript(char const * script, std::string_view source, int line,
-                              char ** result, char ** error,
-                               void (*proxyCallback) (void * data, char const * payload),
-                               void * proxyCallbackData, bool * usedLegacyUnoApi)
-{
-    lo_executeScript(
-        script, source, line, result, error, proxyCallback, proxyCallbackData, usedLegacyUnoApi);
-}
-
-void COKitImpl::deliverProxyResult(char const * callId, char const * jsonValue)
-{
-    lo_deliverProxyResult(callId, jsonValue);
-}
-
-void COKitImpl::cancelProxyCalls()
-{
-    lo_cancelProxyCalls();
-}
-
-bool COKitImpl::isExpectedReentry()
-{
-    return lo_isExpectedReentry();
-}
-
-bool COKitImpl::takeLegacyUnoApiUseFlag()
-{
-    return lo_takeLegacyUnoApiUseFlag();
-}
-
 void COKitImpl::registerRevealInFileManagerCallback(COKitRevealInFileManagerCallback pCallback)
 {
     lo_registerRevealInFileManagerCallback(this, pCallback);
@@ -3408,12 +3366,11 @@ void COKitImpl::installClipboardProvider(const COKitClipboardProvider* pProvider
     lo_installClipboardProvider(this, pProvider);
 }
 
-bool COKitImpl::getGlobalClipboard(const char **pMimeTypes, size_t      *pOutCount,
-                                    char      ***pOutMimeTypes, size_t     **pOutSizes,
-                                    char      ***pOutStreams)
+bool COKitImpl::getGlobalClipboard(const char **pMimeTypes,
+                                    std::vector<std::string>& rOutMimeTypes,
+                                    std::vector<std::vector<char>>& rOutStreams)
 {
-    return lo_getGlobalClipboard(this, pMimeTypes, pOutCount, pOutMimeTypes, pOutSizes,
-                                 pOutStreams);
+    return lo_getGlobalClipboard(this, pMimeTypes, rOutMimeTypes, rOutStreams);
 }
 
 COKitImpl::~COKitImpl()
@@ -3959,7 +3916,7 @@ static bool lo_signDocument(COKit* /*pThis*/,
 }
 
 
-static char* lo_extractRequest(COKit* /*pThis*/, const char* pFilePath)
+static std::string lo_extractRequest(COKit* /*pThis*/, const char* pFilePath)
 {
     uno::Reference<frame::XDesktop2> xComponentLoader = frame::Desktop::create(xContext);
     uno::Reference< css::lang::XComponent > xComp;
@@ -3997,16 +3954,16 @@ static char* lo_extractRequest(COKit* /*pThis*/, const char* pFilePath)
                         auto aNode = aJson.startNode("Targets");
                         extractLinks(xLTS->getLinks(), false, aJson);
                     }
-                    return convertOString(aJson.finishAndGetAsOString());
+                    return aJson.finishAndGetAsStdString();
                 }
                 xComp->dispose();
             }
         }
     }
-    return strdup("{ }");
+    return "{ }";
 }
 
-static char* lo_extractDocumentStructureRequest(COKit* /*pThis*/, const char* pFilePath,
+static std::string lo_extractDocumentStructureRequest(COKit* /*pThis*/, const char* pFilePath,
                                                 const char* pFilter)
 {
     SolarMutexGuard aGuard;
@@ -4040,15 +3997,15 @@ static char* lo_extractDocumentStructureRequest(COKit* /*pThis*/, const char* pF
             {
                 ITiledRenderable* pDoc = dynamic_cast<ITiledRenderable*>(xComp.get());
                 if (!pDoc)
-                    return nullptr;
+                    return {};
 
                 auto pBaseModel = dynamic_cast<SfxBaseModel*>(xComp.get());
                 if (!pBaseModel)
-                    return nullptr;
+                    return {};
 
                 SfxObjectShell* pObjectShell = pBaseModel->GetObjectShell();
                 if (!pObjectShell)
-                    return nullptr;
+                    return {};
 
                 //if it is a writer document..
                 uno::Reference<lang::XServiceInfo> xDocument(xComp, uno::UNO_QUERY_THROW);
@@ -4067,14 +4024,14 @@ static char* lo_extractDocumentStructureRequest(COKit* /*pThis*/, const char* pF
 
                         pDoc->getCommandValues(aJson, aCommand);
                     }
-                    return convertOString(aJson.finishAndGetAsOString());
+                    return aJson.finishAndGetAsStdString();
                 }
 
                 xComp->dispose();
             }
         }
     }
-    return strdup("{ }");
+    return "{ }";
 }
 
 namespace {
@@ -4940,7 +4897,7 @@ std::string COKitDocumentImpl::getWriterPageRectangles()
     return pDoc->getWriterPageRectangles();
 }
 
-static char* doc_getA11yFocusedParagraph(COKitDocument* pThis)
+static std::string doc_getA11yFocusedParagraph(COKitDocument* pThis)
 {
     SolarMutexGuard aGuard;
     SetLastExceptionMsg();
@@ -4949,15 +4906,15 @@ static char* doc_getA11yFocusedParagraph(COKitDocument* pThis)
     if (!pDoc)
     {
         SetLastExceptionMsg(u"Document doesn't support tiled rendering"_ustr);
-        return nullptr;
+        return {};
     }
 
     if (SfxViewShell* pViewShell = SfxViewShell::Current())
     {
-        return convertOUString(pViewShell->getA11yFocusedParagraph());
+        return pViewShell->getA11yFocusedParagraph();
 
     }
-    return nullptr;
+    return {};
 }
 
 static int  doc_getA11yCaretPosition(COKitDocument* pThis)
@@ -5919,7 +5876,7 @@ static bool doc_hasShapeSelection(const css::uno::Reference<css::lang::XComponen
     return xSelection && xSelection->getImplementationName() != "ScCellObj";
 }
 
-static size_t doc_renderShapeSelection(COKitDocument* pThis, char** pOutput)
+static std::vector<char> doc_renderShapeSelection(COKitDocument* pThis)
 {
     comphelper::ProfileZone aZone("doc_renderShapeSelection");
 
@@ -5938,7 +5895,7 @@ static size_t doc_renderShapeSelection(COKitDocument* pThis, char** pOutput)
     {
         KitChartHelper aChartHelper(SfxViewShell::Current());
         if (aChartHelper.GetWindow())
-            return 0;
+            return {};
     }
 
     try
@@ -5946,7 +5903,7 @@ static size_t doc_renderShapeSelection(COKitDocument* pThis, char** pOutput)
         COKitDocumentImpl* pDocument = static_cast<COKitDocumentImpl*>(pThis);
 
         if (!doc_hasShapeSelection(pDocument->mxComponent))
-            return 0;
+            return {};
 
         uno::Reference<frame::XStorable> xStorable(pDocument->mxComponent, uno::UNO_QUERY_THROW);
 
@@ -5998,16 +5955,9 @@ static size_t doc_renderShapeSelection(COKitDocument* pThis, char** pOutput)
 
         xStorable->storeToURL(u"private:stream"_ustr, aMediaDescriptor.getAsConstPropertyValueList());
 
-        if (pOutput)
-        {
-            const size_t nOutputSize = aOutStream.GetEndOfData();
-            *pOutput = static_cast<char*>(malloc(nOutputSize));
-            if (*pOutput)
-            {
-                std::memcpy(*pOutput, aOutStream.GetData(), nOutputSize);
-                return nOutputSize;
-            }
-        }
+        const size_t nOutputSize = aOutStream.GetEndOfData();
+        const char* pSrc = static_cast<const char*>(aOutStream.GetData());
+        return std::vector<char>(pSrc, pSrc + nOutputSize);
     }
     catch (const cpo::uno::Exception& exception)
     {
@@ -6016,7 +5966,7 @@ static size_t doc_renderShapeSelection(COKitDocument* pThis, char** pOutput)
         SAL_WARN("kit", "Failed to render shape selection: " << exceptionToString(exAny));
     }
 
-    return 0;
+    return {};
 }
 
 namespace {
@@ -6885,7 +6835,7 @@ static void doc_setWindowTextSelection(COKitDocument* /*pThis*/, unsigned nKitWi
     Application::PostMouseEvent(VclEventId::WindowMouseButtonUp, pWindow, &aCursorEvent);
 }
 
-static char* doc_getPresentationInfo(COKitDocument* pThis)
+static std::string doc_getPresentationInfo(COKitDocument* pThis)
 {
     SolarMutexGuard aGuard;
     SetLastExceptionMsg();
@@ -6894,7 +6844,7 @@ static char* doc_getPresentationInfo(COKitDocument* pThis)
     if (!pDoc)
     {
         SetLastExceptionMsg(u"Document doesn't support tiled rendering"_ustr);
-        return nullptr;
+        return {};
     }
 
     bool bAllyState = false;
@@ -6906,7 +6856,7 @@ static char* doc_getPresentationInfo(COKitDocument* pThis)
         bAllyState = pViewShell->GetKitAccessibilityState();
     }
 
-    return convertOString(pDoc->getPresentationInfo(bAllyState));
+    return pDoc->getPresentationInfo(bAllyState);
 }
 
 static bool doc_createSlideRenderer(
@@ -6953,7 +6903,7 @@ static void doc_postSlideshowCleanup(COKitDocument* pThis)
 }
 
 static bool doc_renderNextSlideLayer(
-    COKitDocument* pThis, unsigned char* pBuffer, bool* pIsBitmapLayer, double* pScale, char** pJsonMessage)
+    COKitDocument* pThis, unsigned char* pBuffer, bool* pIsBitmapLayer, double* pScale, std::string* pJsonMessage)
 {
     SolarMutexGuard aGuard;
     SetLastExceptionMsg();
@@ -6964,12 +6914,12 @@ static bool doc_renderNextSlideLayer(
         SetLastExceptionMsg(u"Document doesn't support tiled rendering"_ustr);
         return true;
     }
-    OUString sJsonMesssage;
+    std::string sJsonMesssage;
     bool bIsBitmapLayer = false;
     bool bDone = pDoc->renderNextSlideLayer(pBuffer, bIsBitmapLayer, *pScale, sJsonMesssage);
 
     if (pJsonMessage)
-        *pJsonMessage = convertOUString(sJsonMesssage);
+        *pJsonMessage = std::move(sJsonMesssage);
     *pIsBitmapLayer = bIsBitmapLayer;
 
     return bDone;
@@ -7006,11 +6956,11 @@ static void doc_setViewOption(COKitDocument* pThis, const char* pOption, const c
 
 static bool getFromTransferable(
     const css::uno::Reference<css::datatransfer::XTransferable> &xTransferable,
-    const OString &aInMimeType, OString &aRet);
+    std::string_view aInMimeType, OString &aRet);
 
 static bool encodeImageAsHTML(
     const css::uno::Reference<css::datatransfer::XTransferable> &xTransferable,
-    const OString &aMimeType, OString &aRet)
+    std::string_view aMimeType, OString &aRet)
 {
     if (!getFromTransferable(xTransferable, aMimeType, aRet))
         return false;
@@ -7036,7 +6986,7 @@ static bool encodeImageAsHTML(
 
 static bool encodeTextAsHTML(
     const css::uno::Reference<css::datatransfer::XTransferable> &xTransferable,
-    const OString &aMimeType, OString &aRet)
+    std::string_view aMimeType, OString &aRet)
 {
     if (!getFromTransferable(xTransferable, aMimeType, aRet))
         return false;
@@ -7054,7 +7004,7 @@ static bool encodeTextAsHTML(
 
 static bool getFromTransferable(
     const css::uno::Reference<css::datatransfer::XTransferable> &xTransferable,
-    const OString &aInMimeType, OString &aRet)
+    std::string_view aInMimeType, OString &aRet)
 {
     OString aMimeType(aInMimeType);
 
@@ -7217,7 +7167,7 @@ static COKitSelectionType doc_getSelectionType(COKitDocument* pThis)
 }
 
 static COKitSelectionType doc_getSelectionTypeAndText(COKitDocument* pThis, const char* pMimeType,
-                                                      char** pText, char** pUsedMimeType)
+                                                      std::string* pText)
 {
     // The purpose of this function is to avoid double call to pDoc->getSelection(),
     // which may be expensive.
@@ -7259,15 +7209,7 @@ static COKitSelectionType doc_getSelectionTypeAndText(COKitDocument* pThis, cons
         return COKitSelectionType::NONE;
 
     if (pText)
-        *pText = convertOString(aRet);
-
-    if (pUsedMimeType) // legacy
-    {
-        if (pMimeType)
-            *pUsedMimeType = strdup(pMimeType);
-        else
-            *pUsedMimeType = nullptr;
-    }
+        *pText = aRet;
 
     return COKitSelectionType::TEXT;
 }
@@ -7278,10 +7220,8 @@ static COKitSelectionType doc_getSelectionTypeAndText(COKitDocument* pThis, cons
 // the collaborative server, or the single shared one in the desktop app.
 // Returns true on success, false when there is nothing on the clipboard.
 static bool fetchClipboardContents(const char **pMimeTypes,
-                                   size_t      *pOutCount,
-                                   char      ***pOutMimeTypes,
-                                   size_t     **pOutSizes,
-                                   char      ***pOutStreams)
+                                   std::vector<std::string>& rOutMimeTypes,
+                                   std::vector<std::vector<char>>& rOutStreams)
 {
     rtl::Reference<KitClipboard> xClip(KitClipboardFactory::getClipboardForCurView());
 
@@ -7311,31 +7251,24 @@ static bool fetchClipboardContents(const char **pMimeTypes,
             aMimeTypes.push_back(OString(pMimeTypes[i]));
     }
 
-    *pOutCount = aMimeTypes.size();
-    *pOutSizes = static_cast<size_t *>(malloc(*pOutCount * sizeof(size_t)));
-    assert(*pOutSizes && "Don't handle OOM conditions");
-    *pOutMimeTypes = static_cast<char **>(malloc(*pOutCount * sizeof(char *)));
-    assert(*pOutMimeTypes && "Don't handle OOM conditions");
-    *pOutStreams = static_cast<char **>(malloc(*pOutCount * sizeof(char *)));
-    assert(*pOutStreams && "Don't handle OOM conditions");
+    rOutMimeTypes.resize(aMimeTypes.size());
+    rOutStreams.resize(aMimeTypes.size());
     for (size_t i = 0; i < aMimeTypes.size(); ++i)
     {
         if (aMimeTypes[i] == "text/plain;charset=utf-16")
-            (*pOutMimeTypes)[i] = strdup("text/plain;charset=utf-8");
+            rOutMimeTypes[i] = "text/plain;charset=utf-8";
         else
-            (*pOutMimeTypes)[i] = convertOString(aMimeTypes[i]);
+            rOutMimeTypes[i] = aMimeTypes[i];
 
         OString aRet;
-        bool bSuccess = getFromTransferable(xTransferable, OString((*pOutMimeTypes)[i]), aRet);
+        bool bSuccess = getFromTransferable(xTransferable, rOutMimeTypes[i], aRet);
         if (!bSuccess || aRet.getLength() < 1)
         {
-            (*pOutSizes)[i] = 0;
-            (*pOutStreams)[i] = nullptr;
+            rOutStreams[i].clear();
         }
         else
         {
-            (*pOutSizes)[i] = aRet.getLength();
-            (*pOutStreams)[i] = convertOString(aRet);
+            rOutStreams[i] = std::vector<char>(aRet.getStr(), aRet.getStr() + aRet.getLength());
         }
     }
 
@@ -7344,25 +7277,13 @@ static bool fetchClipboardContents(const char **pMimeTypes,
 
 static bool doc_getClipboard(COKitDocument* pThis,
                              const char **pMimeTypes,
-                             size_t      *pOutCount,
-                             char      ***pOutMimeTypes,
-                             size_t     **pOutSizes,
-                             char      ***pOutStreams)
+                             std::vector<std::string>& rOutMimeTypes,
+                             std::vector<std::vector<char>>& rOutStreams)
 {
     comphelper::ProfileZone aZone("doc_getClipboard");
 
     SolarMutexGuard aGuard;
     SetLastExceptionMsg();
-
-    assert (pOutCount);
-    assert (pOutMimeTypes);
-    assert (pOutSizes);
-    assert (pOutStreams);
-
-    *pOutCount = 0;
-    *pOutMimeTypes = nullptr;
-    *pOutSizes = nullptr;
-    *pOutStreams = nullptr;
 
     ITiledRenderable* pDoc = getTiledRenderable(pThis);
     if (!pDoc)
@@ -7371,7 +7292,7 @@ static bool doc_getClipboard(COKitDocument* pThis,
         return false;
     }
 
-    return fetchClipboardContents(pMimeTypes, pOutCount, pOutMimeTypes, pOutSizes, pOutStreams);
+    return fetchClipboardContents(pMimeTypes, rOutMimeTypes, rOutStreams);
 }
 
 // Office-level clipboard read for the desktop app's one shared clipboard. It
@@ -7380,27 +7301,15 @@ static bool doc_getClipboard(COKitDocument* pThis,
 // clipboard is per view.
 static bool lo_getGlobalClipboard(COKit* /*pThis*/,
                                   const char **pMimeTypes,
-                                  size_t      *pOutCount,
-                                  char      ***pOutMimeTypes,
-                                  size_t     **pOutSizes,
-                                  char      ***pOutStreams)
+                                  std::vector<std::string>& rOutMimeTypes,
+                                  std::vector<std::vector<char>>& rOutStreams)
 {
     comphelper::ProfileZone aZone("lo_getGlobalClipboard");
 
     SolarMutexGuard aGuard;
     SetLastExceptionMsg();
 
-    assert (pOutCount);
-    assert (pOutMimeTypes);
-    assert (pOutSizes);
-    assert (pOutStreams);
-
-    *pOutCount = 0;
-    *pOutMimeTypes = nullptr;
-    *pOutSizes = nullptr;
-    *pOutStreams = nullptr;
-
-    return fetchClipboardContents(pMimeTypes, pOutCount, pOutMimeTypes, pOutSizes, pOutStreams);
+    return fetchClipboardContents(pMimeTypes, rOutMimeTypes, rOutStreams);
 }
 
 static bool doc_setClipboard(COKitDocument* pThis,
@@ -8903,8 +8812,8 @@ static void doc_sendFormFieldEvent(COKitDocument* pThis, const char* pArguments)
 }
 
 static bool doc_renderSearchResult(COKitDocument* pThis,
-                                     const char* pSearchResult, unsigned char** pBitmapBuffer,
-                                     int* pWidth, int* pHeight, size_t* pByteSize)
+                                     const char* pSearchResult, std::vector<unsigned char>* pBitmapBuffer,
+                                     int* pWidth, int* pHeight)
 {
     if (doc_getDocumentType(pThis) != COKitDocumentType::TEXT)
         return false;
@@ -8938,16 +8847,13 @@ static bool doc_renderSearchResult(COKitDocument* pThis,
 
     *pWidth = aPixelWidth;
     *pHeight = aPixelHeight;
-    *pByteSize = nByteSize;
 
-    auto* pBuffer = static_cast<unsigned char*>(std::malloc(nByteSize));
+    pBitmapBuffer->resize(nByteSize);
 
-    doc_paintTile(pThis, pBuffer,
+    doc_paintTile(pThis, pBitmapBuffer->data(),
         aPixelWidth, aPixelHeight,
         aRangeUnion.getMinX(), aRangeUnion.getMinY(),
         aRangeUnion.getWidth(), aRangeUnion.getHeight());
-
-    *pBitmapBuffer = pBuffer;
 
     return true;
 }
@@ -9048,7 +8954,7 @@ static void doc_setColorPreviewState(SAL_UNUSED_PARAMETER COKitDocument* /*pThis
     KitHelper::setColorPreviewState(nId, bEnabled);
 }
 
-static void lo_executeScript(
+void COKitImpl::executeScript(
     char const * script, std::string_view source, int line, char ** result, char ** error,
     void (*proxyCallback) (void * data, char const * payload), void * proxyCallbackData,
     bool * usedLegacyUnoApi)
@@ -9109,7 +9015,7 @@ static void lo_executeScript(
 #endif
 }
 
-static void lo_deliverProxyResult(char const * callId, char const * jsonValue)
+void COKitImpl::deliverProxyResult(char const * callId, char const * jsonValue)
 {
     comphelper::ProfileZone zone("lo_deliverProxyResult");
     SolarMutexGuard guard;
@@ -9122,7 +9028,7 @@ static void lo_deliverProxyResult(char const * callId, char const * jsonValue)
 #endif
 }
 
-static void lo_cancelProxyCalls()
+void COKitImpl::cancelProxyCalls()
 {
     comphelper::ProfileZone zone("lo_cancelProxyCalls");
     // jsuno owns its own locks for the call hook and pending-results map, so no SolarMutex:
@@ -9131,12 +9037,12 @@ static void lo_cancelProxyCalls()
 #endif
 }
 
-static bool lo_isExpectedReentry()
+bool COKitImpl::isExpectedReentry()
 {
     return vcl::kit::isExpectedReentry();
 }
 
-static bool lo_takeLegacyUnoApiUseFlag()
+bool COKitImpl::takeLegacyUnoApiUseFlag()
 {
     return comphelper::takeLegacyUnoApiUseFlag();
 }

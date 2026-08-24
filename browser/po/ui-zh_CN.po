@@ -8,11 +8,12 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-08-16 13:56+0200\n"
-"PO-Revision-Date: 2026-08-15 06:51+0000\n"
-"Last-Translator: Poesty Li <poesty7450@gmail.com>\n"
+"PO-Revision-Date: 2026-08-22 08:51+0000\n"
+"Last-Translator: reducedradius "
+"<137701630+flytothehighest@users.noreply.github.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/collabora-online/collabora-ui/zh_Hans/>\n"
-"Language: \n"
+"Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -309,7 +310,7 @@ msgstr "请稍等，Kubernetes 集群正在扩展..."
 
 #: admin/src/AdminClusterOverview.js:550 admin/src/AdminSocketOverview.js:421
 msgid "Failed to set jwt authentication cookie over insecure connection"
-msgstr "无法通过不安全的连接设置 JSON 网络令牌（JWT）的身份验证 cookie"
+msgstr "无法在非安全连接下设置 JWT 认证 Cookie"
 
 #: admin/src/AdminClusterOverview.js:553 admin/src/AdminSocketOverview.js:425
 msgid "Failed to authenticate this session over protocol {0}"
@@ -531,7 +532,7 @@ msgstr "显示侧边栏"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:615
 msgid "Automatic Spell Checking"
-msgstr ""
+msgstr "自动拼写检查"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:616
 msgid "Smart Zoom"
@@ -543,7 +544,7 @@ msgstr "预设缩放"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:618
 msgid "Smooth scrolling"
-msgstr ""
+msgstr "平滑滚动"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:619
 msgid "Compact layout"
@@ -1093,7 +1094,7 @@ msgstr "文档设置"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:3439
 msgid "Upload Xcu"
-msgstr "上传 XCU"
+msgstr "上传 Xcu"
 
 #: admin/src/integrator/AdminIntegratorSettings.ts:3600
 msgid "Enter {0}"
@@ -1913,27 +1914,27 @@ msgstr "AI 助手"
 #: src/control/Control.AIChatSidebar.ts:2361
 msgid "insert %n slide"
 msgid_plural "insert %n slides"
-msgstr[0] ""
+msgstr[0] "插入%n张幻灯片"
 
 #: src/control/Control.AIChatSidebar.ts:2364
 msgid "delete %n slide"
 msgid_plural "delete %n slides"
-msgstr[0] ""
+msgstr[0] "删除%n个幻灯片"
 
 #: src/control/Control.AIChatSidebar.ts:2369
 msgid "duplicate %n slide"
 msgid_plural "duplicate %n slides"
-msgstr[0] ""
+msgstr[0] "复制%n 个幻灯片"
 
 #: src/control/Control.AIChatSidebar.ts:2375
 msgid "move %n slide"
 msgid_plural "move %n slides"
-msgstr[0] ""
+msgstr[0] "移动%n张幻灯片"
 
 #: src/control/Control.AIChatSidebar.ts:2378
 msgid "rename %n slide"
 msgid_plural "rename %n slides"
-msgstr[0] ""
+msgstr[0] "重命名%n张幻灯片"
 
 #: src/control/Control.AIChatSidebar.ts:2383
 msgid "change %n layout"
@@ -1972,7 +1973,7 @@ msgstr ""
 
 #: src/control/Control.AIChatSidebar.ts:2453
 msgid "This will: %1."
-msgstr ""
+msgstr "这将会：%1。"
 
 #: src/control/Control.AIChatSidebar.ts:2467
 msgid "Do you want to proceed?"
@@ -3515,7 +3516,7 @@ msgstr "在线帮助"
 #: src/control/Control.Menubar.ts:829 src/control/Control.Menubar.ts:1139
 #: src/control/Control.NotebookbarWriter.js:462
 msgid "Keyboard shortcuts"
-msgstr "键盘快捷键"
+msgstr "快捷键"
 
 #: src/control/Control.Menubar.ts:442 src/control/Control.Menubar.ts:658
 #: src/control/Control.Menubar.ts:831 src/control/Control.Menubar.ts:1141
@@ -6495,7 +6496,7 @@ msgstr "文档颜色"
 
 #: src/docstatefunctions.js:259
 msgid ", cluster configuration error: mis-matching serverid"
-msgstr "，集群配置错误：服务器ID不匹配"
+msgstr "，集群配置错误：服务器 ID 不匹配"
 
 #: src/dom/NotebookbarAccessibility.js:257
 msgid "{0} tab selected"
@@ -7340,9 +7341,10 @@ msgid ""
 "solutions/collabora-office-android-ios/\">apps</a> are also available for "
 "mobile."
 msgstr ""
-"享受在线生产力的最新发展，您可以在浏览器中免费使用、探索并与其他人一起使用。 "
-"各种<a target=\"_blank\" rel=\"noopener\" href=\"https://www.collaboraonline."
-"com/solutions/collabora-office-android-ios/\">应用</a>也可用于移动设备。"
+"享受在线生产力的最新发展，您可以在浏览器中免费使用、探索并与其他人一同使用。"
+"各种 <a target=\"_blank\" rel=\"noopener\" href=\"https://"
+"www.collaboraonline.com/solutions/collabora-office-android-ios/\">应用</a> 也"
+"适用于移动设备。"
 
 #: welcome/welcome.html%2Bhtml.body.div.div.div.div.h1:37-7
 msgid "Discover All The Changes"

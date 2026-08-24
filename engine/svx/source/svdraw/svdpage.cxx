@@ -1749,6 +1749,10 @@ void SdrPage::MakePageObjectsNamesUnique()
     }
 }
 
+void SdrPage::onEmptyPresObjFilled(SdrObject& /*rObj*/)
+{
+}
+
 bool SdrPage::RestoreDefaultText(SdrObject* /*pObj*/, const OUString& /*rStr*/)
 {
     assert(false);
@@ -1861,7 +1865,11 @@ Color SdrPage::GetPageBackgroundColor( SdrPageView const * pView, bool bScreenDi
         }
     }
 
-    if (auto oColor = GetDraftFillColor(*pBackgroundFill))
+    // A page fill that is not fully opaque is mixed with the color behind the page, which is the
+    // document background this page is painted on.
+    const Color aBehindPage(aColor);
+
+    if (auto oColor = GetDraftFillColor(*pBackgroundFill, aBehindPage))
         aColor = *oColor;
 
     return aColor;

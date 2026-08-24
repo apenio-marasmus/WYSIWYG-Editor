@@ -318,6 +318,7 @@ FileServerRequestHandler::FileServerRequestHandler(const std::string& root)
         FileHash.reserve(4096); // We have ~3964 files.
         readDirToHash(root, "/browser/dist");
         synthesizeBuiltinExtensionsIndex();
+        readAdminTemplates(root);
     }
     catch (...)
     {
@@ -339,6 +340,10 @@ void FileServerRequestHandler::dumpState(std::ostream& os)
     }
 
     os << "\t Estimated allocation size: " << fileHashEstSize << " bytes\n";
+
+    os << "AdminTemplates with " << AdminTemplates.size() << " entries\n";
+    for (const auto& entry : AdminTemplates)
+        os << "\t " << entry.first << ": " << entry.second.size() << " bytes\n";
 }
 
 FileServerRequestHandler::~FileServerRequestHandler()
@@ -780,6 +785,46 @@ void FileServerRequestHandler::sendError(http::StatusCode errorCode,
             "Please contact your system administrator.";
     }
     HttpHelper::sendErrorAndShutdown(errorCode, socket, body, headers);
+}
+
+void FileServerRequestHandler::readAdminTemplates(const std::string& basePath)
+{
+    const std::string fullPath = basePath + "/browser/admin-templates";
+    DIR* workingdir = opendir(fullPath.c_str());
+    if (!workingdir)
+    {
+        LOG_SYS("Failed to open admin template directory [" << fullPath << ']');
+        return;
+    }
+
+    struct dirent* currentFile;
+    while ((currentFile = readdir(workingdir)) != nullptr)
+    {
+        const std::string name(currentFile->d_name);
+        if (!name.ends_with(".html.template"))
+            continue;
+
+        std::string contents;
+        if (FileUtil::readFile(fullPath + '/' + name, contents, MaxFileSizeToCacheInBytes) <= 0)
+        {
+            LOG_ERR("Failed to read admin template [" << fullPath << '/' << name << ']');
+            continue;
+        }
+
+        LOG_DBG("Read admin template [" << name << ']');
+        AdminTemplates.emplace(name, std::move(contents));
+    }
+
+    closedir(workingdir);
+}
+
+const std::string& FileServerRequestHandler::getAdminTemplate(const std::string& name)
+{
+    const auto it = AdminTemplates.find(name);
+    if (it == AdminTemplates.end())
+        throw Poco::FileNotFoundException("Missing admin template [" + name + "].");
+
+    return it->second;
 }
 
 void FileServerRequestHandler::readDirToHash(const std::string& basePath, const std::string& path)
@@ -2961,25 +3006,21 @@ void FileServerRequestHandler::preprocessAdminFile(const HTTPRequest& request,
     const std::string relPath = getRequestPathname(request, requestDetails);
     LOG_DBG("Preprocessing file: " << relPath);
     std::string adminFile = *getUncompressedFile(relPath);
-    const std::string templatePath =
-        Poco::Path(relPath).setFileName("admintemplate.html").toString();
-    std::string templateFile = *getUncompressedFile(templatePath);
+    std::string templateFile = getAdminTemplate("adminshell.html.template");
 
     const std::string escapedJwtToken = Uri::encode(jwtToken, "'");
     Poco::replaceInPlace(templateFile, std::string("%JWT_TOKEN%"), escapedJwtToken);
     if (relPath == "/browser/dist/admin/adminClusterOverview.html" ||
         relPath == "/browser/dist/admin/adminClusterOverviewAbout.html")
     {
-        std::string bodyPath = Poco::Path(relPath).setFileName("adminClusterBody.html").toString();
-        std::string bodyFile = *getUncompressedFile(bodyPath);
+        const std::string& bodyFile = getAdminTemplate("adminClusterBody.html.template");
         Poco::replaceInPlace(templateFile, std::string("<!--%BODY%-->"), bodyFile);
         Poco::replaceInPlace(templateFile, std::string("<!--%MAIN_CONTENT%-->"), adminFile);
         Poco::replaceInPlace(templateFile, std::string("%ROUTE_TOKEN%"), COOLWSD::RouteToken);
     }
     else
     {
-        std::string bodyPath = Poco::Path(relPath).setFileName("adminBody.html").toString();
-        std::string bodyFile = *getUncompressedFile(bodyPath);
+        const std::string& bodyFile = getAdminTemplate("adminBody.html.template");
         Poco::replaceInPlace(templateFile, std::string("<!--%BODY%-->"), bodyFile);
         Poco::replaceInPlace(templateFile, std::string("<!--%MAIN_CONTENT%-->"),
                              adminFile); // Now template has the main content..
@@ -3018,6 +3059,27 @@ void FileServerRequestHandler::preprocessAdminFile(const HTTPRequest& request,
     Poco::replaceInPlace(templateFile, std::string("%VERSION%"), std::string(COOLWSD_VERSION_HASH));
     Poco::replaceInPlace(templateFile, std::string("%SERVICE_ROOT%"), responseRoot);
 
+    ContentSecurityPolicy csp;
+    csp.appendDirective("default-src", "'none'");
+    // The pages carry inline script blocks and inline event handlers, so script-src has to allow
+    // inline code. What the policy still pins down is where a script may be loaded from and where
+    // the page may send data.
+    csp.appendDirective("script-src", "'self'");
+    csp.appendDirective("script-src", "'unsafe-inline'");
+    csp.appendDirective("style-src", "'self'");
+    csp.appendDirective("style-src", "'unsafe-inline'");
+    csp.appendDirective("font-src", "'self'");
+    csp.appendDirective("img-src", "'self'");
+    csp.appendDirective("img-src", "data:");
+    csp.appendDirective("connect-src", "'self'");
+    csp.appendDirectiveUrl("connect-src", cnxDetails.getWebSocketUrl());
+    csp.appendDirective("base-uri", "'self'");
+    csp.appendDirective("form-action", "'self'");
+    csp.appendDirective("frame-ancestors", "'none'");
+
+    csp.merge(ConfigUtil::getString("net.content_security_policy", ""));
+
+    response.add("Content-Security-Policy", csp.generate());
     // Ask UAs to block if they detect any XSS attempt
     response.add("X-XSS-Protection", "1; mode=block");
     // No referrer-policy

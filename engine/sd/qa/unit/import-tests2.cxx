@@ -17,6 +17,9 @@
 
 #include <editeng/eeitem.hxx>
 #include <editeng/editobj.hxx>
+#include <editeng/editview.hxx>
+#include <editeng/outliner.hxx>
+#include <editeng/outlobj.hxx>
 #include <editeng/numitem.hxx>
 #include <editeng/lrspitem.hxx>
 #include <editeng/unoprnms.hxx>
@@ -31,6 +34,8 @@
 #include <svx/svdograf.hxx>
 #include <svx/svdobj.hxx>
 #include <svx/svdpagv.hxx>
+#include <editeng/editeng.hxx>
+#include <svx/svdoutl.hxx>
 #include <svx/sdrhittesthelper.hxx>
 #include <svx/svdpage.hxx>
 #include <sot/exchange.hxx>
@@ -2547,6 +2552,195 @@ CPPUNIT_TEST_FIXTURE(SdImportTest2, testCool16078_clipPolygonBeforeTheImage)
     CPPUNIT_ASSERT_EQUAL(sal_Int32(4), aClip.Coordinates[0].getLength());
 }
 
+CPPUNIT_TEST_FIXTURE(SdImportTest2, testTdf166401_textTypedIntoPicturePlaceholder)
+{
+    // Given a slide whose picture placeholder holds text the author typed into it, which is what
+    // PowerPoint shows in place of the image the placeholder never got:
+    createSdImpressDoc("pptx/pic-placeholder-with-text.pptx");
+
+    auto checkText = [this](const OString& rWhen)
+    {
+        auto xShape = getShapeFromPage(0, 0).queryThrow<drawing::XShape>();
+        CPPUNIT_ASSERT_EQUAL_MESSAGE(rWhen.getStr(), u"Typed into a picture placeholder"_ustr,
+                                     xShape.queryThrow<text::XTextRange>()->getString());
+
+        // An outliner object represents the placeholder while it holds text, which is what makes
+        // that text behave as text: it wraps in the frame, it is edited with an ordinary caret and
+        // it takes the master's text styles. The text was dropped on import before, and a save
+        // wrote no shape at all.
+        CPPUNIT_ASSERT_EQUAL_MESSAGE(rWhen.getStr(),
+                                     u"com.sun.star.presentation.OutlinerShape"_ustr,
+                                     xShape->getShapeType());
+
+        // The box is the one the layout gives the placeholder, not one grown to the text. The
+        // tolerance is the rounding step between the file's 6096000 x 3429000 EMU and 1/100 mm.
+        CPPUNIT_ASSERT_DOUBLES_EQUAL_MESSAGE(rWhen.getStr(), 16932.0,
+                                             static_cast<double>(xShape->getSize().Width), 2.0);
+        CPPUNIT_ASSERT_DOUBLES_EQUAL_MESSAGE(rWhen.getStr(), 9524.0,
+                                             static_cast<double>(xShape->getSize().Height), 2.0);
+
+        // What it is outlives what represents it: it is still the placeholder waiting for a
+        // picture, so emptying its text shows the image prompt again and a save says so.
+        CPPUNIT_ASSERT_EQUAL_MESSAGE(
+            rWhen.getStr(), u"com.sun.star.presentation.GraphicObjectShape"_ustr,
+            xShape.queryThrow<beans::XPropertySet>()
+                ->getPropertyValue(u"PlaceholderShapeType"_ustr)
+                .get<OUString>());
+    };
+
+    checkText("as imported"_ostr);
+
+    // What the placeholder is outlives what represents it, so a round-trip keeps both the text and
+    // the placeholder - the export states it as one, and reading it back represents it again.
+    saveAndReload(TestFilter::PPTX);
+    checkText("after a PPTX round-trip"_ostr);
+
+    saveAndReload(TestFilter::ODP);
+    checkText("after an ODP round-trip"_ostr);
+}
+
+CPPUNIT_TEST_FIXTURE(SdImportTest2, testTdf166401_typingSwitchesAnEmptyPlaceholder)
+{
+    // Given a slide with an empty picture placeholder. Impress offers an image rather than a caret
+    // for one of those - FuText refuses text edit on an empty graphic placeholder - so this is the
+    // edit session a caller drives itself:
+    createSdImpressDoc("pptx/picture-placeholder-custom-prompt.pptx");
+    sd::ViewShell* pViewShell = getSdDocShell()->GetViewShell();
+    sd::View* pView = pViewShell->GetView();
+    SdrPageView* pPageView = pView->GetSdrPageView();
+    SdrObject* pObj = pViewShell->GetActualPage()->GetObj(0);
+    pView->MarkObj(pObj, pPageView);
+
+    // Text left in it makes an outliner object represent it, so it behaves as text at once.
+    pView->SdrBeginTextEdit(pObj, pPageView, pViewShell->GetActiveWindow());
+    // The prompt an empty placeholder shows is what typing replaces, which is what the edit view
+    // hands the user selected.
+    pView->GetTextEditOutlinerView()->GetEditView().SetSelection(ESelection::All());
+    pView->GetTextEditOutlinerView()->GetEditView().InsertText(u"Typed by hand"_ustr);
+    pView->SdrEndTextEdit();
+
+    auto xText = getShapeFromPage(0, 0).queryThrow<drawing::XShape>();
+    CPPUNIT_ASSERT_EQUAL(u"com.sun.star.presentation.OutlinerShape"_ustr, xText->getShapeType());
+    CPPUNIT_ASSERT_EQUAL(u"Typed by hand"_ustr,
+                         xText.queryThrow<text::XTextRange>()->getString());
+    CPPUNIT_ASSERT_EQUAL(u"com.sun.star.presentation.GraphicObjectShape"_ustr,
+                         xText.queryThrow<beans::XPropertySet>()
+                             ->getPropertyValue(u"PlaceholderShapeType"_ustr)
+                             .get<OUString>());
+
+    // One undo step takes the typing back, and the placeholder waits for a picture again.
+    dispatchCommand(mxComponent, u".uno:Undo"_ustr, {});
+    auto xUndone = getShapeFromPage(0, 0).queryThrow<drawing::XShape>();
+    CPPUNIT_ASSERT_EQUAL(u"com.sun.star.presentation.GraphicObjectShape"_ustr,
+                         xUndone->getShapeType());
+    bool bEmptyAgain = false;
+    CPPUNIT_ASSERT(xUndone.queryThrow<beans::XPropertySet>()
+                       ->getPropertyValue(u"IsEmptyPresentationObject"_ustr)
+                   >>= bEmptyAgain);
+    CPPUNIT_ASSERT_MESSAGE("the placeholder kept the typing", bEmptyAgain);
+
+    // The identity has to be live after undo too, not the shape type the UNO shape cached when it
+    // was created.
+    CPPUNIT_ASSERT_EQUAL_MESSAGE("the placeholder identity did not survive undo",
+                                 u"com.sun.star.presentation.GraphicObjectShape"_ustr,
+                                 xUndone.queryThrow<beans::XPropertySet>()
+                                     ->getPropertyValue(u"PlaceholderShapeType"_ustr)
+                                     .get<OUString>());
+}
+
+CPPUNIT_TEST_FIXTURE(SdImportTest2, testTdf166401_emptyingHandsBackTheIdentity)
+{
+    createSdImpressDoc("pptx/pic-placeholder-with-text.pptx");
+
+    auto styleNameOf = [](const uno::Reference<beans::XPropertySet>& xShape) -> OUString
+    {
+        SdrObject* pShapeObj
+            = SdrObject::getSdrObjectFromXShape(xShape.queryThrow<drawing::XShape>());
+        SfxStyleSheet* pStyle = pShapeObj ? pShapeObj->GetStyleSheet() : nullptr;
+        return pStyle ? pStyle->GetName() : u"<none>"_ustr;
+    };
+    const drawing::FillStyle eFillBefore
+        = getShapeFromPage(0, 0)->getPropertyValue(u"FillStyle"_ustr).get<drawing::FillStyle>();
+    const sal_Int32 nFillColorBefore
+        = getShapeFromPage(0, 0)->getPropertyValue(u"FillColor"_ustr).get<sal_Int32>();
+    const OUString aStyleBefore = styleNameOf(getShapeFromPage(0, 0));
+
+    // Deleting the whole text hands the placeholder its identity back: it shows what it waits for.
+    sd::ViewShell* pViewShell = getSdDocShell()->GetViewShell();
+    sd::View* pView = pViewShell->GetView();
+    SdrPageView* pPageView = pView->GetSdrPageView();
+    SdrObject* pObj = pViewShell->GetActualPage()->GetObj(0);
+    pView->MarkObj(pObj, pPageView);
+    pView->SdrBeginTextEdit(pObj, pPageView, pViewShell->GetActiveWindow());
+    OutlinerView* pOutlinerView = pView->GetTextEditOutlinerView();
+    CPPUNIT_ASSERT(pOutlinerView);
+    pOutlinerView->GetEditView().SetSelection(ESelection::All());
+    pOutlinerView->GetEditView().InsertText(OUString());
+    pView->SdrEndTextEdit();
+
+    auto xBack = getShapeFromPage(0, 0).queryThrow<drawing::XShape>();
+    CPPUNIT_ASSERT_EQUAL(u"com.sun.star.presentation.GraphicObjectShape"_ustr,
+                         xBack->getShapeType());
+    bool bEmpty = false;
+    CPPUNIT_ASSERT(xBack.queryThrow<beans::XPropertySet>()
+                       ->getPropertyValue(u"IsEmptyPresentationObject"_ustr)
+                   >>= bEmpty);
+    CPPUNIT_ASSERT_MESSAGE("the placeholder did not take its identity back", bEmpty);
+
+    // What it shows is the prompt the layout authors. An empty placeholder holds it as text the API
+    // does not report, since a prompt is not content, so ask the object itself.
+    SdrObject* pBack = SdrObject::getSdrObjectFromXShape(xBack);
+    CPPUNIT_ASSERT(pBack);
+    CPPUNIT_ASSERT(pBack->GetOutlinerParaObject());
+    CPPUNIT_ASSERT_EQUAL(u"Custom prompt to insert an image"_ustr,
+                         pBack->GetOutlinerParaObject()->GetTextObject().GetText(0));
+
+    // One undo step takes back the whole deletion: the text is there again, held by the object that
+    // represents a placeholder holding text.
+    dispatchCommand(mxComponent, u".uno:Undo"_ustr, {});
+    auto xUndone = getShapeFromPage(0, 0).queryThrow<drawing::XShape>();
+    CPPUNIT_ASSERT_EQUAL(u"com.sun.star.presentation.OutlinerShape"_ustr, xUndone->getShapeType());
+    // It is the object it was, styles and all: left with no style of its own it would fall back to
+    // the pool defaults, which paint it in the default fill colour.
+    CPPUNIT_ASSERT_EQUAL(eFillBefore, getShapeFromPage(0, 0)
+                                          ->getPropertyValue(u"FillStyle"_ustr)
+                                          .get<drawing::FillStyle>());
+    CPPUNIT_ASSERT_EQUAL(
+        nFillColorBefore,
+        getShapeFromPage(0, 0)->getPropertyValue(u"FillColor"_ustr).get<sal_Int32>());
+    CPPUNIT_ASSERT_EQUAL(aStyleBefore, styleNameOf(getShapeFromPage(0, 0)));
+    CPPUNIT_ASSERT_EQUAL(u"Typed into a picture placeholder"_ustr,
+                         xUndone.queryThrow<text::XTextRange>()->getString());
+
+    // And it is what the page says it is, not the shape type cached at creation.
+    CPPUNIT_ASSERT_EQUAL_MESSAGE("the placeholder identity did not survive undo",
+                                 u"com.sun.star.presentation.GraphicObjectShape"_ustr,
+                                 xUndone.queryThrow<beans::XPropertySet>()
+                                     ->getPropertyValue(u"PlaceholderShapeType"_ustr)
+                                     .get<OUString>());
+}
+
+CPPUNIT_TEST_FIXTURE(SdImportTest2, testTdf166401_aPictureWithTextKeepsThePicture)
+{
+    // Given a picture placeholder that holds a picture and text at once - a draw:image takes
+    // draw-text after its data:
+    createSdImpressDoc("odp/picture-placeholder-with-picture-and-text.fodp");
+
+    // Then the picture decides what represents it. An outliner object has nowhere to keep a
+    // picture, so handing the placeholder one for the sake of its text would lose the picture.
+    auto xShape = getShapeFromPage(0, 0);
+    CPPUNIT_ASSERT_EQUAL(u"com.sun.star.presentation.GraphicObjectShape"_ustr,
+                         xShape.queryThrow<drawing::XShape>()->getShapeType());
+
+    auto xGraphic = xShape->getPropertyValue(u"Graphic"_ustr).queryThrow<graphic::XGraphic>();
+    CPPUNIT_ASSERT_EQUAL(u"image/png"_ustr,
+                         comphelper::GraphicMimeTypeHelper::GetMimeTypeForXGraphic(xGraphic));
+
+    // And the text it carries beside the picture is still there.
+    CPPUNIT_ASSERT_EQUAL(u"A caption the author typed onto the picture"_ustr,
+                         xShape.queryThrow<text::XTextRange>()->getString());
+}
+
 CPPUNIT_TEST_FIXTURE(SdImportTest2, testCool16078_aPathThatPaintsNothingClipsNothing)
 {
     // Given a picture placeholder clipped to two paths that do not touch, the right one stating
@@ -2744,6 +2938,61 @@ CPPUNIT_TEST_FIXTURE(SdImportTest2, testCool16080_masterPageOrder)
         CPPUNIT_ASSERT_EQUAL(
             OUString(aExpected[i]),
             xMasterPages->getByIndex(i).queryThrow<container::XNamed>()->getName());
+    }
+}
+
+CPPUNIT_TEST_FIXTURE(SdImportTest2, testCool16083_contentPlaceholderStaysEmpty)
+{
+    // Given four slides, each with one content placeholder, differing only in what the slide says
+    // about its text - and a layout whose placeholder carries text of its own:
+    createSdImpressDoc("pptx/content-placeholder-cases.pptx");
+
+    // A placeholder the file gives no text to stays an empty presentation object, which is what
+    // makes Impress offer the buttons that insert a table, a chart, a picture or a video. The
+    // layout's text is a prompt, not content: taking it filled the placeholder and took those away.
+    // A prompt the layout authors is a prompt too, and reaches the shape as CustomPromptText.
+    struct Case
+    {
+        std::string_view aWhatTheSlideSays;
+        bool bEmpty;
+        OUString aText;
+        OUString aPrompt;
+    };
+    static constexpr Case aCases[] = {
+        { "no text body", true, u""_ustr, u""_ustr },
+        { "an empty text body", true, u""_ustr, u""_ustr },
+        { "a text body with content", false, u"Real content, typed by the author"_ustr, u""_ustr },
+        { "no text body, prompt authored on the layout", true, u""_ustr,
+          u"Custom prompt to insert content"_ustr },
+    };
+
+    for (size_t i = 0; i < std::size(aCases); ++i)
+    {
+        const Case& rCase = aCases[i];
+        const OString aMessage = "slide " + OString::number(i + 1) + ", " + rCase.aWhatTheSlideSays;
+        auto xShape = getShapeFromPage(0, i);
+        bool bEmpty = false;
+        CPPUNIT_ASSERT(xShape->getPropertyValue(u"IsEmptyPresentationObject"_ustr) >>= bEmpty);
+        CPPUNIT_ASSERT_EQUAL_MESSAGE(aMessage.getStr(), rCase.bEmpty, bEmpty);
+
+        OUString aText;
+        CPPUNIT_ASSERT(xShape->getPropertyValue(u"CustomPromptText"_ustr) >>= aText);
+        CPPUNIT_ASSERT_EQUAL_MESSAGE(aMessage.getStr(), rCase.aPrompt, aText);
+
+        CPPUNIT_ASSERT_EQUAL_MESSAGE(aMessage.getStr(), rCase.aText,
+                                     xShape.queryThrow<text::XTextRange>()->getString());
+
+        // An empty one still holds the text to paint - the prompt - even though the UNO text of an
+        // empty presentation object is empty by design. Losing it leaves a blank frame on screen,
+        // which is only visible on the model. The stock prompt is localized, so only the authored
+        // one is compared.
+        SdrObject* pObject = SdrObject::getSdrObjectFromXShape(xShape);
+        CPPUNIT_ASSERT(pObject);
+        OutlinerParaObject* pParagraphs = pObject->GetOutlinerParaObject();
+        CPPUNIT_ASSERT_MESSAGE(aMessage.getStr(), pParagraphs);
+        if (!rCase.aPrompt.isEmpty())
+            CPPUNIT_ASSERT_EQUAL_MESSAGE(aMessage.getStr(), rCase.aPrompt,
+                                         pParagraphs->GetTextObject().GetText(0));
     }
 }
 

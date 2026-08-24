@@ -2906,18 +2906,6 @@ std::string fetchAIModels(const std::string& payload)
 }
 } // namespace
 
-static void free_getClipboard_results(size_t count, char** mimeTypes, size_t* sizes, char** streams)
-{
-    for (size_t i = 0; i < count; i++)
-    {
-        std::free(mimeTypes[i]);
-        std::free(streams[i]);
-    }
-    std::free(mimeTypes);
-    std::free(sizes);
-    std::free(streams);
-}
-
 static HANDLE copyEngineClipboardData(UINT format, const std::string& mimeType)
 {
     // The clipboard is process-global (one shared clipboard for the desktop app), so read it
@@ -2926,19 +2914,14 @@ static HANDLE copyEngineClipboardData(UINT format, const std::string& mimeType)
         return 0;
 
     const char *filter[] = { mimeType.c_str(), nullptr };
-    size_t outCount = 0;
-    char **outMimeTypes = nullptr;
-    size_t *outSizes = nullptr;
-    char **outStreams = nullptr;
-    if (!office->getGlobalClipboard(filter, &outCount, &outMimeTypes, &outSizes, &outStreams) ||
-        outCount == 0)
+    std::vector<std::string> outMimeTypes;
+    std::vector<std::vector<char>> outStreams;
+    if (!office->getGlobalClipboard(filter, outMimeTypes, outStreams) ||
+        outStreams.size() == 0)
         return 0;
 
-    if (outStreams[0] == nullptr || outSizes[0] == 0)
-    {
-        free_getClipboard_results(outCount, outMimeTypes, outSizes, outStreams);
+    if (outStreams[0].empty())
         return 0;
-    }
 
     HGLOBAL hMem;
     const void *src;
@@ -2947,38 +2930,34 @@ static HANDLE copyEngineClipboardData(UINT format, const std::string& mimeType)
     std::string temp;
     if (format == CF_UNICODETEXT && mimeType == "text/plain;charset=utf-8")
     {
-        wtemp = Util::string_to_wide_string(std::string_view(outStreams[0], outSizes[0]));
+        wtemp = Util::string_to_wide_string(std::string_view(outStreams[0].data(), outStreams[0].size()));
         src = wtemp.c_str();
         size = (wtemp.length() + 1) * 2;
     }
     else if (format == RegisterClipboardFormatW(L"HTML Format") && mimeType == "text/html")
     {
-        temp = generate_html_format(std::string(outStreams[0], outSizes[0]));
+        temp = generate_html_format(std::string(outStreams[0].data(), outStreams[0].size()));
         src = temp.c_str();
         size = temp.length();
     }
     else
     {
-        src = outStreams[0];
-        size = outSizes[0];
+        src = outStreams[0].data();
+        size = outStreams[0].size();
     }
     hMem = GlobalAlloc(GMEM_MOVEABLE, size);
     if (hMem == NULL)
     {
-        free_getClipboard_results(outCount, outMimeTypes, outSizes, outStreams);
         return 0;
     }
     void* dest = GlobalLock(hMem);
     if (dest == nullptr)
     {
         GlobalFree(hMem);
-        free_getClipboard_results(outCount, outMimeTypes, outSizes, outStreams);
         return 0;
     }
     std::memcpy(dest, src, size);
     GlobalUnlock(hMem);
-
-    free_getClipboard_results(outCount, outMimeTypes, outSizes, outStreams);
 
     return hMem;
 }
@@ -3090,25 +3069,25 @@ static bool clipboardProviderOwns()
     return weOwnTheClipboard;
 }
 
-static char** clipboardProviderGetMimeTypes()
+static std::vector<std::string> clipboardProviderGetMimeTypes()
 {
     // Reading needs no owner window, so open the clipboard for the current "task".
     //
     // (Task is an 16-bit Windows term still used in documentation for the clipboard API that is
     // basically unchanged since then. In current Windows, it means thread, more or less.)
     if (!try_open_clipboard(NULL))
-        return NULL;
+        return {};
 
     UINT format = 0;
 
-    std::vector<char*> mimeTypes;
+    std::vector<std::string> mimeTypes;
     std::set<std::string> doneMimeTypes;
 
     while ((format = EnumClipboardFormats(format)) != 0)
     {
         if (format == CF_UNICODETEXT)
         {
-            mimeTypes.push_back(_strdup("text/plain;charset=utf-8"));
+            mimeTypes.push_back("text/plain;charset=utf-8");
             doneMimeTypes.insert("text/plain;charset=utf-8");
         }
         else
@@ -3118,26 +3097,17 @@ static char** clipboardProviderGetMimeTypes()
             if (mimeType != "" && doneMimeTypes.count(mimeType) == 0)
             {
                 doneMimeTypes.insert(mimeType);
-                mimeTypes.push_back(_strdup(mimeType.c_str()));
+                mimeTypes.push_back(mimeType);
             }
         }
     }
 
     CloseClipboard();
 
-    char** result = (char**)std::malloc(sizeof(char*) * (mimeTypes.size() + 1));
-
-    for (int i = 0; i < mimeTypes.size(); i++)
-    {
-        result[i] = mimeTypes[i];
-        mimeTypes[i] = nullptr;
-    }
-    result[mimeTypes.size()] = nullptr;
-
-    return result;
+    return mimeTypes;
 }
 
-static bool clipboardProviderGetData(const char* pMimeType, char** pOutData, size_t* pOutSize)
+static bool clipboardProviderGetData(const char* pMimeType, std::vector<char>* pOutData)
 {
     auto formats = clipboard_formats_for_MIME_type(pMimeType);
 
@@ -3162,9 +3132,8 @@ static bool clipboardProviderGetData(const char* pMimeType, char** pOutData, siz
 
             std::string text = Util::wide_string_to_string(std::wstring(wtext));
             GlobalUnlock(handle);
-            *pOutData = (char*)std::malloc(text.length());
-            *pOutSize = text.length();
-            std::memcpy(*pOutData, text.c_str(), text.length());
+            (*pOutData).resize(text.length());
+            std::memcpy((*pOutData).data(), text.c_str(), text.length());
 
             CloseClipboard();
 
@@ -3185,9 +3154,8 @@ static bool clipboardProviderGetData(const char* pMimeType, char** pOutData, siz
             source = fragment.c_str();
             size = std::strlen(source);
         }
-        *pOutData = (char*)std::malloc(size);
-        *pOutSize = size;
-        std::memcpy(*pOutData, source, size);
+        (*pOutData).resize(size);
+        std::memcpy((*pOutData).data(), source, size);
         GlobalUnlock(handle);
         CloseClipboard();
 

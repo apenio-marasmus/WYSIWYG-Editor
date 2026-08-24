@@ -390,14 +390,14 @@ public:
     SD_DLLPUBLIC virtual void getCommandValues(tools::JsonWriter& rJsonWriter, std::string_view rCommand) override;
 
     /// @see vcl::ITiledRenderable::getPresentationInfo().
-    SD_DLLPUBLIC OString getPresentationInfo(bool bAllyState = false) const override;
+    SD_DLLPUBLIC std::string getPresentationInfo(bool bAllyState = false) const override;
     /// @see vcl::ITiledRenderable::createSlideRenderer().
     SD_DLLPUBLIC bool createSlideRenderer(
         const OString& rSlideHash,
         sal_Int32 nSlideNumber, sal_Int32& nViewWidth, sal_Int32& nViewHeight,
         bool bRenderBackground, bool bRenderMasterPage) override;
     /// @see vcl::ITiledRenderable::renderNextSlideLayer().
-    SD_DLLPUBLIC bool renderNextSlideLayer(unsigned char* pBuffer, bool& bIsBitmapLayer, double& rScale, OUString& rJsonMsg) override;
+    SD_DLLPUBLIC bool renderNextSlideLayer(unsigned char* pBuffer, bool& bIsBitmapLayer, double& rScale, std::string& rJsonMsg) override;
 
     SD_DLLPUBLIC rtl::Reference< SdDrawPagesAccess > getSdDrawPages();
 

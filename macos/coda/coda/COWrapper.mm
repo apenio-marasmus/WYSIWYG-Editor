@@ -142,24 +142,15 @@ static NSData *_Nullable copyEngineClipboardData(const char *mime)
         return nil;
 
     const char *filter[] = { mime, nullptr };
-    size_t outCount = 0;
-    char **outMimeTypes = nullptr;
-    size_t *outSizes = nullptr;
-    char **outStreams = nullptr;
-    if (!sOffice->getGlobalClipboard(filter, &outCount, &outMimeTypes, &outSizes, &outStreams)
-        || outCount == 0)
+    std::vector<std::string> outMimeTypes;
+    std::vector<std::vector<char>> outStreams;
+    if (!sOffice->getGlobalClipboard(filter, outMimeTypes, outStreams)
+        || outStreams.size() == 0)
         return nil;
 
     NSData *data = nil;
-    if (outStreams[0] && outSizes[0] > 0)
-        data = [NSData dataWithBytes:outStreams[0] length:outSizes[0]];
-    for (size_t i = 0; i < outCount; ++i) {
-        free(outMimeTypes[i]);
-        free(outStreams[i]);
-    }
-    free(outMimeTypes);
-    free(outSizes);
-    free(outStreams);
+    if (outStreams[0].size() > 0)
+        data = [NSData dataWithBytes:outStreams[0].data() length:outStreams[0].size()];
     return data;
 }
 
@@ -208,10 +199,9 @@ static NSData *_Nullable copyEngineClipboardData(const char *mime)
  * Private read helpers used by the clipboard provider callbacks below.
  */
 @interface COWrapper ()
-+ (char *_Nullable *_Nonnull)copyPasteboardMimeTypes;
++ (std::vector<std::string>)copyPasteboardMimeTypes;
 + (BOOL)copyPasteboardData:(NSString *_Nonnull)mime
-                       out:(char *_Nullable *_Nonnull)pOutData
-                      size:(size_t *_Nonnull)pOutSize;
+                       out:(std::vector<char> *_Nonnull)pOutData;
 @end
 
 /**
@@ -236,19 +226,18 @@ static bool clipboardProviderOwns()
     return [COWrapper pasteboardOwnedByUs];
 }
 
-static char** clipboardProviderGetMimeTypes()
+static std::vector<std::string> clipboardProviderGetMimeTypes()
 {
     @autoreleasepool {
         return [COWrapper copyPasteboardMimeTypes];
     }
 }
 
-static bool clipboardProviderGetData(const char* pMimeType, char** pOutData, size_t* pOutSize)
+static bool clipboardProviderGetData(const char* pMimeType, std::vector<char>* pOutData)
 {
     @autoreleasepool {
         return [COWrapper copyPasteboardData:[NSString stringWithUTF8String:pMimeType]
-                                         out:pOutData
-                                        size:pOutSize];
+                                         out:pOutData];
     }
 }
 
@@ -549,7 +538,7 @@ void install_clipboard_provider(COKit &rOffice)
  * The engine mime types the system pasteboard currently offers, as a
  * nullptr-terminated malloc'd array of malloc'd strings the engine then frees.
  */
-+ (char *_Nullable *_Nonnull)copyPasteboardMimeTypes {
++ (std::vector<std::string>)copyPasteboardMimeTypes {
     NSPasteboard * pasteboard = [NSPasteboard generalPasteboard];
     NSMutableArray<NSString *> * mimes = [NSMutableArray array];
     for (NSPasteboardItem * item in pasteboard.pasteboardItems) {
@@ -560,11 +549,10 @@ void install_clipboard_provider(COKit &rOffice)
         }
     }
 
-    char ** result = static_cast<char **>(malloc((mimes.count + 1) * sizeof(char *)));
+    std::vector<std::string> result;
     NSUInteger i = 0;
     for (NSString * mime in mimes)
-        result[i++] = strdup([mime UTF8String]);
-    result[i] = nullptr;
+        result.push_back([mime UTF8String]);
     return result;
 }
 
@@ -573,8 +561,7 @@ void install_clipboard_provider(COKit &rOffice)
  * the engine then frees. Returns NO when the format is not present.
  */
 + (BOOL)copyPasteboardData:(NSString *_Nonnull)mime
-                       out:(char *_Nullable *_Nonnull)pOutData
-                      size:(size_t *_Nonnull)pOutSize {
+                       out:(std::vector<char> *_Nonnull)pOutData {
     NSPasteboard * pasteboard = [NSPasteboard generalPasteboard];
     for (NSPasteboardItem * item in pasteboard.pasteboardItems) {
         for (NSPasteboardType identifier in item.types) {
@@ -586,9 +573,8 @@ void install_clipboard_provider(COKit &rOffice)
             if (value == nil)
                 continue;
 
-            *pOutData = static_cast<char *>(malloc(value.length ? value.length : 1));
-            memcpy(*pOutData, value.bytes, value.length);
-            *pOutSize = value.length;
+            (*pOutData).resize(value.length);
+            memcpy((*pOutData).data(), value.bytes, value.length);
             return YES;
         }
     }

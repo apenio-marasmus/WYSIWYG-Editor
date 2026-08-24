@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
+#include <vector>
 
 #ifdef __APPLE__
 #include <TargetConditionals.h>
@@ -53,18 +54,17 @@ struct COKitClipboardProvider
     bool (*ownsClipboard)(void);
 
     /**
-     * Paste: return a nullptr-terminated, malloc'd array of malloc'd mime-type
-     * strings the platform clipboard currently offers. No bytes are read. The
-     * engine takes ownership and frees each string and the array.
+     * Paste: return a vector of mime-type
+     * strings the platform clipboard currently offers. No bytes are read.
      */
-    char** (*getMimeTypes)(void);
+    std::vector<std::string> (*getMimeTypes)(void);
 
     /**
      * Paste: fetch the bytes for one mime type. On success set *pOutData to a
-     * malloc'd buffer and *pOutSize to its length and return true; on failure
-     * return false. The engine frees *pOutData.
+     * vector of data and return true; on failure
+     * return false.
      */
-    bool (*getDataForMimeType)(const char* pMimeType, char** pOutData, size_t* pOutSize);
+    bool (*getDataForMimeType)(const char* pMimeType, std::vector<char>* pOutData);
 };
 
 // getDocumentType is part of the API whether or not the unstable half is asked for, so the
@@ -1596,7 +1596,7 @@ struct COKit
      */
     virtual void dumpState(const char* pOptions, char** pState) = 0;
 
-    virtual char* extractRequest(const char* pFilePath) = 0;
+    virtual std::string extractRequest(const char* pFilePath) = 0;
 
     /**
      * Trim memory usage.
@@ -1652,7 +1652,7 @@ struct COKit
      */
     virtual void setForkedChild(bool bIsChild) = 0;
 
-    virtual char* extractDocumentStructureRequest(const char* pFilePath, const char* pFilter) = 0;
+    virtual std::string extractDocumentStructureRequest(const char* pFilePath, const char* pFilter) = 0;
 
     /**
      * Registers a callback that can determine if there are any pending input events.
@@ -1769,9 +1769,9 @@ struct COKit
      * because the shared clipboard is process-global. The distinct name marks
      * that it reads one global clipboard, not a per-view one.
      */
-    virtual bool getGlobalClipboard(const char **pMimeTypes, size_t      *pOutCount,
-                                    char      ***pOutMimeTypes, size_t     **pOutSizes,
-                                    char      ***pOutStreams) = 0;
+    virtual bool getGlobalClipboard(const char **pMimeTypes,
+                                    std::vector<std::string>& rOutMimeTypes,
+                                    std::vector<std::vector<char>>& rOutStreams) = 0;
 };
 
 struct COKitDocument
@@ -2169,10 +2169,9 @@ struct COKitDocument
 
     /**
      * Gets an image of the selected shapes.
-     * @param pOutput contains the result; use free to deallocate.
-     * @return the size of *pOutput in bytes.
+     * @return the result
      */
-    virtual size_t renderShapeSelection(char** pOutput) = 0;
+    virtual std::vector<char> renderShapeSelection() = 0;
 
     /**
      * Posts a gesture event to the window with given id.
@@ -2220,16 +2219,14 @@ struct COKitDocument
      * NB. returns a complete set of possible selection types if nullptr is passed for pMimeTypes.
      *
      * @param pMimeTypes passes in a nullptr terminated list of mime types to fetch
-     * @param pOutCount     returns the size of the other @pOut arrays
-     * @param pOutMimeTypes returns an array of mime types
-     * @param pOutSizes     returns the size of each pOutStream
-     * @param pOutStreams   the content of each mime-type, of length in @pOutSizes
+     * @param rOutMimeTypes returns an array of mime types
+     * @param rOutStreams   the content of each mime-type
      *
      * @returns: true on success, false on error.
      */
-    virtual bool getClipboard(const char **pMimeTypes, size_t      *pOutCount,
-                              char      ***pOutMimeTypes, size_t     **pOutSizes,
-                              char      ***pOutStreams) = 0;
+    virtual bool getClipboard(const char **pMimeTypes,
+                              std::vector<std::string>& rOutMimTypes,
+                              std::vector<std::vector<char>>& rOutStreams) = 0;
 
     /**
      * Populates the clipboard for this view with multiple types of content.
@@ -2329,14 +2326,13 @@ struct COKitDocument
      * Render input search result to a bitmap buffer.
      *
      * @param pSearchResult payload containing the search result data
-     * @param pBitmapBuffer contains the bitmap; use free to deallocate.
+     * @param pBitmapBuffer contains the bitmap
      * @param pWidth output bitmap width
      * @param pHeight output bitmap height
-     * @param pByteSize output bitmap byte size
      * @return true if successful
      */
-    virtual bool renderSearchResult(const char* pSearchResult, unsigned char** pBitmapBuffer,
-                                    int* pWidth, int* pHeight, size_t* pByteSize) = 0;
+    virtual bool renderSearchResult(const char* pSearchResult, std::vector<unsigned char>* pBitmapBuffer,
+                                    int* pWidth, int* pHeight) = 0;
 
     /**
      * Posts an event for the content control at the cursor position.
@@ -2370,15 +2366,13 @@ struct COKitDocument
      * This function is a more efficient combination of getSelectionType() and getTextSelection().
      * It returns the same as getSelectionType(), and additionally if the return value is
      * COKitSelectionType::TEXT then it also returns the same as getTextSelection(), otherwise
-     * pText and pUsedMimeType are unchanged.
+     * pText is unchanged.
      *
      * @param pMimeType suggests the return format, for example text/plain;charset=utf-8.
      * @param pText the currently selected text
-     * @param pUsedMimeType output parameter to inform about the determined format (suggested one or plain text).
      * @return what kind of selection the document holds.
      */
-    virtual COKitSelectionType getSelectionTypeAndText(const char* pMimeType, char** pText,
-                                                       char** pUsedMimeType) = 0;
+    virtual COKitSelectionType getSelectionTypeAndText(const char* pMimeType, std::string* pText) = 0;
 
     /// Get the data area (in Calc last row and column).
     virtual void getDataArea(long nPart, long* pCol, long* pRow) = 0;
@@ -2409,7 +2403,7 @@ struct COKitDocument
      *      "end": selection end
      *  }
      */
-    virtual char* getA11yFocusedParagraph() = 0;
+    virtual std::string getA11yFocusedParagraph() = 0;
 
     /// Get the current text cursor position.
     virtual int getA11yCaretPosition() = 0;
@@ -2429,7 +2423,7 @@ struct COKitDocument
     virtual void setAllowChangeComments(int nId, const bool allow) = 0;
 
     /// Get the information about the current presentation (Impress only).
-    virtual char* getPresentationInfo() = 0;
+    virtual std::string getPresentationInfo() = 0;
 
     /// Create a slide renderer in engine for the input slide.
     virtual bool createSlideRenderer(const char* pSlideHash, int nSlideNumber,
@@ -2441,7 +2435,7 @@ struct COKitDocument
 
     /// Render the slide layer
     virtual bool renderNextSlideLayer(unsigned char* pBuffer, bool* bIsBitmapLayer, double* pScale,
-                                      char** pJsonMessage) = 0;
+                                      std::string* pJsonMessage) = 0;
 
     /// Set named view options
     virtual void setViewOption(const char* pOption, const char* pValue) = 0;

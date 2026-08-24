@@ -154,6 +154,9 @@ COOL_EXTENSIONS_DST = $(patsubst $(srcdir)/extensions/%,$(DIST_FOLDER)/extension
 
 COOL_ADMIN_SRC = $(shell find $(srcdir)/admin -name '*.html' -or -name '*.css' -or -name '*.ttf' -or -name 'OFL.txt' -or -name '*.svg')
 COOL_ADMIN_DST = $(patsubst $(srcdir)/admin/%,$(DIST_FOLDER)/admin/%,$(COOL_ADMIN_SRC))
+ADMIN_TEMPLATE_FOLDER = $(builddir)/admin-templates
+COOL_ADMIN_TEMPLATE_SRC = $(shell find $(srcdir)/admin -name '*.html.template')
+COOL_ADMIN_TEMPLATE_DST = $(patsubst $(srcdir)/admin/%,$(ADMIN_TEMPLATE_FOLDER)/%,$(COOL_ADMIN_TEMPLATE_SRC))
 
 define css_file_target
 $(1): $(2) $(srcdir)/package.json
@@ -679,7 +682,7 @@ COOL_JS_LST =\
 	src/control/Control.SheetsBar.js \
 	src/control/Control.PresentationBar.js \
 	src/control/Control.TopToolbar.js \
-	src/control/Control.SaveState.ts \
+	src/control/Control.SaveState.tsx \
 	src/control/Control.NotebookbarBase.ts \
 	src/control/Control.UIManager.ts \
 	src/control/Control.DocumentNameInput.js \
@@ -1076,6 +1079,7 @@ build-cool: \
 	$(WASM_FILES) \
 	$(WASM_FALLBACK_FILES) \
 	$(TEMPLATE_MANIFEST) \
+	$(COOL_ADMIN_TEMPLATE_DST) \
 	adminIntegratorSettings
 	@echo "build cool completed"
 if APP_HAS_BRANDING
@@ -1439,6 +1443,10 @@ $(DIST_FOLDER)/admin/%: $(srcdir)/admin/%
 	@mkdir -p $(dir $@)
 	@cp $< $@
 
+$(ADMIN_TEMPLATE_FOLDER)/%: $(srcdir)/admin/%
+	@mkdir -p $(dir $@)
+	@cp $< $@
+
 $(DIST_FOLDER)/wasm:
 	@mkdir -p $(dir $@)
 	ln -s @WASM_BUILDDIR@/browser/dist $@
@@ -1446,7 +1454,8 @@ $(DIST_FOLDER)/wasm:
 if ENABLE_DEBUG
 install-data-hook:
 	mkdir -p $(DESTDIR)$(pkgdatadir)/browser; \
-	cp -a dist/ $(DESTDIR)$(pkgdatadir)/browser/;
+	cp -a dist/ $(DESTDIR)$(pkgdatadir)/browser/; \
+	cp -a admin-templates/ $(DESTDIR)$(pkgdatadir)/browser/;
 else
 EXCLUDES = \
         --exclude='src' \
@@ -1471,6 +1480,7 @@ endif
 install-data-hook:
 	mkdir -p $(DESTDIR)$(pkgdatadir)/browser
 	rsync -a $(EXCLUDES) dist $(DESTDIR)$(pkgdatadir)/browser/
+	rsync -a admin-templates $(DESTDIR)$(pkgdatadir)/browser/
 	mkdir -p $(DESTDIR)$(pkgdatadir)/browser/dist/src/app
 	mkdir -p $(DESTDIR)$(pkgdatadir)/browser/dist/src/layer/tile
 	cp -a dist/src/layer/tile/CanvasTileUtils.js $(DESTDIR)$(pkgdatadir)/browser/dist/src/layer/tile/CanvasTileUtils.js
@@ -1568,7 +1578,7 @@ pot:
 		src/control/Control.ContextToolbar.ts \
 		src/control/Control.PartsPreview.js \
 		src/control/Control.PresentationBar.js \
-		src/control/Control.SaveState.ts \
+		src/control/Control.SaveState.tsx \
 		src/control/SlideDragGhost.tsx \
 		src/control/Control.PaneExpander.ts \
 		src/control/Control.Scroll.Annotation.js \

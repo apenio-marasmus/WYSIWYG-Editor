@@ -97,7 +97,7 @@ uno::Reference<xml::sax::XFastContextHandler> ShapeContextHandler::getChartShape
             {
                 std::unique_ptr<ContextHandler2Helper> pFragmentHandler(
                         new ShapeFragmentHandler(*mxShapeFilterBase, msRelationFragmentPath));
-                mpShape = std::make_shared<Shape>("com.sun.star.drawing.OLE2Shape" );
+                mpShape = std::make_shared<Shape>(u"com.sun.star.drawing.OLE2Shape"_ustr );
                 mxChartShapeContext.set(new ChartGraphicDataContext(*pFragmentHandler, mpShape, true));
                 break;
             }
@@ -129,7 +129,7 @@ uno::Reference<xml::sax::XFastContextHandler> ShapeContextHandler::getWpsContext
                                      xShape,
                                      nullptr,
                                      std::make_shared<oox::drawingml::Shape>(
-                                             "com.sun.star.drawing.CustomShape")));
+                                             u"com.sun.star.drawing.CustomShape"_ustr)));
                 break;
             default:
                 break;
@@ -171,12 +171,12 @@ ShapeContextHandler::getGraphicShapeContext(::sal_Int32 Element )
         switch (Element & 0xffff)
         {
             case XML_graphic:
-                mpShape = std::make_shared<Shape>("com.sun.star.drawing.GraphicObjectShape" );
+                mpShape = std::make_shared<Shape>(u"com.sun.star.drawing.GraphicObjectShape"_ustr );
                 mxGraphicShapeContext.set
                 (new GraphicalObjectFrameContext(*pFragmentHandler, nullptr, mpShape, true));
                 break;
             case XML_pic:
-                mpShape = std::make_shared<Shape>("com.sun.star.drawing.GraphicObjectShape" );
+                mpShape = std::make_shared<Shape>(u"com.sun.star.drawing.GraphicObjectShape"_ustr );
                 mxGraphicShapeContext.set
                 (new GraphicShapeContext(*pFragmentHandler, nullptr, mpShape));
                 break;
@@ -285,7 +285,7 @@ ShapeContextHandler::getContextHandler(sal_Int32 nElement)
 }
 
 // css::xml::sax::XFastContextHandler:
-void SAL_CALL ShapeContextHandler::startFastElement
+void ShapeContextHandler::startFastElement
 (::sal_Int32 Element,
  const uno::Reference< xml::sax::XFastAttributeList > & Attribs)
 {
@@ -336,7 +336,7 @@ void SAL_CALL ShapeContextHandler::startFastElement
         xContextHandler->startFastElement(Element, Attribs);
 }
 
-void SAL_CALL ShapeContextHandler::startUnknownElement
+void ShapeContextHandler::startUnknownElement
 (const OUString & Namespace, const OUString & Name,
  const uno::Reference< xml::sax::XFastAttributeList > & Attribs)
 {
@@ -349,7 +349,7 @@ void SAL_CALL ShapeContextHandler::startUnknownElement
         xContextHandler->startUnknownElement(Namespace, Name, Attribs);
 }
 
-void SAL_CALL ShapeContextHandler::endFastElement(::sal_Int32 Element)
+void ShapeContextHandler::endFastElement(::sal_Int32 Element)
 {
     uno::Reference<XFastContextHandler> xContextHandler(getContextHandler());
 
@@ -374,7 +374,7 @@ void SAL_CALL ShapeContextHandler::endFastElement(::sal_Int32 Element)
     mxSavedShape.clear();
 }
 
-void SAL_CALL ShapeContextHandler::endUnknownElement
+void ShapeContextHandler::endUnknownElement
 (const OUString & Namespace,
  const OUString & Name)
 {
@@ -384,7 +384,7 @@ void SAL_CALL ShapeContextHandler::endUnknownElement
         xContextHandler->endUnknownElement(Namespace, Name);
 }
 
-uno::Reference< xml::sax::XFastContextHandler > SAL_CALL
+uno::Reference< xml::sax::XFastContextHandler >
 ShapeContextHandler::createFastChildContext
 (::sal_Int32 Element,
  const uno::Reference< xml::sax::XFastAttributeList > & Attribs)
@@ -399,7 +399,7 @@ ShapeContextHandler::createFastChildContext
     return xResult;
 }
 
-uno::Reference< xml::sax::XFastContextHandler > SAL_CALL
+uno::Reference< xml::sax::XFastContextHandler >
 ShapeContextHandler::createUnknownChildContext
 (const OUString & Namespace,
  const OUString & Name,
@@ -414,7 +414,7 @@ ShapeContextHandler::createUnknownChildContext
     return uno::Reference< xml::sax::XFastContextHandler >();
 }
 
-void SAL_CALL ShapeContextHandler::characters(const OUString & aChars)
+void ShapeContextHandler::characters(const OUString & aChars)
 {
     uno::Reference<XFastContextHandler> xContextHandler(getContextHandler());
 
@@ -472,7 +472,7 @@ ShapeContextHandler::getShape()
                 for (auto const& extDrawing : mpShape->getExtDrawings())
                 {
                     OUString aFragmentPath(mxDiagramShapeContext->getFragmentPathFromRelId(extDrawing));
-                    oox::drawingml::ShapePtr pShapePtr = std::make_shared<Shape>( "com.sun.star.drawing.GroupShape" );
+                    oox::drawingml::ShapePtr pShapePtr = std::make_shared<Shape>( u"com.sun.star.drawing.GroupShape"_ustr );
                     pShapePtr->setDiagramType();
                     mxShapeFilterBase->importFragment(new ShapeDrawingFragmentHandler(*mxShapeFilterBase, aFragmentPath, pShapePtr));
 

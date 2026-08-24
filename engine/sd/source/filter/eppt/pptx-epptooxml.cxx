@@ -240,6 +240,25 @@ bool isPlaceholderStillEmpty(const Reference<XPropertySet>& xProps, PlaceholderT
            && (xProps->getPropertyValue(u"MediaURL"_ustr) >>= aMediaURL) && aMediaURL.isEmpty();
 }
 
+// The page knows what a shape is a placeholder for; its class only says what represents it.
+PlaceholderType getPresObjPlaceholderType(const Reference<XShape>& xShape)
+{
+    SdrObject* pObj = SdrObject::getSdrObjectFromXShape(xShape);
+    SdPage* pPage = pObj ? dynamic_cast<SdPage*>(pObj->getSdrPageFromSdrObject()) : nullptr;
+    if (!pPage)
+        return None;
+
+    switch (pPage->GetPresObjKind(pObj))
+    {
+        case PresObjKind::Graphic:
+            return Picture;
+        case PresObjKind::Media:
+            return Media;
+        default:
+            return None;
+    }
+}
+
 // A slide master takes only these; PowerPoint refuses to open a file whose master carries any
 // other placeholder type, content ones like pic included.
 bool isPlaceholderAllowedOnSlideMaster(PlaceholderType ePlaceholder)
@@ -407,9 +426,14 @@ ShapeExport& PowerPointShapeExport::WriteTextShape(const Reference< XShape >& xS
         else
             ShapeExport::WriteTextShape(xShape);
     }
-    else if (sShapeType == "com.sun.star.presentation.OutlinerShape")
+    else if (sShapeType == "com.sun.star.presentation.OutlinerShape"
+             || sShapeType == "com.sun.star.presentation.GraphicObjectShape"
+             || sShapeType == "com.sun.star.presentation.MediaShape")
     {
-        if (!WritePlaceholder(xShape, Outliner, mbMaster))
+        // Written as the placeholder it is, with the text it holds: a body one would cost it its
+        // identity, and a picture with no image is written as nothing at all.
+        const PlaceholderType eStandsFor = getPresObjPlaceholderType(xShape);
+        if (!WritePlaceholder(xShape, eStandsFor != None ? eStandsFor : Outliner, mbMaster))
             ShapeExport::WriteTextShape(xShape);
     }
     else if (sShapeType == "com.sun.star.presentation.SlideNumberShape")
@@ -424,13 +448,8 @@ ShapeExport& PowerPointShapeExport::WriteTextShape(const Reference< XShape >& xS
     }
     else if (sShapeType == "com.sun.star.presentation.SubtitleShape")
     {
-        // TODO: handle subtitle shape: see tdf#112557 workaround
-        // MSO does not like subtitles on master slides
-        if (mePageType != MASTER)
-        {
-            if (!WritePlaceholder(xShape, Subtitle, mbMaster))
-                ShapeExport::WriteTextShape(xShape);
-        }
+        if (!WritePlaceholder(xShape, Subtitle, mbMaster))
+            ShapeExport::WriteTextShape(xShape);
     }
     else
         SAL_WARN("sd.eppt", "PowerPointShapeExport::WriteTextShape: shape of type '" << sShapeType << "' is ignored");
@@ -2208,7 +2227,7 @@ void PowerPointExport::ImplWriteSlideMaster(sal_uInt32 nPageNum, Reference< XPro
     // every layout.
     if (aXBackgroundPropSet)
         ImplWriteBackground(pFS, aXBackgroundPropSet);
-    WriteShapeTree(pFS, MASTER, true, /*bSlideMasterPart=*/true);
+    WriteShapeTree(pFS, MASTER, true, /*bSlideMasterPart=*/true, nPageNum);
 
     pFS->endElementNS(XML_p, XML_cSld);
 
@@ -2588,7 +2607,7 @@ void PowerPointExport::ImplWritePPTXLayoutWithContent(
 }
 
 void PowerPointExport::WriteShapeTree(const FSHelperPtr& pFS, PageType ePageType, bool bMaster,
-                                     bool bSlideMasterPart)
+                                     bool bSlideMasterPart, sal_uInt32 nMasterNum)
 {
     PowerPointShapeExport aDML(pFS, &maShapeMap, this);
     aDML.SetMaster(bMaster);
@@ -2650,6 +2669,8 @@ void PowerPointExport::WriteShapeTree(const FSHelperPtr& pFS, PageType ePageType
         WritePlaceholderReferenceShapes(aDML, ePageType);
     if ( ePageType == LAYOUT )
         WriteLayoutContentPlaceholders(aDML);
+    if (bSlideMasterPart)
+        WriteMasterOwnPlaceholders(aDML, nMasterNum);
     pFS->endElementNS(XML_p, XML_spTree);
 }
 
@@ -2795,12 +2816,14 @@ ShapeExport& PowerPointShapeExport::WritePlaceholderShape(const Reference< XShap
     const bool bTextIsDefaultPrompt = bIsEmptyPresObj && !bUseCustomPrompt && !bUsePlaceholderIndex
                                       && !bWritePropertiesAsLstStyles;
 
-    // A slide-side empty picture placeholder inherits the prompt from the layout. The body
-    // properties belong in the file even where the text does not - they carry the insets, the
-    // anchor, the writing direction and the autofit.
-    if (!isGraphicPlaceholder(ePlaceholder) || mbMaster)
-        WriteTextBox(xShape, XML_p, bUsePlaceholderIndex || bWritePropertiesAsLstStyles,
-                     /*bText=*/!bTextIsDefaultPrompt);
+    // A slide-side empty picture placeholder inherits the prompt from the layout, so it writes no
+    // text; one that is not empty was typed into, and that text is the slide's own content. The
+    // body properties travel either way - they carry the insets, the anchor, the writing direction
+    // and the autofit.
+    const bool bInheritsItsPrompt = isGraphicPlaceholder(ePlaceholder) && !mbMaster
+                                    && bIsEmptyPresObj;
+    WriteTextBox(xShape, XML_p, bUsePlaceholderIndex || bWritePropertiesAsLstStyles,
+                 /*bText=*/!bTextIsDefaultPrompt && !bInheritsItsPrompt);
 
     mpFS->endElementNS(XML_p, XML_sp);
 
@@ -3279,6 +3302,41 @@ void PowerPointExport::WriteLayoutContentPlaceholders(PowerPointShapeExport& rDM
             continue;
 
         rDML.WritePlaceholderShape(xShape, ePlaceholder);
+    }
+}
+
+void PowerPointExport::WriteMasterOwnPlaceholders(PowerPointShapeExport& rDML,
+                                                  sal_uInt32 nMasterNum)
+{
+    SdPage* pPage = SdPage::getImplementation(mXDrawPage);
+    if (!pPage)
+        return;
+
+    for (const auto& [ePlaceholder, ePresObjKind] :
+         { std::pair(Title, PresObjKind::Title), std::pair(Outliner, PresObjKind::Outline) })
+    {
+        assert(isPlaceholderAllowedOnSlideMaster(ePlaceholder));
+        if (pPage->GetPresObj(ePresObjKind))
+            continue; // the shape tree has written the page's own
+
+        // The pages standing for one slide master are its layouts, and a layout placeholder was
+        // imported with the geometry and the formatting it inherits from the master, so the first
+        // of them to carry this type carries the master's prototype of it. A layout that states
+        // its own geometry gives that instead - the closest thing left to ask.
+        for (sal_uInt32 i = 0; i < mnMasterPages; ++i)
+        {
+            if (i == mnCanvasMasterIndex
+                || (i != nMasterNum && maEquivalentMasters[i] != nMasterNum))
+                continue;
+
+            SdPage* pOther = dynamic_cast<SdPage*>(maMastersLayouts[i].first);
+            SdrObject* pObj = pOther ? pOther->GetPresObj(ePresObjKind) : nullptr;
+            if (!pObj)
+                continue;
+
+            rDML.WritePlaceholderShape(GetXShapeForSdrObject(pObj), ePlaceholder);
+            break;
+        }
     }
 }
 

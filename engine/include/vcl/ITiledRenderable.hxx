@@ -444,7 +444,7 @@ public:
     virtual OString getViewRenderState(const SfxViewShell* = nullptr) { return rtl::OString(); }
 
     /** Return JSON structure filled with the information about the presentation (Impress only function) */
-    virtual OString getPresentationInfo(bool = false /*bAllyState*/) const
+    virtual std::string getPresentationInfo(bool = false /*bAllyState*/) const
     {
         return {};
     }
@@ -458,7 +458,7 @@ public:
    }
 
     /** render slideshow layer*/
-    virtual bool renderNextSlideLayer(unsigned char* /*pBuffer*/, bool& /*bIsBitmapLayer*/, double& /*rScale*/, OUString& /*rJsonMsg*/)
+    virtual bool renderNextSlideLayer(unsigned char* /*pBuffer*/, bool& /*bIsBitmapLayer*/, double& /*rScale*/, std::string& /*rJsonMsg*/)
     {
         return true;
     }

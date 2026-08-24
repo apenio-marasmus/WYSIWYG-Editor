@@ -211,7 +211,7 @@ std::shared_ptr<::oox::drawingml::Theme> PowerPointImport::getCurrentThemePtr() 
     return mpActualSlidePersist ? mpActualSlidePersist->getTheme() : std::shared_ptr<::oox::drawingml::Theme>();
 }
 
-bool SAL_CALL PowerPointImport::filter( const Sequence< PropertyValue >& rDescriptor )
+bool PowerPointImport::filter( const Sequence< PropertyValue >& rDescriptor )
 {
     if( XmlFilterBase::filter( rDescriptor ) )
         return true;
@@ -220,9 +220,9 @@ bool SAL_CALL PowerPointImport::filter( const Sequence< PropertyValue >& rDescri
     {
         cpo::uno::Sequence<cpo::uno::Any> aArguments(comphelper::InitAnyPropertySequence(
         {
-            {"IsPPTM", cpo::uno::Any(exportVBA())},
-            {"IsTemplate", cpo::uno::Any(isExportTemplate())},
-            {"IsSlideShow", cpo::uno::Any(isExportSlideShow())},
+            {u"IsPPTM"_ustr, cpo::uno::Any(exportVBA())},
+            {u"IsTemplate"_ustr, cpo::uno::Any(isExportTemplate())},
+            {u"IsSlideShow"_ustr, cpo::uno::Any(isExportSlideShow())},
         }));
 
         Reference<css::lang::XMultiServiceFactory> aFactory(getComponentContext()->getServiceManager(), UNO_QUERY_THROW);

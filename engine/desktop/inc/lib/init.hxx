@@ -360,16 +360,16 @@ namespace desktop {
         bool addCertificate(const unsigned char* pCertificateBinary,
                             const int nCertificateBinarySize) override;
         int getSignatureState() override;
-        size_t renderShapeSelection(char** pOutput) override;
+        std::vector<char> renderShapeSelection() override;
         void postWindowGestureEvent(unsigned nWindowId, const char* pType, int nX, int nY,
                                     int nOffset) override;
         int createViewWithOptions(const char* pOptions) override;
         void selectPart(int nPart, int nSelect) override;
         void moveSelectedParts(int nPosition, bool bDuplicate, int nIntoSection) override;
         void resizeWindow(unsigned nWindowId, const int width, const int height) override;
-        bool getClipboard(const char **pMimeTypes, size_t      *pOutCount,
-                          char      ***pOutMimeTypes, size_t     **pOutSizes,
-                          char      ***pOutStreams) override;
+        bool getClipboard(const char **pMimeTypes,
+                          std::vector<std::string>& rOutMimeTypes,
+                          std::vector<std::vector<char>>& rOutStreams) override;
         bool setClipboard(const size_t   nInCount, const char   **pInMimeTypes,
                           const size_t  *pInSizes, const char   **pInStreams) override;
         COKitSelectionType getSelectionType() override;
@@ -385,26 +385,25 @@ namespace desktop {
         void setWindowTextSelection(unsigned nWindowId, bool bSwap, int nX, int nY) override;
         void sendFormFieldEvent(const char* pArguments) override;
         void setBlockedCommandList(int nViewId, const char* blockedCommandList) override;
-        bool renderSearchResult(const char* pSearchResult, unsigned char** pBitmapBuffer,
-                                int* pWidth, int* pHeight, size_t* pByteSize) override;
+        bool renderSearchResult(const char* pSearchResult, std::vector<unsigned char>* pBitmapBuffer,
+                                int* pWidth, int* pHeight) override;
         void sendContentControlEvent(const char* pArguments) override;
-        COKitSelectionType getSelectionTypeAndText(const char* pMimeType, char** pText,
-                                                   char** pUsedMimeType) override;
+        COKitSelectionType getSelectionTypeAndText(const char* pMimeType, std::string* pText) override;
         void getDataArea(long nPart, long* pCol, long* pRow) override;
         int getEditMode() override;
         void setViewTimezone(int nId, const char* pTimezone) override;
         void setAccessibilityState(int nId, bool nEnabled) override;
-        char* getA11yFocusedParagraph() override;
+        std::string getA11yFocusedParagraph() override;
         int getA11yCaretPosition() override;
         void setViewReadOnly(int nId, const bool readOnly) override;
         void setAllowChangeComments(int nId, const bool allow) override;
-        char* getPresentationInfo() override;
+        std::string getPresentationInfo() override;
         bool createSlideRenderer(const char* pSlideHash, int nSlideNumber, unsigned* nViewWidth,
                                  unsigned* nViewHeight, bool bRenderBackground,
                                  bool bRenderMasterPage) override;
         void postSlideshowCleanup() override;
         bool renderNextSlideLayer(unsigned char* pBuffer, bool* bIsBitmapLayer, double* pScale,
-                                  char** pJsonMessage) override;
+                                  std::string* pJsonMessage) override;
         void setViewOption(const char* pOption, const char* pValue) override;
         void setColorPreviewState(int nId, bool nEnabled) override;
         void setAllowManageRedlines(int nId, bool allow) override;
@@ -449,7 +448,7 @@ namespace desktop {
         void sendDialogEvent(unsigned long long int nKitWindowId, const char* pArguments) override;
         void setOption(const char* pOption, const char* pValue) override;
         void dumpState(const char* pOptions, char** pState) override;
-        char* extractRequest(const char* pFilePath) override;
+        std::string extractRequest(const char* pFilePath) override;
         void trimMemory(int nTarget) override;
         void* startURP(
             void* pReceiveURPFromEngineContext, void* pSendURPToEngineContext,
@@ -459,7 +458,7 @@ namespace desktop {
         bool joinThreads() override;
         void startThreads() override;
         void setForkedChild(bool bIsChild) override;
-        char* extractDocumentStructureRequest(const char* pFilePath, const char* pFilter) override;
+        std::string extractDocumentStructureRequest(const char* pFilePath, const char* pFilter) override;
         void registerAnyInputCallback(COKitAnyInputCallback pCallback, void* pData) override;
         int getDocsCount() override;
         void registerFileSaveDialogCallback(COKitFileSaveDialogCallback pCallback) override;
@@ -474,9 +473,9 @@ namespace desktop {
         void
         registerRevealInFileManagerCallback(COKitRevealInFileManagerCallback pCallback) override;
         void installClipboardProvider(const COKitClipboardProvider* pProvider) override;
-        bool getGlobalClipboard(const char **pMimeTypes, size_t      *pOutCount,
-                                char      ***pOutMimeTypes, size_t     **pOutSizes,
-                                char      ***pOutStreams) override;
+        bool getGlobalClipboard(const char **pMimeTypes,
+                                std::vector<std::string>& rOutMimeTypes,
+                                std::vector<std::vector<char>>& rOutStreams) override;
     };
 
     /// Helper function to extract the value from parameters delimited by
