@@ -84,18 +84,23 @@ else ifeq ($(OS),LINUX)
 # build.sh also builds nspr. It writes dist/Release, or dist/Debug for a debug
 # build, with the nspr headers in a nspr subdirectory, so the recipe copies the
 # tree to dist/out and lifts those headers up a level.
+# CONFIG_SITE is cleared because distro autoconf site scripts (e.g. openSUSE's)
+# set libdir to lib64, which makes nspr's "make install" put its libraries in
+# dist/*/lib64 instead of dist/*/lib where the nss libraries and packaging
+# expect them.
 $(call gb_ExternalProject_get_state_target,nss,build): \
 		$(call gb_ExternalExecutable_get_dependencies,python) \
 		$(SRCDIR)/external/nss/nsinstall.py
 	$(call gb_Trace_StartRange,nss,EXTERNAL)
 	+$(call gb_ExternalProject_run,build,\
 		PATH="$(SRCDIR)/external/gyp/bin:$$PATH" \
+		CONFIG_SITE= \
 		GYPDIR="$(gb_UnpackedTarball_workdir)/gyp" \
 		PYEXE="$(nss_PYTHON)" \
 		COMMA=$(COMMA) \
 		CC="$(CC) $(gb_DEBUGINFO_FLAGS) $(if $(filter -fsanitize=undefined,$(CC)),-fno-sanitize=function)" \
 		CXX="$(CXX) $(gb_DEBUGINFO_FLAGS)" \
-		bash ./build.sh $(if $(LOADLIMIT),-l $(LOADLIMIT)) --disable-tests --enable-legacy-db --enable-libpkix -Ddisable_werror=1 $(if $(ENABLE_DBGUTIL),,--opt) \
+		bash ./build.sh $(if $(LOADLIMIT),-l $(LOADLIMIT)) --disable-tests --enable-legacy-db --enable-libpkix -Dsign_libs=0 -Ddisable_werror=1 $(if $(ENABLE_DBGUTIL),,--opt) \
 			--python="$(nss_PYTHON)" \
 			$(if $(and $(filter TRUE,$(COM_IS_CLANG)),$(filter -fsanitize=%,$(CC)),$(if $(filter -shared-libsan,$(CC) $(LDFLAGS)),,x)),--no-zdefs) \
 		&& rm -rf ../dist/out \
