@@ -2910,6 +2910,16 @@ void createAllObjectProperties( SbxObject* pObj )
 }
 
 
+static OUString getOrigin() {
+    OUString name;
+    if (SbModule * module = StarBASIC::GetActiveModule()) {
+        name = module->GetName();
+    } else {
+        name = u"<unknown>"_ustr;
+    }
+    return name + ":" + OUString::number(StarBASIC::GetErl());
+}
+
 void RTL_Impl_CreateUnoStruct( SbxArray& rPar )
 {
     // We need 1 parameter minimum
@@ -2921,7 +2931,9 @@ void RTL_Impl_CreateUnoStruct( SbxArray& rPar )
 
     // get the name of the class of the struct
     OUString aClassName = rPar.Get(1)->GetOUString();
-    comphelper::notifyLegacyUnoApiUse(aClassName);
+    if (comphelper::notifyLegacyUnoApiUse(aClassName)) {
+        SAL_INFO("basic.legacyapi", "legacy UNO API " << aClassName << " at " << getOrigin());
+    }
 
     // try to create Struct with the same name
     SbUnoObjectRef xUnoObj = Impl_CreateUnoStruct( aClassName );
@@ -2945,7 +2957,9 @@ void RTL_Impl_CreateUnoService( SbxArray& rPar )
 
     // get the name of the class of the struct
     OUString aServiceName = rPar.Get(1)->GetOUString();
-    comphelper::notifyLegacyUnoApiUse(aServiceName);
+    if (comphelper::notifyLegacyUnoApiUse(aServiceName)) {
+        SAL_INFO("basic.legacyapi", "legacy UNO API " << aServiceName << " at " << getOrigin());
+    }
 
     // search for the service and instantiate it
     Reference< XMultiServiceFactory > xFactory( comphelper::getProcessServiceFactory() );
@@ -2991,7 +3005,9 @@ void RTL_Impl_CreateUnoServiceWithArguments( SbxArray& rPar )
 
     // get the name of the class of the struct
     OUString aServiceName = rPar.Get(1)->GetOUString();
-    comphelper::notifyLegacyUnoApiUse(aServiceName);
+    if (comphelper::notifyLegacyUnoApiUse(aServiceName)) {
+        SAL_INFO("basic.legacyapi", "legacy UNO API " << aServiceName << " at " << getOrigin());
+    }
     Any aArgAsAny = sbxToUnoValue(rPar.Get(2),
                 cppu::UnoType<Sequence<Any>>::get() );
     Sequence< Any > aArgs;
@@ -3310,7 +3326,9 @@ SbUnoClass* findUnoClass( const OUString& rName )
     // #105550 Check if module exists
     SbUnoClass* pUnoClass = nullptr;
 
-    comphelper::notifyLegacyUnoApiUse(rName);
+    if (comphelper::notifyLegacyUnoApiUse(rName)) {
+        SAL_INFO("basic.legacyapi", "legacy UNO API " << rName << " at " << getOrigin());
+    }
     const Reference< XHierarchicalNameAccess >& xTypeAccess = getTypeProvider_Impl();
     if( xTypeAccess->hasByHierarchicalName( rName ) )
     {
@@ -3328,6 +3346,79 @@ SbUnoClass* findUnoClass( const OUString& rName )
         }
     }
     return pUnoClass;
+}
+
+
+static SbxVariable* lookupUno(const Reference< XIdlReflection >& xCoreReflection, const OUString& aNewName)
+{
+    SbxVariable* pRes = nullptr;
+    // Is it a constant?
+    Reference< XHierarchicalNameAccess > xHarryName( xCoreReflection, UNO_QUERY );
+    if( xHarryName.is() )
+    {
+        try
+        {
+            Any aValue = xHarryName->getByHierarchicalName( aNewName );
+            TypeClass eType = aValue.getValueTypeClass();
+
+            // Interface located? Then it is a class
+            if( eType == TypeClass_INTERFACE )
+            {
+                Reference< XIdlClass > xClass( aValue, UNO_QUERY );
+                if( xClass.is() )
+                {
+                    pRes = new SbxVariable( SbxVARIANT );
+                    SbxObjectRef xWrapper = static_cast<SbxObject*>(new SbUnoClass( aNewName, xClass ));
+                    pRes->PutObject( xWrapper.get() );
+                }
+            }
+            else
+            {
+                pRes = new SbxVariable( SbxVARIANT );
+                unoToSbxValue( pRes, aValue );
+            }
+        }
+        catch( const NoSuchElementException& )
+        {
+        }
+    }
+
+    // Otherwise take it again as class
+    if( !pRes )
+    {
+        SbUnoClass* pNewClass = findUnoClass( aNewName );
+        if( pNewClass )
+        {
+            pRes = new SbxVariable( SbxVARIANT );
+            SbxObjectRef xWrapper = static_cast<SbxObject*>(pNewClass);
+            pRes->PutObject( xWrapper.get() );
+        }
+    }
+
+    // A UNO service?
+    if( !pRes )
+    {
+        SbUnoService* pUnoService = findUnoService( aNewName );
+        if( pUnoService )
+        {
+            pRes = new SbxVariable( SbxVARIANT );
+            SbxObjectRef xWrapper = static_cast<SbxObject*>(pUnoService);
+            pRes->PutObject( xWrapper.get() );
+        }
+    }
+
+    // A UNO singleton?
+    if( !pRes )
+    {
+        SbUnoSingleton* pUnoSingleton = findUnoSingleton( aNewName );
+        if( pUnoSingleton )
+        {
+            pRes = new SbxVariable( SbxVARIANT );
+            SbxObjectRef xWrapper = static_cast<SbxObject*>(pUnoSingleton);
+            pRes->PutObject( xWrapper.get() );
+        }
+    }
+    return pRes;
 }
 
 SbxVariable* SbUnoClass::Find( const OUString& rName, SbxClassType )
@@ -3370,72 +3461,18 @@ SbxVariable* SbUnoClass::Find( const OUString& rName, SbxClassType )
             Reference< XIdlReflection > xCoreReflection = getCoreReflection_Impl();
             if( xCoreReflection.is() )
             {
-                // Is it a constant?
-                Reference< XHierarchicalNameAccess > xHarryName( xCoreReflection, UNO_QUERY );
-                if( xHarryName.is() )
-                {
-                    try
-                    {
-                        Any aValue = xHarryName->getByHierarchicalName( aNewName );
-                        TypeClass eType = aValue.getValueTypeClass();
+                pRes = lookupUno(xCoreReflection, aNewName);
 
-                        // Interface located? Then it is a class
-                        if( eType == TypeClass_INTERFACE )
-                        {
-                            Reference< XIdlClass > xClass( aValue, UNO_QUERY );
-                            if( xClass.is() )
-                            {
-                                pRes = new SbxVariable( SbxVARIANT );
-                                SbxObjectRef xWrapper = static_cast<SbxObject*>(new SbUnoClass( aNewName, xClass ));
-                                pRes->PutObject( xWrapper.get() );
-                            }
-                        }
-                        else
-                        {
-                            pRes = new SbxVariable( SbxVARIANT );
-                            unoToSbxValue( pRes, aValue );
-                        }
-                    }
-                    catch( const NoSuchElementException& )
-                    {
-                    }
+                OUString aRest;
+                if (!pRes && aNewName.startsWith("com.sun.star.", &aRest))
+                {
+                    // If the lookup failed, and this name is potentially the "old" name
+                    // from before we moved stuff from the com.sun.star namespace to the cpo namespace,
+                    // then try doing a lookup using the new name, to preserve compatibility for old
+                    // basic code.
+                    pRes = lookupUno(xCoreReflection, "cpo." + aRest);
                 }
 
-                // Otherwise take it again as class
-                if( !pRes )
-                {
-                    SbUnoClass* pNewClass = findUnoClass( aNewName );
-                    if( pNewClass )
-                    {
-                        pRes = new SbxVariable( SbxVARIANT );
-                        SbxObjectRef xWrapper = static_cast<SbxObject*>(pNewClass);
-                        pRes->PutObject( xWrapper.get() );
-                    }
-                }
-
-                // A UNO service?
-                if( !pRes )
-                {
-                    SbUnoService* pUnoService = findUnoService( aNewName );
-                    if( pUnoService )
-                    {
-                        pRes = new SbxVariable( SbxVARIANT );
-                        SbxObjectRef xWrapper = static_cast<SbxObject*>(pUnoService);
-                        pRes->PutObject( xWrapper.get() );
-                    }
-                }
-
-                // A UNO singleton?
-                if( !pRes )
-                {
-                    SbUnoSingleton* pUnoSingleton = findUnoSingleton( aNewName );
-                    if( pUnoSingleton )
-                    {
-                        pRes = new SbxVariable( SbxVARIANT );
-                        SbxObjectRef xWrapper = static_cast<SbxObject*>(pUnoSingleton);
-                        pRes->PutObject( xWrapper.get() );
-                    }
-                }
             }
         }
 

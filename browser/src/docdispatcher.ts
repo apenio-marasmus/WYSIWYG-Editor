@@ -420,7 +420,8 @@ class Dispatcher {
 	//
 	// An area defines blur only when it leaves sticky focus state behind that
 	// has to be cleared as focus moves away from it.
-	private getFocusRegions(): Array<{
+	getFocusRegions(): Array<{
+		name: string;
 		available: () => boolean;
 		hasFocus: () => boolean;
 		focus: () => boolean;
@@ -442,6 +443,7 @@ class Dispatcher {
 		};
 
 		const topBar = {
+			name: 'topBar',
 			available: () => true,
 			hasFocus: () =>
 				contains(document.querySelector('.notebookbar-tabs-container')) ||
@@ -449,7 +451,21 @@ class Dispatcher {
 			focus: () => this.focusTopBar(),
 		};
 
+		const topToolbar = {
+			name: 'topToolbar',
+			available: () => {
+				if (app.map.uiManager.getCurrentMode() === 'notebookbar') return false;
+				const bar = document.getElementById('toolbar-up');
+				if (!isVisible(bar)) return false;
+				const focusables = JSDialog.GetFocusableElements(bar);
+				return !!focusables && focusables.length > 0;
+			},
+			hasFocus: () => contains(document.getElementById('toolbar-up')),
+			focus: () => focusFirstIn(document.getElementById('toolbar-up')),
+		};
+
 		const formulaBar = {
+			name: 'formulaBar',
 			available: () =>
 				!app.isReadOnly() &&
 				isVisible(document.getElementById('sc_input_window')),
@@ -487,6 +503,7 @@ class Dispatcher {
 			isVisible(document.getElementById('slide-sorter'));
 
 		const navigationSidebar = {
+			name: 'navigationSidebar',
 			available: () =>
 				slideSorterShowing() ||
 				(!!app.map.navigator && app.map.navigator.isNavigationPanelVisible()),
@@ -510,6 +527,7 @@ class Dispatcher {
 		};
 
 		const documentArea = {
+			name: 'documentArea',
 			available: () => true,
 			hasFocus: () => app.map.hasFocus() && !app.map.calcInputBarHasFocus(),
 			focus: () => {
@@ -519,12 +537,14 @@ class Dispatcher {
 		};
 
 		const sidebar = {
+			name: 'sidebar',
 			available: () => !!app.map.sidebar && app.map.sidebar.isVisible(),
 			hasFocus: () => !!app.map.sidebar && contains(app.map.sidebar.wrapper),
 			focus: () => focusFirstIn(app.map.sidebar.wrapper),
 		};
 
 		const statusBar = {
+			name: 'statusBar',
 			available: () => {
 				const bar = document.getElementById('toolbar-down');
 				if (!isVisible(bar)) return false;
@@ -536,6 +556,7 @@ class Dispatcher {
 		};
 
 		const sheetTabs = {
+			name: 'sheetTabs',
 			available: () =>
 				isVisible(document.getElementById('spreadsheet-toolbar')),
 			hasFocus: () => {
@@ -553,6 +574,7 @@ class Dispatcher {
 		};
 
 		const regions = [topBar];
+		regions.push(topToolbar);
 		if (docType === 'spreadsheet') regions.push(formulaBar);
 		regions.push(navigationSidebar);
 		regions.push(documentArea);
@@ -682,17 +704,20 @@ class Dispatcher {
 				section.openContextMenuForCurrentSelection();
 		};
 
+		// Save the cell edit. On a small screen the edit is saved with an Enter key
+		// press, so the cell cursor also moves on to the next cell.
 		this.actionsMap['acceptformula'] = function () {
-			if (window.mode.isSmallScreenDevice()) {
-				app.map.focus();
-				app.map._docLayer.postKeyboardEvent(
-					'input',
-					app.map.keyboard.keyCodes.enter,
-					app.map.keyboard._toUNOKeyCode(app.map.keyboard.keyCodes.enter),
-				);
-			} else {
-				app.map.sendUnoCommand('.uno:AcceptFormula');
+			if (!window.mode.isSmallScreenDevice()) {
+				app.dispatcher.acceptFormulaInPlace();
+				return;
 			}
+
+			app.map.focus();
+			app.map._docLayer.postKeyboardEvent(
+				'input',
+				app.map.keyboard.keyCodes.enter,
+				app.map.keyboard._toUNOKeyCode(app.map.keyboard.keyCodes.enter),
+			);
 
 			app.map.onFormulaBarBlur();
 			app.map.formulabarBlur();
@@ -1310,6 +1335,15 @@ class Dispatcher {
 		}
 
 		if (window.mode.isSmallScreenDevice()) this.addMobileCommands();
+	}
+
+	// Save the cell edit and leave the cell cursor on the same cell.
+	public acceptFormulaInPlace() {
+		app.map.sendUnoCommand('.uno:AcceptFormula');
+
+		app.map.onFormulaBarBlur();
+		app.map.formulabarBlur();
+		app.map.formulabarSetDirty();
 	}
 
 	public dispatch(action: string, data?: any) {
