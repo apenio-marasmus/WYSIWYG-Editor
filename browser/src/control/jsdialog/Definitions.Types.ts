@@ -30,6 +30,7 @@ interface WidgetJSON {
 	width?: string; // inside grid - width in number of columns
 	hexpand?: boolean; // horizontal expand in grid column
 	sizeGroupId?: string; // size group ID; widgets sharing an ID get their min-width equalized
+	vexpand?: boolean; // vertical expand in grid row
 	halign?: string; // horizontal alignment within the grid cell (start, center, end)
 	valign?: string; // vertical alignment within the grid cell (start, center, end)
 	labelledBy?: string | string[];
@@ -359,6 +360,10 @@ interface ToolItemWidgetJSON extends WidgetJSON {
 	items?: Array<ToolItemWidgetJSON>; // DEPRECATED: w2 menus
 }
 
+interface DeckWidgetJSON extends WidgetJSON {
+	headerText?: string; // title shown in a heading row above the deck's panels
+}
+
 interface PanelWidgetJSON extends WidgetJSON {
 	hidden: boolean; // is hidden
 	command: string; // command to trigger options for a panel
@@ -386,7 +391,8 @@ interface TextWidget extends WidgetJSON {
 interface PushButtonWidget extends WidgetJSON {
 	symbol?: string;
 	text?: string;
-	image?: string;
+	icon?: string; // icon theme link name, resolved to one of our own SVGs
+	image?: string; // base64 bitmap, the fallback when we ship no such icon
 	isToggle?: boolean;
 	checked?: boolean;
 	command?: string;

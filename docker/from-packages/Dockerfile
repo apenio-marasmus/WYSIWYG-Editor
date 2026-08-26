@@ -10,6 +10,13 @@
 # manager; drop the '-minimal' suffix for the standard variant, which ships a
 # static busybox useful for debugging. Bump this as new releases appear, see
 # https://gitlab.opencode.de/oci-community/images/zendis/base
+#
+# The ZenDiS base is published for amd64 and arm64 only. To build for another
+# platform (e.g. linux/ppc64le), override this with a base image that supports
+# it: gcr.io/distroless/base-debian13 is equally distroless (glibc, openssl,
+# ca-certificates, tzdata; no shell, no package manager) and covers ppc64le,
+# s390x and riscv64 - keep its Debian release in step with the builder stage
+# below. Plain debian:stable-slim also works, but is not distroless.
 ARG runtime_base="registry.opencode.de/oci-community/images/zendis/base:1.0.0-rc.6-minimal"
 
 # Metadata, applied to the final image (see the runtime stage below).
@@ -41,6 +48,12 @@ ARG type
 
 # Optional. If defined then brand package will not be installed.
 ARG nobrand
+
+# Optional. If defined then Python scripting support (pyuno and the Python
+# script provider) is installed, enabling server-side Python macros and the
+# CallPythonScript postMessage API. Macro execution must still be enabled at
+# runtime (security.enable_macros_execution).
+ARG withpython
 
 # UTF-8 locale is needed to handle file names with non-ASCII characters
 ENV LC_CTYPE C.UTF-8
@@ -124,6 +137,14 @@ RUN --mount=type=secret,id=secret_key \
                        collaboraofficebasis-vi \
                        collaboraofficebasis-zh-cn \
                        collaboraofficebasis-zh-tw && \
+# Install Python scripting support (or not): pyuno and the Python script
+# provider are not dependencies of coolwsd, and the distroless image offers no
+# way to add packages at runtime, so server-side Python macros need them baked
+# in at build time
+    if [ -n "$withpython" ]; then \
+        apt-get -y install collaboraofficebasis-pyuno \
+                           collaboraofficebasis-python-script-provider; \
+    fi && \
 # Install brand package (or not)
     if [ -z "$nobrand" ]; then \
         if [ "$type" = "cool" ] || [ "$type" = "key" ]; then \

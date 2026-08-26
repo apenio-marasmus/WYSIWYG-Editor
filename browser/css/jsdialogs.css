@@ -46,9 +46,13 @@
 	max-width: 380px;
 }
 
+/* A dialog that has a window of its own keeps its natural size in a narrow
+   window, because that window is sized to the dialog. */
 @media (max-width: 480px) {
 
-	.jsdialog-window:not(.modalpopup) .jsdialog-container:not(.snackbar) {
+	body:not(.jsdialog-popout-body)
+	.jsdialog-window:not(.modalpopup)
+	.jsdialog-container:not(.snackbar) {
 		min-width: unset;
 		width: 460px;
 	}
@@ -252,7 +256,7 @@ div#autoFillPreviewTooltip .lokdialog.ui-dialog-content.ui-widget-content {
 }
 
 .jsdialog-container .ui-dialog-content {
-	max-height: calc( 90vh - 34px);
+	max-height: calc(0.9 * var(--dialog-available-height) - 34px);
 	overflow-y: auto !important;
 	background-color: var(--color-background-lighter) !important;
 	font-family: var(--cool-font);
@@ -262,7 +266,7 @@ div#autoFillPreviewTooltip .lokdialog.ui-dialog-content.ui-widget-content {
 }
 [data-docType='spreadsheet'] .jsdialog-container .ui-dialog-content,
 [data-docType='text'] .jsdialog-container .ui-dialog-content {
-	max-height: calc( 90vh - 98px);
+	max-height: calc(0.9 * var(--dialog-available-height) - 98px);
 }
 #SortKeyWindow {
 	/* As used in .jsdialog-container .ui-dialog-content 90 % of the viewport
@@ -274,7 +278,7 @@ div#autoFillPreviewTooltip .lokdialog.ui-dialog-content.ui-widget-content {
 		- 38px formulabar
 		- 38px document-header
    */
-	max-height: calc( 90vh - 352px);
+	max-height: calc(0.9 * var(--dialog-available-height) - 352px);
 }
 
 .jsdialog-container .ui-dialog-content > div:not(.ui-scrollwindow) {
@@ -283,7 +287,9 @@ div#autoFillPreviewTooltip .lokdialog.ui-dialog-content.ui-widget-content {
 
 @media (max-width: 480px) {
 
-	.jsdialog-container .ui-dialog-content > div:not(.ui-scrollwindow) {
+	body:not(.jsdialog-popout-body)
+	.jsdialog-container
+	.ui-dialog-content > div:not(.ui-scrollwindow) {
 		overflow: unset;
 	}
 }
@@ -303,7 +309,9 @@ div#autoFillPreviewTooltip .lokdialog.ui-dialog-content.ui-widget-content {
 
 @media (max-width: 480px) {
 
-	.jsdialog-container .lokdialog.ui-dialog-content.ui-widget-content {
+	body:not(.jsdialog-popout-body)
+	.jsdialog-container
+	.lokdialog.ui-dialog-content.ui-widget-content {
 		overflow-x: unset;
 	}
 }
@@ -627,22 +635,27 @@ body button:not(.ui-corner-all):not(.button):not(.button-primary):not(.unobutton
 
 /* Vertical tab rail: used when a dialog has more tabs than comfortably fit a
    horizontal row. The rail sits on the inline-start side and the panel fills
-   the rest. The rail has a fixed width and is taken out of the normal flow, so
-   the panel beside it stays a plain block that sizes to its own content. The
-   dialog measures each tab page from that panel to size itself, the same as in
-   the horizontal layout, and the panel reserves a margin for the rail. */
+   the rest. Rail and panel share one grid row, so the root is as tall as the
+   taller of the two: the rail stays fully visible even when the selected page
+   is empty (e.g. the Area tab with fill "None"), and a tall page stretches the
+   rail to its full height. The dialog measures each tab page from the panel to
+   size itself, the same as in the horizontal layout. */
 
 .ui-tabs-root.vertical {
 	position: relative;
 	--cool-vertical-rail-width: 150px;
+	display: grid;
+	/* An auto column sizes the dialog to the widest page and still stretches
+	   into free space; a fr column would not grow the dialog intrinsically. */
+	grid-template-columns: var(--cool-vertical-rail-width) auto;
 }
 
 .ui-tabs.vertical.jsdialog.ui-widget {
-	position: absolute;
-	inset-block: 0;
-	inset-inline-start: 0;
+	grid-row: 1;
+	grid-column: 1;
+	box-sizing: border-box;
 	width: var(--cool-vertical-rail-width);
-	height: 100%;
+	min-height: 0;
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
@@ -651,7 +664,8 @@ body button:not(.ui-corner-all):not(.button):not(.button-primary):not(.unobutton
 }
 
 .ui-tabs-root.vertical > .ui-tabs-content.jsdialog {
-	margin-inline-start: var(--cool-vertical-rail-width);
+	grid-row: 1;
+	grid-column: 2;
 	padding-left: 16px;
 }
 
@@ -2071,7 +2085,7 @@ img.ui-combobox-value-preview {
 	justify-content: space-between;
 	display: grid;
 	grid-template-columns: 1fr 1fr 1fr;
-	max-height: 40vh;
+	max-height: calc(0.4 * var(--dialog-available-height));
 	gap: var(--spacing-xs);
 	padding: var(--spacing-xs);
 }
@@ -3290,7 +3304,7 @@ button.has-img img {
 }
 
 #zoterolist.jsdialog {
-	width: calc(min(800px, 80vw));
+	width: min(800px, calc(0.8 * var(--dialog-available-width)));
 }
 
 .jsdialog[id^='zotero'][id$='-label'] {
@@ -3874,7 +3888,7 @@ kbd,
 }
 
 #ServerAuditDialog #ServerAuditDialog-mainbox {
-	min-width: calc(min(600px, 80vw));
+	min-width: min(600px, calc(0.8 * var(--dialog-available-width)));
 }
 
 #ServerAuditDialog .ui-treeview {
@@ -3987,7 +4001,7 @@ kbd,
 
 [id^='ColorPage'].jsdialog [id^='iconview_colors'].ui-iconview,
 [id^='colorwindow_iv_colors'].ui-iconview {
-	max-height: 25vh;
+	max-height: calc(0.25 * var(--dialog-available-height));
 }
 
 [id^='ColorPage'].jsdialog :is([id^='iconview_colors'], [id^='iconview_recent_colors']).ui-iconview .ui-iconview-entry :is(img, span),
@@ -4148,7 +4162,7 @@ kbd,
 /* Listbox UI grid */
 /* exclude text/bg color-picker: it's not a scolling list */
 .jsdialog.ui-grid[role='listbox']:not(:has(> .ui-iconview)):not(:has(> .ui-color-picker)) {
-	max-height: min(470px, 45vh);
+	max-height: min(470px, calc(0.45 * var(--dialog-available-height)));
 }
 
 .jsdialog.ui-grid[role='listbox'] {
@@ -4483,4 +4497,109 @@ img#collab-choice-avatar {
 .ui-treeview.ui-treeview-tree .ui-treeview-entry:focus-visible {
 	outline: 2px solid var(--color-primary);
 	outline-offset: -2px;
+}
+
+/* The shell draws the frame, title and close button, so the in-page titlebar
+   and position margins fall away. */
+.jsdialog-popout {
+	margin: 0 !important;
+}
+
+.jsdialog-window.jsdialog-popout {
+	inset: 0;
+}
+
+/* The window is opened at the size of the dialog's content and is the larger of
+   the two from then on, so a window the user drags out is covered by the dialog
+   rather than by a blank field. */
+.jsdialog-window.jsdialog-popout > .jsdialog-container.lokdialog_container {
+	inset: 0;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+}
+
+/* The measuring class is on for as long as it takes to read the size the dialog
+   would like, and turns off the rules below, so the answer is the size of the
+   dialog's own content rather than of the longest list in it. */
+.jsdialog-window.jsdialog-popout.jsdialog-popout-measuring > .jsdialog-container.lokdialog_container {
+	width: max-content;
+	max-width: var(--dialog-available-width);
+	height: max-content;
+}
+
+.jsdialog-window.jsdialog-popout:not(.jsdialog-popout-measuring) > .jsdialog-container.lokdialog_container {
+	width: 100%;
+	height: 100%;
+}
+
+/* The height comes from the window, not from the fraction of the browser window
+   an in-page dialog is held to. */
+.jsdialog-popout:not(.jsdialog-popout-measuring) .ui-dialog-content {
+	max-height: none;
+}
+
+/* Core marks the widgets a dialog hands its spare height to. Each of them takes
+   that height, and so does every container between one and the dialog itself. */
+.jsdialog-popout:not(.jsdialog-popout-measuring) .jsdialog-vexpand,
+.jsdialog-popout:not(.jsdialog-popout-measuring)
+.jsdialog:has(.jsdialog-vexpand) {
+	flex: 1 1 auto;
+	align-self: stretch;
+	min-height: 0;
+}
+
+/* A plain container hands its height on as a column of children. A grid does it
+   through its 1fr row and a tab panel through its own height below. */
+.jsdialog-popout:not(.jsdialog-popout-measuring)
+.jsdialog:has(.jsdialog-vexpand):not(.ui-grid):not(.ui-content):not(
+	.ui-tabs-content
+):not(.ui-tabs-root) {
+	display: flex;
+	flex-direction: column;
+}
+
+/* The tab rail is positioned against the whole tab control, so the panel
+   beside it follows the control's height instead of being a flex child. */
+.jsdialog-popout:not(.jsdialog-popout-measuring)
+.ui-tabs-root > .ui-tabs-content {
+	height: 100%;
+	min-height: 0;
+}
+
+/* The grid is as tall as the window it fills, so the marked row takes the height
+   the other rows do not need. */
+.jsdialog-popout:not(.jsdialog-popout-measuring)
+.ui-grid:has(> .jsdialog-vexpand) {
+	grid-template-rows: var(--jsdialog-filled-rows) !important;
+}
+
+/* A single-child grid has an empty cell ahead of the widget, which leaves the
+   widget outside the rows the grid describes. A row hands the height straight on. */
+.jsdialog-popout:not(.jsdialog-popout-measuring)
+.single-child-grid:has(> .jsdialog-vexpand) {
+	display: flex;
+}
+
+/* The widget takes what the dialog's own window gives it, not the fraction of
+   the browser window that keeps an in-page dialog smaller than the document. */
+.jsdialog-popout:not(.jsdialog-popout-measuring) .jsdialog-vexpand {
+	max-height: none;
+}
+
+/* Entries keep their own height and start at the top, so a gallery given more
+   room than its entries need shows a plain gap under the last row. */
+.jsdialog-popout:not(.jsdialog-popout-measuring)
+.ui-iconview.jsdialog-vexpand {
+	align-content: start;
+	overflow-y: auto;
+}
+
+.jsdialog-popout .ui-dialog-titlebar {
+	display: none;
+}
+
+.jsdialog-popout-body {
+	margin: 0;
+	overflow: hidden;
 }

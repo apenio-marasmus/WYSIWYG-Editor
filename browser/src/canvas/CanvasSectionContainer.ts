@@ -190,8 +190,6 @@ class CanvasSectionContainer {
 	private mouseIsInside: boolean = false;
 	private inZoomAnimation: boolean = false;
 	private postZoomReplay: boolean = false;
-	private zoomChanged: boolean = false;
-	private scrollingBeforeZoomSettled: boolean = false;
 	private documentAnchorSectionName: string = null; // This section's top left point declares the point where document starts.
 	private documentAnchor: Array<number> = null; // This is the point where document starts inside canvas element. Initial value shouldn't be [0, 0].
 	// Above 2 properties can be used with documentBounds.
@@ -352,20 +350,6 @@ class CanvasSectionContainer {
 
 	public isPostZoomReplay (): boolean {
 		return this.postZoomReplay;
-	}
-
-	public setZoomChanged (zoomChanged: boolean) {
-		this.zoomChanged = zoomChanged;
-		if (!zoomChanged)
-			this.scrollingBeforeZoomSettled = false;
-	}
-
-	public setScrollingBeforeZoomSettled (on: boolean) {
-		this.scrollingBeforeZoomSettled = on;
-	}
-
-	public isZoomChanged (): boolean {
-		return this.zoomChanged;
 	}
 
 	public drawingAllowed (): boolean {
@@ -662,7 +646,7 @@ class CanvasSectionContainer {
 			const documentContainer = document.getElementById('document-container');
 			if (documentContainer && documentContainer.clientWidth !== 0 || documentContainer.clientHeight !== 0) {
 				if (app.map._docLayer) {
-					app.map._docLayer._syncTileContainerSize(true);
+					app.map._docLayer._syncTileContainerSize();
 					app.activeDocument.activeLayout.sendClientVisibleArea();
 					this.requestReDraw();
 					return false;
@@ -817,8 +801,8 @@ class CanvasSectionContainer {
 		this.propagateClickLike(section, position, e, (target, point, ev) => target.onClick(point, ev));
 	}
 
-	private propagateOnMiddleClick(section: CanvasSectionObject, position: Array<number>, e: MouseEvent) {
-		this.propagateClickLike(section, position, e, (target, point, ev) => target.onMiddleClick(point, ev));
+	private propagateOnMiddleClick(section: CanvasSectionObject, position: Array<number>, e: MouseEvent, openHyperlink: boolean) {
+		this.propagateClickLike(section, position, e, (target, point, ev) => target.onMiddleClick(point, ev, openHyperlink));
 	}
 
 	private propagateOnDoubleClick(section: CanvasSectionObject, position: Array<number>, e: MouseEvent) {
@@ -1214,7 +1198,7 @@ class CanvasSectionContainer {
 		const mousePosition = this.convertPositionToCanvasLocale(e);
 		const section: CanvasSectionObject = this.findSectionContainingPoint(mousePosition);
 		if (section) {
-			this.propagateOnMiddleClick(section, this.convertPositionToSectionLocale(section, mousePosition), e);
+			this.propagateOnMiddleClick(section, this.convertPositionToSectionLocale(section, mousePosition), e, /* openHyperlink */ true);
 		}
 		this.clearMousePositions();
 	}
@@ -1312,13 +1296,24 @@ class CanvasSectionContainer {
 			// The engine shows the hand pointer while the mouse is over a
 			// hyperlink. Only then does the middle button act as a click
 			// that opens the link: consume the press here, before the
-			// browser would start the autoscroll. A middle-button press
-			// anywhere else is left to the browser, so pasting the primary
-			// selection keeps working.
+			// browser would start the autoscroll.
 			this.middleClickOnHyperlink = this.isPointerOverHyperlink();
 			if (this.middleClickOnHyperlink) {
 				e.preventDefault();
 				e.stopPropagation();
+			} else {
+				// A middle-button press elsewhere is left to the browser, so
+				// pasting the primary selection keeps working, but the paste is
+				// that press's own default action - it happens before any event
+				// fired after this one, such as auxclick. Move the cell or text
+				// cursor to the pointer now, the same as a left click would, so
+				// the paste lands there instead of wherever the cursor was left
+				// before.
+				const mousePosition = this.convertPositionToCanvasLocale(e);
+				const section: CanvasSectionObject = this.findSectionContainingPoint(mousePosition);
+				if (section) {
+					this.propagateOnMiddleClick(section, this.convertPositionToSectionLocale(section, mousePosition), e, /* openHyperlink */ false);
+				}
 			}
 			return;
 		}
@@ -2024,12 +2019,6 @@ class CanvasSectionContainer {
 	}
 
 	private shouldDrawSection (section: CanvasSectionObject) {
-	    // Settling phase (zoom ended but new tiles not in yet: zoomChanged true,
-	    // inZoomAnimation false): the tiles section waits and the canvas is not
-	    // cleared, so skip document sections to avoid stacking on the last frame.
-	    if (section.documentObject && this.zoomChanged && !this.inZoomAnimation)
-	        return false;
-
 	    return section.isLocated && section.showSection && (!section.documentObject || section.isVisible);
 	}
 
@@ -2044,9 +2033,7 @@ class CanvasSectionContainer {
 
 		this.context.setTransform(1, 0, 0, 1, 0, 0);
 
-		if (!this.zoomChanged || this.scrollingBeforeZoomSettled) {
-			this.clearCanvas();
-		}
+		this.clearCanvas();
 
 		this.context.font = String(20 * app.dpiScale) + 'px Verdana';
 		for (var i: number = 0; i < this.sections.length; i++) {
