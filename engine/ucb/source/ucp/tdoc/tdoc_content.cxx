@@ -106,7 +106,7 @@ static ContentType lcl_getContentType( std::u16string_view rType )
 
 // static ( "virtual" ctor )
 rtl::Reference<Content> Content::create(
-            const uno::Reference< uno::XComponentContext >& rxContext,
+            const uno::Reference< cpo::uno::XComponentContext >& rxContext,
             ContentProvider* pProvider,
             const uno::Reference< ucb::XContentIdentifier >& Identifier )
 {
@@ -123,7 +123,7 @@ rtl::Reference<Content> Content::create(
 
 // static ( "virtual" ctor )
 rtl::Reference<Content> Content::create(
-            const uno::Reference< uno::XComponentContext >& rxContext,
+            const uno::Reference< cpo::uno::XComponentContext >& rxContext,
             ContentProvider* pProvider,
             const uno::Reference< ucb::XContentIdentifier >& Identifier,
             const ucb::ContentInfo& Info )
@@ -142,7 +142,7 @@ rtl::Reference<Content> Content::create(
 
 
 Content::Content(
-            const uno::Reference< uno::XComponentContext > & rxContext,
+            const uno::Reference< cpo::uno::XComponentContext > & rxContext,
             ContentProvider * pProvider,
             const uno::Reference< ucb::XContentIdentifier > & Identifier,
             ContentProperties aProps )
@@ -156,7 +156,7 @@ Content::Content(
 
 // ctor for a content just created via XContentCreator::createNewContent()
 Content::Content(
-            const uno::Reference< uno::XComponentContext >& rxContext,
+            const uno::Reference< cpo::uno::XComponentContext >& rxContext,
             ContentProvider* pProvider,
             const uno::Reference< ucb::XContentIdentifier >& Identifier,
             const ucb::ContentInfo& Info )
@@ -498,7 +498,7 @@ cpo::uno::Any SAL_CALL Content::execute(
         {
             cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
             {
-                 {"Uri", cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
+                 {u"Uri"_ustr, cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
             }));
             ucbhelper::cancelCommandExecution(
                 ucb::IOErrorCode_CANT_WRITE,
@@ -824,7 +824,7 @@ bool Content::exchangeIdentity(
 
 // static
 uno::Reference< sdbc::XRow > Content::getPropertyValues(
-                const uno::Reference< uno::XComponentContext >& rxContext,
+                const uno::Reference< cpo::uno::XComponentContext >& rxContext,
                 const cpo::uno::Sequence< beans::Property >& rProperties,
                 ContentProvider* pProvider,
                 const OUString& rContentId )
@@ -850,7 +850,7 @@ uno::Reference< sdbc::XRow > Content::getPropertyValues(
 
 // static
 uno::Reference< sdbc::XRow > Content::getPropertyValues(
-                const uno::Reference< uno::XComponentContext >& rxContext,
+                const uno::Reference< cpo::uno::XComponentContext >& rxContext,
                 const cpo::uno::Sequence< beans::Property >& rProperties,
                 const ContentProperties& rData,
                 ContentProvider* pProvider,
@@ -1307,7 +1307,7 @@ cpo::uno::Sequence< cpo::uno::Any > Content::setPropertyValues(
             {
                 cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
                 {
-                     {"Uri", cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
+                     {u"Uri"_ustr, cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
                 }));
                 ucbhelper::cancelCommandExecution(
                     ucb::IOErrorCode_CANT_WRITE,
@@ -1377,7 +1377,7 @@ cpo::uno::Any Content::open(
                 // No interaction if we are not persistent!
                 cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
                 {
-                    {"Uri", cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
+                    {u"Uri"_ustr, cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
                 }));
                 ucbhelper::cancelCommandExecution(
                     ucb::IOErrorCode_CANT_READ,
@@ -1407,7 +1407,7 @@ cpo::uno::Any Content::open(
                     // No interaction if we are not persistent!
                     cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
                     {
-                        {"Uri", cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
+                        {u"Uri"_ustr, cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
                     }));
                     ucbhelper::cancelCommandExecution(
                         ucb::IOErrorCode_CANT_READ,
@@ -1463,7 +1463,7 @@ cpo::uno::Any Content::open(
                         // No interaction if we are not persistent!
                         cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
                         {
-                            {"Uri", cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
+                            {u"Uri"_ustr, cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
                         }));
                         ucbhelper::cancelCommandExecution(
                             ucb::IOErrorCode_CANT_READ,
@@ -1635,7 +1635,7 @@ void Content::insert( const uno::Reference< io::XInputStream >& xData,
     {
         cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
         {
-            {"Uri", cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
+            {u"Uri"_ustr, cpo::uno::Any(m_xIdentifier->getContentIdentifier())}
         }));
         ucbhelper::cancelCommandExecution(
             ucb::IOErrorCode_CANT_WRITE,
@@ -1885,7 +1885,7 @@ void Content::transfer(
         {
             cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
             {
-                {"Uri", cpo::uno::Any(rInfo.SourceURL)}
+                {u"Uri"_ustr, cpo::uno::Any(rInfo.SourceURL)}
             }));
             ucbhelper::cancelCommandExecution(
                 ucb::IOErrorCode_RECURSIVE,
@@ -1960,7 +1960,7 @@ void Content::transfer(
     {
         cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
         {
-            {"Uri", cpo::uno::Any(rInfo.SourceURL)}
+            {u"Uri"_ustr, cpo::uno::Any(rInfo.SourceURL)}
         }));
         ucbhelper::cancelCommandExecution(
             ucb::IOErrorCode_CANT_WRITE,
@@ -1988,7 +1988,7 @@ void Content::transfer(
     {
         cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
         {
-            {"Uri", cpo::uno::Any(rInfo.SourceURL)}
+            {u"Uri"_ustr, cpo::uno::Any(rInfo.SourceURL)}
         }));
         ucbhelper::cancelCommandExecution(
             ucb::IOErrorCode_CANT_WRITE,
@@ -2024,7 +2024,7 @@ void Content::transfer(
     {
         cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
         {
-            {"Uri", cpo::uno::Any(aTargetUri)}
+            {u"Uri"_ustr, cpo::uno::Any(aTargetUri)}
         }));
         ucbhelper::cancelCommandExecution(
             ucb::IOErrorCode_CANT_READ,
@@ -2065,7 +2065,7 @@ void Content::transfer(
     {
         cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
         {
-            {"Uri", cpo::uno::Any(rInfo.SourceURL)}
+            {u"Uri"_ustr, cpo::uno::Any(rInfo.SourceURL)}
         }));
         ucbhelper::cancelCommandExecution(
             ucb::IOErrorCode_CANT_READ,
@@ -2084,7 +2084,7 @@ void Content::transfer(
     {
         cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
         {
-            {"Uri", cpo::uno::Any(rInfo.SourceURL)}
+            {u"Uri"_ustr, cpo::uno::Any(rInfo.SourceURL)}
         }));
         ucbhelper::cancelCommandExecution(
             ucb::IOErrorCode_CANT_WRITE,
@@ -2101,7 +2101,7 @@ void Content::transfer(
 
     cpo::uno::Sequence<cpo::uno::Any> aArgs(comphelper::InitAnyPropertySequence(
     {
-        {"Uri", cpo::uno::Any(rInfo.SourceURL)}
+        {u"Uri"_ustr, cpo::uno::Any(rInfo.SourceURL)}
     }));
     ucbhelper::cancelCommandExecution(
         ucb::IOErrorCode_CANT_WRITE,

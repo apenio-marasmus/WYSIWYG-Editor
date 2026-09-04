@@ -1462,32 +1462,11 @@ bool ChildSession::clientVisibleArea(const StringVector& tokens)
 
 TilePrioritizer::Priority ChildSession::getTilePriority(const TileDesc &tile) const
 {
-    // previews are least interesting
-    if (tile.isPreview())
-        return TilePrioritizer::Priority::LOWEST;
-
-    // different part less interesting than session's current part
-    if (tile.getPart() != _currentPartUniqueId)
-        return TilePrioritizer::Priority::LOW;
-
-    // most important to render things close to the cursor fast
-    if (tile.intersects(_cursorPosition))
-        return TilePrioritizer::Priority::ULTRAHIGH;
-
-    // inside viewing area more important than outside it
-    if (tile.intersects(_clientVisibleArea))
-        return TilePrioritizer::Priority::VERYHIGH;
-
-    // pre-loading near the viewing area is also more important than far away
-    Util::Rectangle r = tile.toAABBox();
-    // grow in each direction
-    Util::Rectangle enlarged =
-        Util::Rectangle::create(r.getLeft() - r.getWidth(), r.getTop() - r.getHeight(),
-                                r.getRight() + r.getWidth(), r.getBottom() + r.getHeight());
-    if (enlarged.intersects(_clientVisibleArea))
-        return TilePrioritizer::Priority::HIGH;
-
-    return TilePrioritizer::Priority::NORMAL;
+    // One tile past the visible area counts as pre-loading, which is more interesting to render
+    // than a tile further out.
+    return TilePrioritizer::rankTile(tile, tile.getPart() == _currentPartUniqueId, _cursorPosition,
+                                     _clientVisibleArea, tile.getTileWidth(),
+                                     tile.getTileHeight());
 }
 
 bool ChildSession::outlineState(const StringVector& tokens)
@@ -2677,7 +2656,9 @@ bool ChildSession::unoCommand(const StringVector& tokens)
                           tokens.equals(1, ".uno:OpenHyperlink") ||
                           tokens.startsWith(1, "vnd.sun.star.script:") ||
                           tokens.equals(1, ".uno:Paste") ||
-                          tokens.equals(1, ".uno:PasteSpecial"));
+                          tokens.equals(1, ".uno:PasteSpecial") ||
+                          // Answers with how long the calculation took.
+                          tokens.equals(1, ".uno:CalculateSheet"));
 
     const std::string saveArgs = tokens.substrFromToken(2);
     LOG_TRC("uno command " << tokens[1] << " " << saveArgs << " notify: " << notify);

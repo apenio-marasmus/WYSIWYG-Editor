@@ -66,6 +66,7 @@ $(eval $(call gb_Module_add_check_targets,sc,\
 	CppunitTest_sc_ucalc_sparkline \
 	CppunitTest_sc_ucalc_solver \
 	CppunitTest_sc_ucalc_sort \
+	CppunitTest_sc_calculate_sheet_test \
 	CppunitTest_sc_filters_test \
 	CppunitTest_sc_oox_helpers_test \
 	CppunitTest_sc_mark_test \
@@ -100,6 +101,7 @@ $(eval $(call gb_Module_add_slowcheck_targets,sc, \
 	CppunitTest_sc_pivottable_filters_test \
 	CppunitTest_sc_pivottable_formats_import_export_test \
 	CppunitTest_sc_named_sheet_views_import_export_test \
+	CppunitTest_sc_dynamic_array_import_export_test \
 	CppunitTest_sc_sparkline_test \
 	CppunitTest_sc_subsequent_filters_test \
 	CppunitTest_sc_subsequent_filters_test2 \

@@ -205,6 +205,7 @@ shared_sources = \
                  common/Util.cpp \
                  kit/KitQueue.cpp \
                  kit/LogUI.cpp \
+                 net/FakeSocket-stub.cpp \
                  net/HttpHelper.cpp \
                  net/HttpRequest.cpp \
                  net/NetUtil.cpp \
@@ -297,7 +298,6 @@ coolwsd_inproc_SOURCES = $(coolwsd_sources) \
                          $(coolforkit_sources) \
                          wsd/coolwsd-inproc.cpp
 
-coolwsd_inproc_CPPFLAGS = $(AM_CPPFLAGS) -DENABLE_INPROC=1
 coolwsd_inproc_LDADD = libsimd.a libkitwsdglobals.a $(POCO_LIBS_HOST)
 coolwsd_inproc_LDFLAGS = $(POCO_LIBS_WHOLE) $(AM_LDFLAGS)
 
@@ -376,6 +376,7 @@ shared_headers = \
                  common/FileUtil.hpp \
                  common/Globals.hpp \
                  common/HexUtil.hpp \
+                 common/IpNetwork.hpp \
                  common/JailUtil.hpp \
                  common/JsonUtil.hpp \
                  common/Landlock.hpp \
@@ -405,6 +406,7 @@ shared_headers = \
                  common/StringVector.hpp \
                  common/Syscall.hpp \
                  common/ThreadPool.hpp \
+                 common/TilePrioritizer.hpp \
                  common/TraceEvent.hpp \
                  common/Unit.hpp \
                  common/Uri.hpp \
@@ -1007,7 +1009,7 @@ czech: all-local presets-dir
 collabora-online-sbom.spdx.json: $(GBUILD_EXES) coolwsd.xml coolkitconfig.xcu \
 		$(abs_top_srcdir)/scripts/create-sbom.py \
 		$(abs_top_srcdir)/scripts/sbom-externals.json \
-		$(abs_top_srcdir)/browser/npm-shrinkwrap.json
+		$(abs_top_builddir)/browser/npm-shrinkwrap.json
 	@$(MAKE) $(AM_MAKEFLAGS) -C browser sbom-shipped-js.txt
 	$(QUIET_SBOM) python3 $(abs_top_srcdir)/scripts/create-sbom.py \
 		--srcdir $(abs_top_srcdir) \

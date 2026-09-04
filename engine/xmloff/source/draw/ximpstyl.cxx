@@ -744,6 +744,11 @@ SdXMLMasterPageContext::SdXMLMasterPageContext(
                 maUseDateTimeDeclName =  sValue;
                 break;
             }
+            case XML_ELEMENT(CO_EXT, XML_GUID):
+            {
+                // stored by the SdXMLGenericPageContext constructor
+                break;
+            }
             default:
                 XMLOFF_WARN_UNKNOWN("xmloff", aIter);
         }
@@ -823,6 +828,11 @@ SdXMLMasterPageContext::SdXMLMasterPageContext(
             case XML_ELEMENT(PRESENTATION, XML_USE_DATE_TIME_NAME):
             {
                 maUseDateTimeDeclName =  sValue;
+                break;
+            }
+            case XML_ELEMENT(CO_EXT, XML_GUID):
+            {
+                // stored by the SdXMLGenericPageContext constructor
                 break;
             }
             default:
@@ -949,7 +959,7 @@ SdXMLStylesContext::SdXMLStylesContext(
 :   SvXMLStylesContext(rImport),
     mbIsAutoStyle(bIsAutoStyle)
 {
-    Reference< uno::XComponentContext > xContext = rImport.GetComponentContext();
+    Reference< cpo::uno::XComponentContext > xContext = rImport.GetComponentContext();
     mpNumFormatter = std::make_unique<SvNumberFormatter>( xContext, LANGUAGE_SYSTEM );
     mpNumFmtHelper = std::make_unique<SvXMLNumFmtHelper>( mpNumFormatter.get() );
 }

@@ -300,19 +300,6 @@ void Application::Abort( const OUString& rErrorText )
     SalAbort( rErrorText, dumpCore );
 }
 
-size_t Application::GetReservedKeyCodeCount()
-{
-    return SAL_N_ELEMENTS(ReservedKeys);
-}
-
-const vcl::KeyCode* Application::GetReservedKeyCode( size_t i )
-{
-    if( i >= GetReservedKeyCodeCount() )
-        return nullptr;
-    else
-        return &ReservedKeys[i];
-}
-
 void Application::notifyWindow(vcl::KitWindowId /*nKitWindowId*/,
                                const OUString& /*rAction*/,
                                const std::vector<vcl::KitPayloadItem>& /*rPayload = std::vector<KitPayloadItem>()*/) const
@@ -1600,21 +1587,15 @@ void Application::AppEvent( const ApplicationEvent& /*rAppEvent*/ )
 {
 }
 
-bool Application::hasNativeFileSelection()
-{
-    ImplSVData* pSVData = ImplGetSVData();
-    return pSVData->mpDefInst->hasNativeFileSelection();
-}
-
 Reference< ui::dialogs::XFilePicker2 >
-Application::createFilePicker( const Reference< uno::XComponentContext >& xSM )
+Application::createFilePicker( const Reference< cpo::uno::XComponentContext >& xSM )
 {
     ImplSVData* pSVData = ImplGetSVData();
     return pSVData->mpDefInst->createFilePicker( xSM );
 }
 
 Reference< ui::dialogs::XFolderPicker2 >
-Application::createFolderPicker( const Reference< uno::XComponentContext >& xSM )
+Application::createFolderPicker( const Reference< cpo::uno::XComponentContext >& xSM )
 {
     ImplSVData* pSVData = ImplGetSVData();
     return pSVData->mpDefInst->createFolderPicker( xSM );

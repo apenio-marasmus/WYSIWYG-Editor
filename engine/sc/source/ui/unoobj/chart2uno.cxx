@@ -1046,7 +1046,7 @@ uno::Reference< chart2::data::XLabeledDataSequence > lcl_createLabeledDataSequen
     {
         try
         {
-            const uno::Reference< uno::XComponentContext >& xContext( ::comphelper::getProcessComponentContext() );
+            const uno::Reference< cpo::uno::XComponentContext >& xContext( ::comphelper::getProcessComponentContext() );
             if ( xContext.is() )
             {
                 xResult.set( chart2::data::LabeledDataSequence::create(xContext), uno::UNO_QUERY_THROW );
@@ -1615,12 +1615,7 @@ public:
         if (!ScRefTokenHelper::isRef(pToken))
             return;
 
-        SCTAB nTab;
-        if (pToken->GetType() == svSingleRef)
-            nTab = static_cast<ScSingleRefToken*>(pToken.get())->GetSingleRef().Tab();
-        else
-            nTab = static_cast<ScDoubleRefToken*>(pToken.get())->GetSingleRef().Tab();
-        mpTabNumVector->push_back(nTab);
+        mpTabNumVector->push_back(ScRefTokenHelper::getSingleRef(pToken.get())->Tab());
     }
 
     void getVector(std::vector<SCTAB>& rVector)

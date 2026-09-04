@@ -50,7 +50,7 @@
 #include <cpo/uno/Any.hxx>
 #include <com/sun/star/uno/Reference.hxx>
 #include <cpo/uno/RuntimeException.hpp>
-#include <com/sun/star/uno/XComponentContext.hpp>
+#include <cpo/uno/XComponentContext.hpp>
 #include <com/sun/star/uno/XInterface.hpp>
 #include <cpo/uno/genfunc.hxx>
 #include <comphelper/json.hxx>
@@ -1226,8 +1226,8 @@ JSValue createService(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv
             JS_ThrowSyntaxError(ctx, "TODO: BAD NUMBER OF ARGUMENTS");
             throw JsException();
         }
-        css::uno::Reference<css::uno::XComponentContext> context(
-            fromJs(ctx, cppu::UnoType<css::uno::XComponentContext>::get(), argv[0]),
+        css::uno::Reference<cpo::uno::XComponentContext> context(
+            fromJs(ctx, cppu::UnoType<cpo::uno::XComponentContext>::get(), argv[0]),
             css::uno::UNO_QUERY_THROW);
         cpo::uno::Sequence<cpo::uno::Any> args(argc - 1);
         for (sal_Int32 i = 0; i != params.getLength(); ++i)
@@ -1279,8 +1279,8 @@ JSValue getSingleton(JSContext* ctx, JSValueConst, [[maybe_unused]] int argc, JS
     return callFromJs(ctx, [ctx, argv, func_data] {
         auto const s = static_cast<rtl_uString*>(
             JS_GetOpaque(func_data[0], getRuntimeData(ctx)->singletonClassId));
-        css::uno::Reference<css::uno::XComponentContext> context(
-            fromJs(ctx, cppu::UnoType<css::uno::XComponentContext>::get(), argv[0]),
+        css::uno::Reference<cpo::uno::XComponentContext> context(
+            fromJs(ctx, cppu::UnoType<cpo::uno::XComponentContext>::get(), argv[0]),
             css::uno::UNO_QUERY_THROW);
         css::uno::Reference<css::uno::XInterface> ifc(
             context->getValueByName("/singletons/" + OUString::unacquired(&s)),
@@ -2923,6 +2923,23 @@ jsuno::Exception extractException(JSContext* ctx, ValueRef const& err)
             if (p.get() != nullptr)
             {
                 exc.name = OUString(p.get(), n);
+            }
+        }
+        if (exc.name.isEmpty()) {
+            // For a UNO exception marshaled to JS, extract its name from the constructor's opaque
+            // 'data member:
+            if (ValueRef const ctorVal(ctx, JS_GetPropertyStr(ctx, err, "constructor"));
+                JS_IsObject(ctorVal))
+            {
+                if (ValueRef const dataVal(ctx, JS_GetPropertyStr(ctx, ctorVal, "'data"));
+                    JS_IsObject(dataVal))
+                {
+                    auto const typeRef = static_cast<typelib_TypeDescriptionReference *>(
+                        JS_GetOpaque(dataVal, getRuntimeData(ctx)->exceptionClassId));
+                    if (typeRef != nullptr) {
+                        exc.name = OUString::unacquired(&typeRef->pTypeName);
+                    }
+                }
             }
         }
         ValueRef const msgVal(ctx, JS_GetPropertyStr(ctx, err, "message"));

@@ -63,7 +63,7 @@ class PowerPointExport final : public XmlFilterBase, public PPTWriterBase
     friend class PowerPointShapeExport;
 public:
 
-    PowerPointExport(const css::uno::Reference<css::uno::XComponentContext> & rContext, const cpo::uno::Sequence<cpo::uno::Any>& rArguments);
+    PowerPointExport(const css::uno::Reference<cpo::uno::XComponentContext> & rContext, const cpo::uno::Sequence<cpo::uno::Any>& rArguments);
 
     virtual ~PowerPointExport() override;
 
@@ -104,6 +104,8 @@ private:
     virtual bool ImplCreateMainNotes() override;
     virtual ::oox::ole::VbaProject* implCreateVbaProject() const override;
     void WriteNotesMaster();
+    void WritePageGuidExtLst( const FSHelperPtr& pFS,
+                              const css::uno::Reference< css::beans::XPropertySet >& rXPropSet );
 
     bool WriteComments( sal_uInt32 nPageNum );
     void ImplWriteBackground( const ::sax_fastparser::FSHelperPtr& pFS, const css::uno::Reference< css::beans::XPropertySet >& aXBackgroundPropSet );

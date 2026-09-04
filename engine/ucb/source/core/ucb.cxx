@@ -223,7 +223,7 @@ bool createContentProviderData(
 
 
 UniversalContentBroker::UniversalContentBroker(
-    const Reference< css::uno::XComponentContext >& xContext )
+    const Reference< cpo::uno::XComponentContext >& xContext )
 : m_xContext( xContext ),
   m_nCommandId( 0 )
 {
@@ -296,7 +296,7 @@ cpo::uno::Sequence< OUString > SAL_CALL UniversalContentBroker::getSupportedServ
 
 extern "C" SAL_DLLPUBLIC_EXPORT css::uno::XInterface*
 ucb_UniversalContentBroker_get_implementation(
-    css::uno::XComponentContext* context , cpo::uno::Sequence<cpo::uno::Any> const&)
+    cpo::uno::XComponentContext* context , cpo::uno::Sequence<cpo::uno::Any> const&)
 {
     return cppu::acquire(new UniversalContentBroker(context));
 }
@@ -790,7 +790,7 @@ bool UniversalContentBroker::getContentProviderData(
 
         cpo::uno::Sequence<cpo::uno::Any> aArguments(comphelper::InitAnyPropertySequence(
         {
-            {"nodepath", cpo::uno::Any(aFullPath.makeStringAndClear())}
+            {u"nodepath"_ustr, cpo::uno::Any(aFullPath.makeStringAndClear())}
         }));
 
         uno::Reference< uno::XInterface > xInterface(

@@ -141,6 +141,7 @@ class SdXMLExport : public SvXMLExport
     void ImplExportHeaderFooterDeclAttributes( const HeaderFooterPageSettingsImpl& aSettings );
 
     void exportFormsElement( const css::uno::Reference< css::drawing::XDrawPage >& xDrawPage );
+    void ImpWritePageGuidAttribute( const css::uno::Reference< css::drawing::XDrawPage >& xPage );
     void exportTheme(const css::uno::Reference<css::drawing::XDrawPage>& xDrawPage);
     void exportPresentationSettings();
     void exportSections();
@@ -165,7 +166,7 @@ protected:
 
 public:
     SdXMLExport(
-        const css::uno::Reference< css::uno::XComponentContext >& xContext,
+        const css::uno::Reference< cpo::uno::XComponentContext >& xContext,
         OUString const & implementationName,
         bool bIsDraw, SvXMLExportFlags nExportFlags );
     virtual ~SdXMLExport() override;

@@ -58,7 +58,7 @@ using namespace comphelper;
 OCollectionView::OCollectionView(weld::Window* pParent,
                                  const Reference< XContent>& _xContent,
                                  const OUString& _sDefaultName,
-                                 css::uno::Reference< css::uno::XComponentContext > _xContext)
+                                 css::uno::Reference< cpo::uno::XComponentContext > _xContext)
     : GenericDialogController(pParent, u"dbaccess/ui/collectionviewdialog.ui"_ustr, u"CollectionView"_ustr)
     , m_xContent(_xContent)
     , m_xContext(std::move(_xContext))
@@ -133,8 +133,8 @@ IMPL_LINK_NOARG(OCollectionView, Save_Click, weld::Button&, void)
                 {
                     Sequence<Any> aValues(comphelper::InitAnyPropertySequence(
                     {
-                        {"ResourceName", Any(sSubFolder)},
-                        {"ResourceType", Any(u"folder"_ustr)}
+                        {u"ResourceName"_ustr, Any(sSubFolder)},
+                        {u"ResourceType"_ustr, Any(u"folder"_ustr)}
                     }));
                     InteractiveAugmentedIOException aException(OUString(),Reference<XInterface>(),
                                                                InteractionClassification_ERROR,

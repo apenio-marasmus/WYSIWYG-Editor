@@ -1516,6 +1516,25 @@ CPPUNIT_TEST_FIXTURE(ScExportTest4, testCool15769MinimalDBRanges)
     CPPUNIT_ASSERT(xNameAccess->hasByName(u"xl/tables/table3.xml"_ustr));
 }
 
+CPPUNIT_TEST_FIXTURE(ScExportTest4, testCool15780TotalsRowNeedsContent)
+{
+    createScDoc("ods/cool15780_totals_row_content.ods");
+    save(TestFilter::XLSX);
+
+    // threewheadertotals has a header row, but its only column's totals row cell
+    // holds a plain value with no aggregate function or label, so without the fix
+    // it exported as a totals row Excel refused to open.
+    xmlDocUniquePtr pTable3 = parseExport(u"xl/tables/table3.xml"_ustr);
+    CPPUNIT_ASSERT(pTable3);
+    assertXPath(pTable3, "/x:table", "totalsRowCount", u"0");
+
+    // twowtotals has a totals row but no header row at all.
+    xmlDocUniquePtr pTable6 = parseExport(u"xl/tables/table6.xml"_ustr);
+    CPPUNIT_ASSERT(pTable6);
+    assertXPath(pTable6, "/x:table", "headerRowCount", u"0");
+    assertXPath(pTable6, "/x:table", "totalsRowCount", u"0");
+}
+
 CPPUNIT_TEST_FIXTURE(ScExportTest4, testSingleOperatorXlsxRoundTrip)
 {
     // The @ operator round-trips through XLSX as _xlfn.SINGLE.
@@ -1577,14 +1596,17 @@ CPPUNIT_TEST_FIXTURE(ScExportTest4, testSpilledRangeOperatorXlsxExport)
 
 CPPUNIT_TEST_FIXTURE(ScExportTest4, testSingleOnSpilledRangeXlsxExport)
 {
-    // In =@A1# the # binds tighter than @, so the XLSX form nests
-    // as _xlfn.SINGLE(_xlfn.ANCHORARRAY(A1)).
+    // OOXML leaves the @ of a plain =@A1# cell out of the text and expresses it by keeping the
+    // cell a non-array formula, so that cell is written as a bare _xlfn.ANCHORARRAY(A1) and the
+    // import puts the @ back. An @ over a wider operand keeps the _xlfn.SINGLE call, which is
+    // what carries the meaning there.
     createScDoc();
     ScDocument* pDoc = getScDoc();
 
     pDoc->SetFormula(ScAddress(0, 0, 0), u"=SEQUENCE(3)"_ustr,
                      formula::FormulaGrammar::GRAM_NATIVE);
     pDoc->SetFormula(ScAddress(1, 0, 0), u"=@A1#"_ustr, formula::FormulaGrammar::GRAM_NATIVE);
+    pDoc->SetFormula(ScAddress(2, 0, 0), u"=@(A1#*2)"_ustr, formula::FormulaGrammar::GRAM_NATIVE);
 
     save(TestFilter::XLSX);
 
@@ -1592,7 +1614,14 @@ CPPUNIT_TEST_FIXTURE(ScExportTest4, testSingleOnSpilledRangeXlsxExport)
     CPPUNIT_ASSERT(pSheet);
 
     assertXPathContent(pSheet, "/x:worksheet/x:sheetData/x:row[1]/x:c[2]/x:f",
-                       u"_xlfn.SINGLE(_xlfn.ANCHORARRAY(A1))");
+                       u"_xlfn.ANCHORARRAY(A1)");
+    assertXPathContent(pSheet, "/x:worksheet/x:sheetData/x:row[1]/x:c[3]/x:f",
+                       u"_xlfn.SINGLE(_xlfn.ANCHORARRAY(A1)*2)");
+
+    saveAndReload(TestFilter::XLSX);
+    pDoc = getScDoc();
+    CPPUNIT_ASSERT_EQUAL(u"=@A1#"_ustr, pDoc->GetFormula(1, 0, 0));
+    CPPUNIT_ASSERT_EQUAL(u"=@(A1#*2)"_ustr, pDoc->GetFormula(2, 0, 0));
 }
 
 CPPUNIT_TEST_FIXTURE(ScExportTest4, testParenthesizedSpilledRangeXlsxRoundTrip)

@@ -410,8 +410,8 @@ public:
     virtual void viewUpdatedCallback(COKitCallbackType eType) const override;
     virtual void viewUpdatedCallbackPerViewId(COKitCallbackType eType, int nViewId, int nSourceViewId) const override;
     // Tells the view's callback handler that the vector content of the
-    // given slide part changed.
-    void viewVectorPartChanged(int nPart) const;
+    // given part changed, in the page list the mode names.
+    void viewVectorPartChanged(int nPart, int nMode) const;
     // Performs any pending calls to viewInvalidateTilesCallback() as necessary.
     virtual void flushPendingKitInvalidateTiles();
     virtual void viewAddPendingInvalidateTiles() override;
@@ -499,8 +499,6 @@ public:
     const LanguageTag& GetKitLocale() const { return maKitLocale; }
     /// Get the COKit calendar of this view.
     CalendarWrapper& GetKitCalendar();
-    /// Get the form factor of the device where the Kit client is running.
-    KitDeviceFormFactor GetKitDeviceFormFactor() const { return maKitDeviceFormFactor; }
     /// Check if the Kit client is running on a desktop machine.
     bool isKitDesktop() const { return maKitDeviceFormFactor == KitDeviceFormFactor::DESKTOP; }
     /// Check if the Kit client is running on a tablet.

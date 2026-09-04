@@ -60,6 +60,7 @@
 #include <common/Session.hpp>
 #include <common/SigUtil.hpp>
 #include <common/Unit.hpp>
+#include <common/IpNetwork.hpp>
 #include <common/Util.hpp>
 #include <net/AsyncDNS.hpp>
 #include <net/HttpRequest.hpp>
@@ -199,13 +200,8 @@ extern "C"
 
 void COOLWSD::appendAllowedHostsFrom(const LayeredConfiguration& conf, const std::string& root, std::vector<std::string>& allowed)
 {
-    for (size_t i = 0; ; ++i)
+    for (const std::string& path : ConfigUtil::getIndexedKeys(conf, root, "host"))
     {
-        const std::string path = root + ".host[" + std::to_string(i) + ']';
-        if (!conf.has(path))
-        {
-            break;
-        }
         std::string host = ConfigUtil::getConfigValue<std::string>(conf, path, "");
         if (!host.empty())
         {
@@ -564,7 +560,7 @@ void COOLWSD::cleanupDocBrokers()
 /// Forks as many children as requested.
 static void forkChildren(const std::string& configId, const int number)
 {
-    if constexpr (Util::isKitInProcess())
+    if (Util::isKitInProcess())
         return;
 
     LOG_TRC("Request forkit to spawn " << number << " new child(ren)");
@@ -590,7 +586,7 @@ static bool queueMessageToForKit(const std::string& message);
 
 bool COOLWSD::ensureSubForKit(const std::string& configId)
 {
-    if constexpr (Util::isKitInProcess())
+    if (Util::isKitInProcess())
         return false;
 
     LOG_TRC("Request forkit to spawn subForKit " << configId);
@@ -630,7 +626,7 @@ bool COOLWSD::ensureSubForKit(const std::string& configId)
 /// Cleans up dead children.
 static void cleanupChildren()
 {
-    if constexpr (Util::isKitInProcess())
+    if (Util::isKitInProcess())
         return;
 
     Util::assertIsLocked(NewChildrenMutex);
@@ -2306,7 +2302,7 @@ void COOLWSD::innerInitialize(Poco::Util::Application& self)
         ConfigUtil::getConfigValue("indirection_endpoint.geolocation_setup.enable", false);
 
 #if ENABLE_DEBUG
-    if constexpr (Util::isKitInProcess())
+    if (Util::isKitInProcess())
         SingleKit = true;
 #endif
 #endif
@@ -2617,16 +2613,23 @@ void COOLWSD::setLokitEnvironmentVariables(const Poco::Util::LayeredConfiguratio
 
     if (lokAllowedHosts.size())
     {
-        std::string allowedRegex;
-        for (size_t i = 0; i < lokAllowedHosts.size(); i++)
+        // One entry per line; the kit tells CIDR networks and regular
+        // expressions apart itself.
+        std::string allowlist;
+        for (const std::string& host : lokAllowedHosts)
         {
-            if (RegexUtil::isRegexValid(lokAllowedHosts[i]))
-                allowedRegex += (i != 0 ? "|" : "") + lokAllowedHosts[i];
-            else
-                LOG_ERR("Invalid regular expression for allowed host: \"" << lokAllowedHosts[i] << "\"");
+            if (!Util::IpNetwork::parse(host) && !RegexUtil::isRegexValid(host))
+            {
+                LOG_ERR("Invalid regular expression for allowed host: \"" << host << "\"");
+                continue;
+            }
+
+            if (!allowlist.empty())
+                allowlist += '\n';
+            allowlist += host;
         }
 
-        setenv("KIT_HOST_ALLOWLIST", allowedRegex.c_str(), true);
+        setenv("KIT_HOST_ALLOWLIST", allowlist.c_str(), true);
 
 #if !MOBILEAPP
         if (!ConfigUtil::getConfigValue<bool>(conf, "ssl.ssl_verification", true))
@@ -2955,7 +2958,7 @@ bool COOLWSD::checkAndRestoreForKit()
         }
     }
 
-    if constexpr (Util::isKitInProcess())
+    if (Util::isKitInProcess())
         return true;
 
     int status;
@@ -3249,7 +3252,7 @@ bool COOLWSD::createForKit()
     // Always reap first, in case we haven't done so yet.
     if (ForKitProcId != -1)
     {
-        if constexpr (Util::isKitInProcess())
+        if (Util::isKitInProcess())
             return true;
         int status;
         waitpid(ForKitProcId, &status, WUNTRACED | WNOHANG);
@@ -4094,7 +4097,7 @@ void COOLWSD::innerMain()
 // No need to "have at least one child" beforehand on mobile
 #if !MOBILEAPP
 
-    if constexpr (!Util::isKitInProcess())
+    if (!Util::isKitInProcess())
     {
         // Make sure we have at least one child before moving forward.
         std::unique_lock<std::mutex> lock(NewChildrenMutex);
@@ -4423,7 +4426,7 @@ void COOLWSD::innerMain()
     }
 
 #if !MOBILEAPP
-    if constexpr (!Util::isKitInProcess())
+    if (!Util::isKitInProcess())
     {
         // Terminate child processes
         LOG_INF("Requesting forkit process " << ForKitProcId << " to terminate.");
@@ -4468,7 +4471,7 @@ void COOLWSD::innerMain()
     SigUtil::addActivity("terminated unused children");
 
 #if !MOBILEAPP
-    if constexpr (!Util::isKitInProcess())
+    if (!Util::isKitInProcess())
     {
         SigUtil::addActivity("waiting for forkit to exit");
 
@@ -4748,7 +4751,7 @@ void forwardSigUsr2()
 #if !MOBILEAPP
     LOG_TRC("forwardSigUsr2");
 
-    if constexpr (Util::isKitInProcess())
+    if (Util::isKitInProcess())
         return;
 
     Util::assertIsLocked(DocBrokersMutex);

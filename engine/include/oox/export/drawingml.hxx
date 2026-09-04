@@ -323,6 +323,7 @@ protected:
     bool mbDiagaramExport;
     bool mbDiagaramReplacementExport;
     bool mbDiagramModelTextExport;
+    sal_Int32 mnDiagramModelTextParagraph;
 
     bool mbEmbedFonts = false;
 
@@ -394,7 +395,13 @@ public:
     bool isDiagaramExport() const { return mbDiagaramExport;}
 
     // True while the text of the data model of a Diagram is written
-    void setDiagramModelTextExport(bool bNew) { mbDiagramModelTextExport = bNew; }
+    // nParagraph gives which paragraph of the shape represents the Point being written, and -1
+    // that the shape represents the Point with all its paragraphs.
+    void setDiagramModelTextExport(bool bNew, sal_Int32 nParagraph = -1)
+    {
+        mbDiagramModelTextExport = bNew;
+        mnDiagramModelTextParagraph = nParagraph;
+    }
     bool isDiagramModelTextExport() const { return mbDiagramModelTextExport; }
 
     void SetBackgroundDark(bool bIsDark) { mbIsBackgroundDark = bIsDark; }
@@ -492,6 +499,9 @@ public:
                   sal_Int32 nXmlNamespace, bool bFlipH = false, bool bFlipV = false, sal_Int32 nRotation = 0, bool bIsGroupShape = false);
 
     void WriteText( const css::uno::Reference< css::uno::XInterface >& rXIface, bool bBodyPr, bool bText = true, sal_Int32 nXmlNamespace = 0, bool bWritePropertiesAsLstStyles = false);
+
+    /** Writes a paragraph with no text, carrying the properties text put in it would get. */
+    void WriteTextlessParagraph(const css::uno::Reference<css::uno::XInterface>& rXIface);
 
     void WriteBodyProps(
             const css::uno::Reference< css::uno::XInterface >& rXIface,

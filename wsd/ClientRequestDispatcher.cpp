@@ -311,7 +311,7 @@ public:
         if (filenameParam.getFileName() == "callback:")
             tempPath.setFileName("incoming_file"); // A sensible name.
         else
-            tempPath.setFileName(filenameParam.getFileName()); //TODO: Sanitize.
+            tempPath.setFileName(Util::cleanupFilename(filenameParam.getFileName()));
         std::string paramName = "data";
         if (params.has("name"))
         {
@@ -389,7 +389,7 @@ public:
             if (filenameParam.getFileName() == "callback:")
                 tempPath.setFileName("incoming_file"); // A sensible name.
             else
-                tempPath.setFileName(filenameParam.getFileName()); //TODO: Sanitize.
+                tempPath.setFileName(Util::cleanupFilename(filenameParam.getFileName()));
             _filename = tempPath.toString();
 
             // Copy the stream to _filename.
@@ -588,19 +588,15 @@ bool ClientRequestDispatcher::allowPostFrom(const std::string& address)
     static RegexUtil::RegexListMatcher hosts;
     if (!init)
     {
-        // Parse the host allow settings.
-        for (size_t i = 0;; ++i)
+        // Parse the host allow settings. Each entry is either a network in
+        // CIDR notation or a regular expression matched against the address.
+        for (const std::string& path : ConfigUtil::getIndexedKeys("net.post_allow", "host"))
         {
-            const std::string path = "net.post_allow.host[" + std::to_string(i) + ']';
-            const auto host = ConfigUtil::getString(path, "");
+            const std::string host = ConfigUtil::getString(path, "");
             if (!host.empty())
             {
                 LOG_INF_S("Adding trusted POST_ALLOW host: [" << host << ']');
                 hosts.allow(host);
-            }
-            else if (!ConfigUtil::has(path))
-            {
-                break;
             }
         }
 
@@ -976,7 +972,7 @@ ssize_t ClientRequestDispatcher::readHeader(const std::shared_ptr<StreamSocket>&
                 << messagesize << " bytes, shutdown: " << exc.displayText() << ", delay "
                 << delayMs.count() << "ms");
         socket->asyncShutdown();
-        return 0; //FIXME: Why not -1 as we've closed the socket already?
+        return -1;
     }
     catch (const Poco::Net::UnsupportedRedirectException& exc)
     {

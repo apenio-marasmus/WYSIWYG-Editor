@@ -73,9 +73,7 @@ struct ImplSVEvent;
 struct ConvertData;
 namespace basegfx { class SystemDependentDataManager; }
 
-namespace com::sun::star::uno {
-    class XComponentContext;
-}
+namespace cpo::uno { class XComponentContext; }
 namespace com::sun::star::ui::dialogs {
     class XFilePicker2;
     class XFolderPicker2;
@@ -1036,24 +1034,6 @@ public:
     */
     SAL_DLLPRIVATE static void  RemoveAccel( Accelerator const * pAccel );
 
-    /** Get the number of reserved key codes used by the application.
-
-     @returns number of reserved key codes
-
-     @see GetReservedKeyCode
-    */
-    static size_t               GetReservedKeyCodeCount();
-
-    /** Get the reserved key code.
-
-     @param     i               The keycode number to retrieve
-
-     @returns Const pointer to a KeyCode object
-
-     @see GetReservedKeyCodeCount
-    */
-    static const vcl::KeyCode*  GetReservedKeyCode( size_t i );
-
     ///@}
 
     /** @name Application Help
@@ -1270,12 +1250,6 @@ public:
     /** Update main thread identifier */
     static void                 UpdateMainThread();
 
-    /** Do we have a native / system file selector available?
-
-     @returns True if native file selector is available, false otherwise.
-     */
-    static bool                 hasNativeFileSelection();
-
     /** Create a platform specific file picker, if one is available, otherwise return an
      empty reference.
 
@@ -1284,7 +1258,7 @@ public:
      @returns File picker if available, otherwise an empty reference.
     */
     static css::uno::Reference< css::ui::dialogs::XFilePicker2 >
-        createFilePicker( const css::uno::Reference< css::uno::XComponentContext >& rServiceManager );
+        createFilePicker( const css::uno::Reference< cpo::uno::XComponentContext >& rServiceManager );
 
     /** Create a platform specific folder picker, if one is available, otherwise return an
      empty reference
@@ -1294,7 +1268,7 @@ public:
      @returns Folder picker if available, otherwise an empty reference.
     */
     static css::uno::Reference< css::ui::dialogs::XFolderPicker2 >
-        createFolderPicker( const css::uno::Reference< css::uno::XComponentContext >& rServiceManager );
+        createFolderPicker( const css::uno::Reference< cpo::uno::XComponentContext >& rServiceManager );
 
     /** Returns true, if the VCL plugin should run on the system event loop.
      *

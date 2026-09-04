@@ -18,6 +18,7 @@
 #include <com/sun/star/drawing/FillStyle.hpp>
 #include <com/sun/star/drawing/LineStyle.hpp>
 
+#include <vcl/metric.hxx>
 #include <vcl/virdev.hxx>
 
 #include <editeng/adjustitem.hxx>
@@ -36,6 +37,8 @@
 #include <svx/xlnclit.hxx>
 
 #include <editeng/editview.hxx>
+#include <editeng/eeitem.hxx>
+#include <editeng/wghtitem.hxx>
 #include <editeng/outliner.hxx>
 #include <sfx2/viewsh.hxx>
 
@@ -248,17 +251,30 @@ protected:
         return findTextPortionUnder(*oJson, rText);
     }
 
-    /// Request for the first slide. The raw JSON is written as a
-    /// reference. A non-negative nSince asks for a delta against that
-    /// version instead of the full slide.
-    tools::JsonPath getVectorPrimitives(std::u16string_view sName, sal_Int64 nSince = -1)
+    /// True when the environment resolves a real bold cut. Without one the
+    /// drawing makes the weight up instead.
+    static bool familyHasBoldCut()
+    {
+        ScopedVclPtrInstance<VirtualDevice> pProbeDevice;
+        vcl::Font aProbeFont(u"Liberation Sans"_ustr, Size(0, 2000));
+        aProbeFont.SetWeight(WEIGHT_BOLD);
+        pProbeDevice->SetFont(aProbeFont);
+        return !pProbeDevice->GetCurrentFontRawData().isEmpty()
+               && pProbeDevice->GetFontMetric().GetWeight() >= WEIGHT_SEMIBOLD;
+    }
+
+    /// Request for part 0 of the page list nMode names. The raw JSON is
+    /// written as a reference. A non-negative nSince asks for a delta against
+    /// that version instead of the full page.
+    tools::JsonPath getVectorPrimitives(std::u16string_view sName, sal_Int64 nSince = -1,
+                                        sal_Int32 nMode = 0)
     {
         SdXImpressDocument* pDoc = dynamic_cast<SdXImpressDocument*>(mxComponent.get());
         CPPUNIT_ASSERT(pDoc);
 
         tools::JsonWriter aJsonWriter;
-        // Explicitly get only part 0 -> first slide.
-        OString aCommand = ".uno:VectorPrimitives?part=0"_ostr;
+        // Explicitly get only part 0 -> first page of the mode's list.
+        OString aCommand = ".uno:VectorPrimitives?part=0&mode=" + OString::number(nMode);
         if (nSince >= 0)
             aCommand = aCommand + "&since=" + OString::number(nSince);
         pDoc->getCommandValues(aJsonWriter,
@@ -366,6 +382,18 @@ CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testPartVersionRisesOnMasterChange)
         = getVectorPrimitives(u"testMasterVersion").getInt("/version").value_or(-1);
 
     CPPUNIT_ASSERT_EQUAL(nBefore + 1, nAfter);
+}
+
+CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testUnservedModeCarriesNoPage)
+{
+    // A mode outside the page lists the command serves gets an empty response
+    // rather than the slide at that index.
+    createBlankDoc();
+    addRectangle(tools::Rectangle(Point(1000, 1000), Size(3000, 2000)), Color(0x4472c4), COL_BLACK);
+
+    auto aJson = getVectorPrimitives(u"testUnservedMode", -1, 3);
+    CPPUNIT_ASSERT(!aJson.has("/type"));
+    CPPUNIT_ASSERT(!aJson.has("/objects"));
 }
 
 CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testPartVersionRisesOnBackgroundChange)
@@ -664,6 +692,105 @@ CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testGraphicsResponseKeepsTypeOnUnknown
     CPPUNIT_ASSERT(oJson.has_value());
     assertJsonPath(*oJson, "/type", "vectorrenderinggraphics");
     CPPUNIT_ASSERT_EQUAL(sal_Int64(12345), oJson->getInt("/checksum").value_or(-1));
+}
+
+CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testPullMarksTheModelAsDrawnFrom)
+{
+    // Asking for the primitives is what tells the model it is drawn from.
+    createBlankDoc();
+    CPPUNIT_ASSERT(!page(1)->getSdrModelFromSdrPage().IsDrawnFromModel());
+
+    getVectorPrimitives(u"testDrawnFromModel");
+
+    CPPUNIT_ASSERT(page(1)->getSdrModelFromSdrPage().IsDrawnFromModel());
+}
+
+CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testTheLastReaderLeavingClearsTheMark)
+{
+    // The mark follows the reader, so letting the last one go clears it.
+    createBlankDoc();
+    getVectorPrimitives(u"testDrawnFromModelCleared");
+    CPPUNIT_ASSERT(page(1)->getSdrModelFromSdrPage().IsDrawnFromModel());
+
+    page(1)->getSdrModelFromSdrPage().SetDrawnFromModel(false);
+
+    CPPUNIT_ASSERT(!page(1)->getSdrModelFromSdrPage().IsDrawnFromModel());
+}
+
+CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testBoldRunNamesADifferentFace)
+{
+    // Bold and regular text of one family are different faces, so they name
+    // different files. One id for both would draw the two runs alike.
+    if (!familyHasBoldCut())
+        return;
+
+    createBlankDoc();
+    addRectangle(tools::Rectangle(Point(1000, 1000), Size(6000, 3000)), Color(0x4472c4), COL_BLACK);
+    addRectangle(tools::Rectangle(Point(1000, 5000), Size(6000, 3000)), Color(0x4472c4), COL_BLACK);
+    page(1)->GetObj(1)->SetMergedItem(SvxWeightItem(WEIGHT_BOLD, EE_CHAR_WEIGHT));
+
+    SdrView* pView = getSdDocShell()->GetViewShell()->GetView();
+    CPPUNIT_ASSERT(pView);
+    for (size_t nObject = 0; nObject < 2; ++nObject)
+    {
+        pView->SdrBeginTextEdit(page(1)->GetObj(nObject));
+        pView->GetTextEditOutlinerView()->GetEditView().InsertText(u"Hello"_ustr);
+        pView->SdrEndTextEdit();
+    }
+
+    auto aJson = getVectorPrimitives(u"testBoldRunFace");
+    const std::optional<tools::JsonPath> oPlainObject = aJson.at("/objects/0");
+    const std::optional<tools::JsonPath> oBoldObject = aJson.at("/objects/1");
+    CPPUNIT_ASSERT(oPlainObject.has_value());
+    CPPUNIT_ASSERT(oBoldObject.has_value());
+    const std::optional<tools::JsonPath> oPlain = oPlainObject->findFirst("fontId");
+    const std::optional<tools::JsonPath> oBold = oBoldObject->findFirst("fontId");
+    CPPUNIT_ASSERT(oPlain.has_value());
+    CPPUNIT_ASSERT(oBold.has_value());
+    CPPUNIT_ASSERT_MESSAGE("the bold run named the same face as the plain run",
+                           oPlain->getString() != oBold->getString());
+
+    // Which run is which, so the ids above are known to differ for the
+    // reason the test is about.
+    const std::optional<tools::JsonPath> oPlainWeight = oPlainObject->findFirst("weight");
+    const std::optional<tools::JsonPath> oBoldWeight = oBoldObject->findFirst("weight");
+    CPPUNIT_ASSERT(oPlainWeight.has_value());
+    CPPUNIT_ASSERT(oBoldWeight.has_value());
+    CPPUNIT_ASSERT_EQUAL(sal_Int64(WEIGHT_NORMAL), oPlainWeight->getInt().value_or(-1));
+    CPPUNIT_ASSERT_EQUAL(sal_Int64(WEIGHT_BOLD), oBoldWeight->getInt().value_or(-1));
+}
+
+CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testRealBoldFaceNeedsNoThickening)
+{
+    // Bold text resolves to the family's own bold cut. Saying the weight has
+    // to be made up would thicken a face that is already bold.
+    if (!familyHasBoldCut())
+        return;
+
+    createBlankDoc();
+    addRectangle(tools::Rectangle(Point(1000, 1000), Size(6000, 3000)), Color(0x4472c4), COL_BLACK);
+
+    SdrObject* pObject = page(1)->GetObj(0);
+    pObject->SetMergedItem(SvxWeightItem(WEIGHT_BOLD, EE_CHAR_WEIGHT));
+
+    SdrView* pView = getSdDocShell()->GetViewShell()->GetView();
+    CPPUNIT_ASSERT(pView);
+    pView->SdrBeginTextEdit(pObject);
+    pView->GetTextEditOutlinerView()->GetEditView().InsertText(u"Hello"_ustr);
+
+    SdXImpressDocument* pDocument = dynamic_cast<SdXImpressDocument*>(mxComponent.get());
+    CPPUNIT_ASSERT(pDocument);
+    tools::JsonWriter aJsonWriter;
+    pDocument->getCommandValues(aJsonWriter, ".uno:VectorPrimitives?part=0");
+    const OString aResult = aJsonWriter.finishAndGetAsOString();
+
+    pView->SdrEndTextEdit();
+
+    auto oJson = tools::JsonPath::parse(std::string_view(aResult.getStr(), aResult.getLength()));
+    CPPUNIT_ASSERT(oJson.has_value());
+    CPPUNIT_ASSERT_MESSAGE(aResult.getStr(), oJson->findFirst("fontId").has_value());
+    CPPUNIT_ASSERT_MESSAGE("a real bold face was marked as needing thickening",
+                           !oJson->findFirst("syntheticBold").has_value());
 }
 
 CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testTextPortionCarriesFont)

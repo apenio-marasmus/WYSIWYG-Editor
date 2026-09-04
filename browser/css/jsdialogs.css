@@ -718,12 +718,12 @@ algned to the bottom */
 	outline-offset: -2px;
 }
 
-body button:not(.ui-corner-all):not(.button):not(.button-primary):not(.unobutton):not(.form-field-button):not(.notebookbar.ui-tab):not(.ui-expander-btn):not(.arrowbackground):not(.ui-combobox-button):not(.inserttable-grid .col):not(.spinfieldbutton-up):not(.spinfieldbutton-down):hover {
+body button:not(.ui-corner-all):not(.button):not(.button-primary):not(.unobutton):not(.form-field-button):not(.notebookbar.ui-tab):not(.ui-expander-btn):not(.arrowbackground):not(.ui-combobox-button):not(.inserttable-grid .col):not(.spinfieldbutton-up):not(.spinfieldbutton-down):not([aria-disabled='true']):hover {
 	color: rgba(var(--doc-type), 1) !important;
 	background-color: var(--color-background-darker) !important;
 }
 
-.ui-tab.jsdialog:not(.selected):hover {
+.ui-tab.jsdialog:not(.selected):not([aria-disabled='true']):hover {
 	cursor: pointer !important;
 }
 
@@ -738,19 +738,19 @@ body button:not(.ui-corner-all):not(.button):not(.button-primary):not(.unobutton
 
 .ui-tabs-root.vertical {
 	position: relative;
-	--cool-vertical-rail-width: 150px;
 	display: grid;
 	/* An auto column sizes the dialog to the widest page and still stretches
 	   into free space; a fr column would not grow the dialog intrinsically. */
-	grid-template-columns: var(--cool-vertical-rail-width) auto;
+	grid-template-columns: var(--dialog-tab-rail-width) auto;
 }
 
 .ui-tabs.vertical.jsdialog.ui-widget {
 	grid-row: 1;
 	grid-column: 1;
 	box-sizing: border-box;
-	width: var(--cool-vertical-rail-width);
+	width: var(--dialog-tab-rail-width);
 	min-height: 0;
+	height: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
@@ -806,6 +806,47 @@ body button:not(.ui-corner-all):not(.button):not(.button-primary):not(.unobutton
 	min-width: 0;
 	white-space: normal;
 	overflow-wrap: break-word;
+}
+
+/* Lays the tab and the attribute of its page out, and styles neither. */
+/* Three classes, to beat the display that .ui-tab.jsdialog sets. */
+.ui-tab.jsdialog.hidden {
+	display: none !important;
+}
+
+.ui-tabs[aria-orientation='horizontal'] > .ui-tab:first-child:not(.hidden),
+.ui-tabs[aria-orientation='horizontal'] > .ui-tab.hidden + .ui-tab {
+	padding-inline-start: 0px !important;
+}
+
+.ui-tabs.vertical .ui-tab-row {
+	display: flex;
+	align-items: center;
+}
+
+.ui-tabs.vertical .ui-tab-row > .ui-tab.jsdialog {
+	flex: 1;
+	min-width: 0;
+}
+
+.ui-tabs.vertical .ui-tab-row > input[type='checkbox'] {
+	flex: none;
+	margin: 0 var(--spacing-m) 0 0;
+	cursor: pointer;
+}
+
+.ui-tabs.vertical .ui-tab-row:has(.ui-tab[aria-disabled='true']):hover > input[type='checkbox'] {
+	outline: 2px solid var(--color-primary-dark);
+	outline-offset: 1px;
+}
+
+/* A tab whose page has no fill: only the checkbox beside it is left to use. The shared
+   hover rules leave it alone, so the tab reacts again once its page has a fill. */
+.ui-tabs.vertical .ui-tab.jsdialog[aria-disabled='true'],
+.ui-tabs.vertical .ui-tab.jsdialog[aria-disabled='true']:hover {
+	color: var(--color-text-light) !important;
+	background-color: transparent !important;
+	cursor: default !important;
 }
 
 /* Selected vertical tab: a left-edge accent bar replaces the underline that
@@ -883,6 +924,17 @@ body button:not(.ui-corner-all):not(.button):not(.button-primary):not(.unobutton
 	transform: rotate(90deg);
 	background: transparent url('images/lc_menu_chevron.svg') no-repeat center;
 	filter: brightness(0.5);
+}
+
+@supports (content: '' / '') {
+	.ui-expander-label::before,
+	.ui-treeview-expandable.collapsed > div > .ui-treeview-expander::before,
+	.ui-treeview div[aria-expanded='false'] > div > .ui-treeview-expander::before,
+	.ui-expander-label.expanded::before,
+	.ui-treeview-expandable:not(.collapsed) > div > .ui-treeview-expander::before,
+	.ui-treeview div[aria-expanded='true'] > div > .ui-treeview-expander::before {
+		content: 'V' / '';
+	}
 }
 
 [data-theme='dark'] .ui-expander-label::before,
@@ -2208,6 +2260,7 @@ img.ui-combobox-value-preview {
 	max-height: calc(0.4 * var(--dialog-available-height));
 	gap: var(--spacing-xs);
 	padding: var(--spacing-xs);
+	width: max-content;
 }
 
 .ui-iconview.mobile-wizard {

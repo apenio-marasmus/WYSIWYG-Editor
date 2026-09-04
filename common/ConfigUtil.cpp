@@ -33,12 +33,12 @@
 
 namespace ConfigUtil
 {
-// Set by initialize(). On the apps (MOBILEAPP) COOLWSD is created and run
-// repeatedly in-process, each run owning the config it passes here, so Config
-// is re-pointed at the current run's instead of being asserted to be null; the
-// value accessors below still fall back to their defaults until the first run
-// initializes it, and the "is initialized" asserts there are therefore gated on
-// !MOBILEAPP, where a null Config really is a bug.
+// Set by initialize(). On the apps COOLWSD is created and run repeatedly
+// in-process, each run owning the config it passes here, so Config is re-pointed
+// at the current run's instead of being asserted to be null; the value accessors
+// below still fall back to their defaults until the first run initializes it, so
+// their "is initialized" asserts let a null Config pass on an app, where a null
+// Config really is a bug only on the server.
 static const Poco::Util::AbstractConfiguration* Config = nullptr;
 
 #if ENABLE_SSL
@@ -189,33 +189,17 @@ const Util::UnorderedStringMap<std::string> DefAppConfig = {
     { "net.content_security_policy", "" },
     { "net.frame_ancestors", "" },
     { "net.listen", "any" },
-    { "net.lok_allow.host", R"(192\.168\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.lok_allow.host[10]", R"(::ffff:172\.3[01]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.lok_allow.host[11]", R"(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.lok_allow.host[12]", R"(::ffff:10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.lok_allow.host[13]", R"(localhost)" },
-    { "net.lok_allow.host[1]", R"(::ffff:192\.168\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.lok_allow.host[2]", R"(127\.0\.0\.1)" },
-    { "net.lok_allow.host[3]", R"(::ffff:127\.0\.0\.1)" },
-    { "net.lok_allow.host[4]", R"(::1)" },
-    { "net.lok_allow.host[5]", R"(172\.1[6789]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.lok_allow.host[6]", R"(::ffff:172\.1[6789]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.lok_allow.host[7]", R"(172\.2[0-9]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.lok_allow.host[8]", R"(::ffff:172\.2[0-9]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.lok_allow.host[9]", R"(172\.3[01]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.post_allow.host", R"(192\.168\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.post_allow.host[10]", R"(::ffff:172\.3[01]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.post_allow.host[11]", R"(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.post_allow.host[12]", R"(::ffff:10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.post_allow.host[1]", R"(::ffff:192\.168\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.post_allow.host[2]", R"(127\.0\.0\.1)" },
-    { "net.post_allow.host[3]", R"(::ffff:127\.0\.0\.1)" },
-    { "net.post_allow.host[4]", R"(::1)" },
-    { "net.post_allow.host[5]", R"(172\.1[6789]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.post_allow.host[6]", R"(::ffff:172\.1[6789]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.post_allow.host[7]", R"(172\.2[0-9]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.post_allow.host[8]", R"(::ffff:172\.2[0-9]\.[0-9]{1,3}\.[0-9]{1,3})" },
-    { "net.post_allow.host[9]", R"(172\.3[01]\.[0-9]{1,3}\.[0-9]{1,3})" },
+    { "net.lok_allow.host", "192.168.0.0/16" },
+    { "net.lok_allow.host[1]", "127.0.0.1/32" },
+    { "net.lok_allow.host[2]", "::1/128" },
+    { "net.lok_allow.host[3]", "172.16.0.0/12" },
+    { "net.lok_allow.host[4]", "10.0.0.0/8" },
+    { "net.lok_allow.host[5]", "localhost" },
+    { "net.post_allow.host", "192.168.0.0/16" },
+    { "net.post_allow.host[1]", "127.0.0.1/32" },
+    { "net.post_allow.host[2]", "::1/128" },
+    { "net.post_allow.host[3]", "172.16.0.0/12" },
+    { "net.post_allow.host[4]", "10.0.0.0/8" },
     { "net.proto", "all" },
     { "net.proxy_prefix", "false" },
     { "net.service_root", "" },
@@ -495,9 +479,7 @@ std::string getLoggableConfig(const Poco::Util::AbstractConfiguration& config)
 
 std::string getString(const std::string& key, const std::string& def)
 {
-#if !MOBILEAPP
-    assert(Config && "Config is not initialized.");
-#endif
+    assert((Util::isMobileApp() || Config) && "Config is not initialized.");
     return (Config != nullptr) ? Config->getString(key, def) : def;
 }
 
@@ -508,33 +490,71 @@ bool getBool(const std::string& key, const bool def)
         return def;
     }
 
-#if !MOBILEAPP
-    assert(Config && "Config is not initialized.");
-#endif
+    assert((Util::isMobileApp() || Config) && "Config is not initialized.");
     return (Config != nullptr) ? Config->getBool(key, def) : def;
 }
 
 int getInt(const std::string& key, const int def)
 {
-#if !MOBILEAPP
-    assert(Config && "Config is not initialized.");
-#endif
+    assert((Util::isMobileApp() || Config) && "Config is not initialized.");
     return (Config != nullptr) ? Config->getInt(key, def) : def;
+}
+
+std::vector<std::string> getIndexedKeys(const Poco::Util::AbstractConfiguration& config,
+                                        const std::string& root, const std::string& element)
+{
+    Poco::Util::AbstractConfiguration::Keys keys;
+    config.keys(root, keys);
+
+    std::vector<std::pair<std::size_t, std::string>> indexed;
+    for (const std::string& key : keys)
+    {
+        std::size_t index = 0;
+        if (key != element)
+        {
+            // element[N]
+            if (key.size() <= element.size() + 2 || key.compare(0, element.size(), element) != 0 ||
+                key[element.size()] != '[' || key.back() != ']')
+                continue;
+
+            const std::string number = key.substr(element.size() + 1, key.size() - element.size() - 2);
+            if (number.empty() ||
+                number.find_first_not_of("0123456789") != std::string::npos)
+                continue;
+
+            index = std::stoul(number);
+        }
+
+        indexed.emplace_back(index, root + '.' + key);
+    }
+
+    std::sort(indexed.begin(), indexed.end());
+
+    std::vector<std::string> paths;
+    paths.reserve(indexed.size());
+    for (std::pair<std::size_t, std::string>& entry : indexed)
+        paths.push_back(std::move(entry.second));
+
+    return paths;
+}
+
+std::vector<std::string> getIndexedKeys(const std::string& root, const std::string& element)
+{
+    if (Config == nullptr)
+        return std::vector<std::string>();
+
+    return getIndexedKeys(*Config, root, element);
 }
 
 bool has(const std::string& key)
 {
-#if !MOBILEAPP
-    assert(Config && "Config is not initialized.");
-#endif
+    assert((Util::isMobileApp() || Config) && "Config is not initialized.");
     return (Config != nullptr) ? Config->has(key) : false;
 }
 
 bool hasProperty(const std::string& key)
 {
-#if !MOBILEAPP
-    assert(Config && "Config is not initialized.");
-#endif
+    assert((Util::isMobileApp() || Config) && "Config is not initialized.");
     return (Config != nullptr) ? Config->hasProperty(key) : false;
 }
 

@@ -836,7 +836,7 @@ static int lcl_getViewId(std::string_view payload)
 }
 
 // Wonder global state ...
-static uno::Reference<css::uno::XComponentContext> xContext;
+static uno::Reference<cpo::uno::XComponentContext> xContext;
 static uno::Reference<css::lang::XMultiServiceFactory> xSFactory;
 static uno::Reference<css::lang::XMultiComponentFactory> xFactory;
 
@@ -2110,15 +2110,18 @@ void CallbackFlushHandler::viewCallbackWithViewId(COKitCallbackType eType, const
     queue(eType, callbackData);
 }
 
-void CallbackFlushHandler::viewVectorPartChanged(int nPart)
+void CallbackFlushHandler::viewVectorPartChanged(int nPart, int nMode)
 {
-    // Only a view that renders from vector primitives consumes deltas.
+    // Only a vector-rendering view consumes deltas, and only in a mode it
+    // asked in.
     if (!m_bVectorRendering || nPart < 0)
+        return;
+    if (m_aVectorRenderingModes.find(nMode) == m_aVectorRenderingModes.end())
         return;
 
     // Repeated changes of the same part between two flushes collapse
     // into a single delta, computed at flush time.
-    m_vectorDeltaParts.insert(nPart);
+    m_vectorDeltaParts.insert({ nPart, nMode });
     scheduleFlush();
 }
 
@@ -2127,14 +2130,14 @@ void CallbackFlushHandler::flushVectorPrimitivesDeltas()
     if (m_vectorDeltaParts.empty())
         return;
 
-    std::set<int> aParts;
+    std::set<std::pair<int, int>> aParts;
     aParts.swap(m_vectorDeltaParts);
 
     ITiledRenderable* pDocument = getTiledRenderable(m_pDocument);
     if (!pDocument)
         return;
 
-    for (const int nPart : aParts)
+    for (const auto& [nPart, nMode] : aParts)
     {
         // Computing the delta at delivery time reads the document after
         // the change that triggered the invalidation has fully landed.
@@ -2142,6 +2145,7 @@ void CallbackFlushHandler::flushVectorPrimitivesDeltas()
         // returns the delta since it, so the mark advances only for a
         // delta that is handed to the client.
         const OString aCommand = ".uno:VectorPrimitives?part=" + OString::number(nPart)
+                                 + "&mode=" + OString::number(nMode)
                                  + "&pushdelta=1&viewid=" + OString::number(m_viewId);
         tools::JsonWriter aJsonWriter;
         pDocument->getCommandValues(aJsonWriter,
@@ -4121,11 +4125,11 @@ class FunctionBasedURPInstanceProvider
     : public ::cppu::WeakImplHelper<css::bridge::XInstanceProvider>
 {
 private:
-    css::uno::Reference<css::uno::XComponentContext> m_rContext;
+    css::uno::Reference<cpo::uno::XComponentContext> m_rContext;
 
 public:
     FunctionBasedURPInstanceProvider(
-        const css::uno::Reference<css::uno::XComponentContext>& rxContext);
+        const css::uno::Reference<cpo::uno::XComponentContext>& rxContext);
 
     // XInstanceProvider
     virtual css::uno::Reference<css::uno::XInterface>
@@ -5651,6 +5655,16 @@ static void doc_registerCallback(COKitDocument* pThis,
         pViewShell->setCOKitViewCallback(nullptr);
         pDocument->mpCallbackFlushHandlers[nView]->setViewId(-1);
         pDocument->mpCallbackFlushHandlers.erase(nView);
+
+        // With the last such reader gone there is nothing to broadcast for.
+        const bool bAnyDrawsFromModel = std::any_of(
+            pDocument->mpCallbackFlushHandlers.begin(), pDocument->mpCallbackFlushHandlers.end(),
+            [](const auto& rEntry) { return rEntry.second && rEntry.second->isVectorRendering(); });
+        if (!bAnyDrawsFromModel)
+        {
+            if (ITiledRenderable* pDoc = getTiledRenderable(pThis))
+                pDoc->setDrawnFromModel(false);
+        }
     }
 }
 
@@ -6167,15 +6181,15 @@ static void addOrganizationPath(const OUString& rPathName, const OUString& rDire
     }
 
     const OUString aContent
-        = OUString::Concat("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-                           "<oor:component-data xmlns:oor=\"http://openoffice.org/2001/registry\""
-                           " oor:name=\"Paths\" oor:package=\"org.openoffice.Office\">"
-                           "<node oor:name=\"Paths\"><node oor:name=\"")
+        = OUString::Concat(R"(<?xml version="1.0" encoding="UTF-8"?>)"
+                           R"(<oor:component-data xmlns:oor="http://openoffice.org/2001/registry")"
+                           R"( oor:name="Paths" oor:package="org.openoffice.Office">)"
+                           R"(<node oor:name="Paths"><node oor:name=")")
           + comphelper::string::encodeForXml(rPathName)
-          + "\" oor:op=\"fuse\"><prop oor:name=\"OrganizationPaths\""
-            " oor:type=\"oor:string-list\"><value>"
+          + R"(" oor:op="fuse"><prop oor:name="OrganizationPaths")"
+            R"( oor:type="oor:string-list"><value>)"
           + comphelper::string::encodeForXml(rDirectoryUrl)
-          + "</value></prop></node></node></oor:component-data>";
+          + R"(</value></prop></node></node></oor:component-data>)";
 
     const OString aXcu = OUStringToOString(aContent, RTL_TEXTENCODING_UTF8);
 
@@ -8224,14 +8238,20 @@ static std::string doc_getCommandValues(COKitDocument* pThis, const char* pComma
 
     if (aCommand.starts_with(".uno:VectorPrimitives"))
     {
-        // The requesting view renders from vector primitives rather than
-        // bitmap tiles; record that on its callback handler.
+        // Record on the view's callback handler that it renders from vector
+        // primitives, and in which mode. No mode named means the slides.
+        const std::map<OUString, OUString> aParameters
+            = KitHelper::parseCommandParameters(OUString::fromUtf8(aCommand));
+        sal_Int32 nRequestedMode = 0;
+        if (auto aModeIterator = aParameters.find(u"mode"_ustr); aModeIterator != aParameters.end())
+            nRequestedMode = aModeIterator->second.toInt32();
+
         COKitDocumentImpl* pDocument = static_cast<COKitDocumentImpl*>(pThis);
         if (const SfxViewShell* pViewShell = SfxViewShell::Current())
         {
             auto it = pDocument->mpCallbackFlushHandlers.find(pViewShell->GetViewShellId().get());
             if (it != pDocument->mpCallbackFlushHandlers.end() && it->second)
-                it->second->setVectorRendering();
+                it->second->setVectorRendering(nRequestedMode);
         }
     }
 
@@ -9903,7 +9923,7 @@ static int lo_initialize(COKit* pThis, const char* pAppPath, const char* pUserPr
 #endif
 
     if (const char* pAllowlist = ::getenv("KIT_HOST_ALLOWLIST"))
-        HostFilter::setAllowedHostsRegex(pAllowlist);
+        HostFilter::setAllowedHosts(pAllowlist);
 
     if (const char* pHostExemptVerifyHost = ::getenv("KIT_HOST_ALLOWLIST_EXEMPT_VERIFY_HOST"))
         HostFilter::setAllowedHostsExemptVerifyHost(strncmp(pHostExemptVerifyHost,"1", 1) == 0);

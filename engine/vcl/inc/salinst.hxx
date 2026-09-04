@@ -31,7 +31,7 @@
 #include <com/sun/star/datatransfer/clipboard/XClipboard.hpp>
 #include <com/sun/star/datatransfer/dnd/XDragSource.hpp>
 #include <com/sun/star/datatransfer/dnd/XDropTarget.hpp>
-#include <com/sun/star/uno/XComponentContext.hpp>
+#include <cpo/uno/XComponentContext.hpp>
 #include <com/sun/star/ui/dialogs/XFilePicker2.hpp>
 #include <com/sun/star/ui/dialogs/XFolderPicker2.hpp>
 #include <memory>
@@ -198,11 +198,10 @@ public:
     CreateDropTarget(const SystemEnvData& rSysEnv);
     virtual void            AddToRecentDocumentList(const OUString& rFileUrl, const OUString& rMimeType, const OUString& rDocumentService) = 0;
 
-    virtual bool            hasNativeFileSelection() const { return false; }
     // if you override this, make sure to override hasNativeFileSelection too.
-    virtual css::uno::Reference< css::ui::dialogs::XFilePicker2 > createFilePicker( const css::uno::Reference< css::uno::XComponentContext >& )
+    virtual css::uno::Reference< css::ui::dialogs::XFilePicker2 > createFilePicker( const css::uno::Reference< cpo::uno::XComponentContext >& )
         { return css::uno::Reference< css::ui::dialogs::XFilePicker2 >(); }
-    virtual css::uno::Reference< css::ui::dialogs::XFolderPicker2 > createFolderPicker( const css::uno::Reference< css::uno::XComponentContext >& )
+    virtual css::uno::Reference< css::ui::dialogs::XFolderPicker2 > createFolderPicker( const css::uno::Reference< cpo::uno::XComponentContext >& )
         { return css::uno::Reference< css::ui::dialogs::XFolderPicker2 >(); }
 
     // callbacks for printer updates

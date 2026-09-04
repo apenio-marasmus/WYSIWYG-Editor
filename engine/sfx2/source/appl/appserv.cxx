@@ -802,7 +802,7 @@ void SfxApplication::MiscExec_Impl( SfxRequest& rReq )
             }
 
             OUString aNewName(pModeName->GetValue());
-            const uno::Reference< uno::XComponentContext >& xContext =
+            const uno::Reference< cpo::uno::XComponentContext >& xContext =
                     ::comphelper::getProcessComponentContext();
 
             // Get information about current frame and module
@@ -957,10 +957,11 @@ void SfxApplication::MiscExec_Impl( SfxRequest& rReq )
                     }
 
                     // Show/Hide the Notebookbar
-                    const SfxStringItem pItem(SID_NOTEBOOKBAR, aNewName);
-                    pViewFrame->GetDispatcher()->ExecuteList(SID_NOTEBOOKBAR, SfxCallMode::SYNCHRON, {&pItem});
-                    SfxPoolItemHolder aNbItem;
-                    pViewFrame->GetDispatcher()->QueryState(SID_NOTEBOOKBAR, aNbItem);
+                    SfxBindings& rBindings = pViewFrame->GetBindings();
+                    if (sfx2::SfxNotebookBar::IsActive())
+                        sfx2::SfxNotebookBar::ExecMethod(rBindings, aNewName);
+                    else
+                        sfx2::SfxNotebookBar::CloseMethod(rBindings);
 
                     // Show toolbars
                     for (const OUString& rName : aMandatoryToolbars)
@@ -1120,7 +1121,7 @@ void SfxApplication::MiscExec_Impl( SfxRequest& rReq )
             if (SfxViewFrame* pViewFrame = SfxViewFrame::Current())
             {
                 Reference<XFrame> xCurrentFrame;
-                const uno::Reference<uno::XComponentContext>& xContext
+                const uno::Reference<cpo::uno::XComponentContext>& xContext
                     = ::comphelper::getProcessComponentContext();
                 xCurrentFrame = pViewFrame->GetFrame().GetFrameInterface();
                 const Reference<frame::XModuleManager> xModuleManager
@@ -1758,7 +1759,7 @@ void SfxApplication::OfaExec_Impl( SfxRequest& rReq )
                 return;
             }
 
-            const Reference< uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
+            const Reference< cpo::uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
             Reference< frame::XDispatchProvider > xProv = drawing::ModuleDispatcher::create( xContext );
 
             OUString aCmd = GetInterface()->GetSlot( rReq.GetSlot() )->GetUnoName();
@@ -1778,7 +1779,7 @@ void SfxApplication::OfaExec_Impl( SfxRequest& rReq )
         case FN_BUSINESS_CARD :
         case FN_XFORMS_INIT :
         {
-            const Reference< uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
+            const Reference< cpo::uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
             Reference< frame::XDispatchProvider > xProv = text::ModuleDispatcher::create( xContext );
 
             OUString aCmd = GetInterface()->GetSlot( rReq.GetSlot() )->GetUnoName();
@@ -1798,7 +1799,7 @@ void SfxApplication::OfaExec_Impl( SfxRequest& rReq )
         {
             try
             {
-                const Reference< uno::XComponentContext >& xORB = ::comphelper::getProcessComponentContext();
+                const Reference< cpo::uno::XComponentContext >& xORB = ::comphelper::getProcessComponentContext();
                 Reference< ui::dialogs::XExecutableDialog > xDialog = ui::dialogs::AddressBookSourcePilot::createWithParent(xORB, nullptr);
                 xDialog->execute();
             }

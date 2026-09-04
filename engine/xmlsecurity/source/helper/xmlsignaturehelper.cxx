@@ -55,7 +55,7 @@ using namespace ::com::sun::star;
 using namespace ::com::sun::star::graphic;
 using namespace ::com::sun::star::uno;
 
-XMLSignatureHelper::XMLSignatureHelper( const uno::Reference< uno::XComponentContext >& rxCtx)
+XMLSignatureHelper::XMLSignatureHelper( const uno::Reference< cpo::uno::XComponentContext >& rxCtx)
     : mxCtx(rxCtx), mbODFPre1_2(false)
 {
     mpXSecController = new XSecController(rxCtx);
@@ -122,18 +122,6 @@ void XMLSignatureHelper::SetX509Certificate(
 void XMLSignatureHelper::AddEncapsulatedX509Certificate(const OUString& ouEncapsulatedX509Certificate)
 {
     mpXSecController->addEncapsulatedX509Certificate(ouEncapsulatedX509Certificate);
-}
-
-void XMLSignatureHelper::SetGpgCertificate(sal_Int32 nSecurityId,
-                                           const OUString& ouGpgCertDigest,
-                                           const OUString& ouGpgCert,
-                                           const OUString& ouGpgOwner)
-{
-    mpXSecController->setGpgCertificate(
-        nSecurityId,
-        ouGpgCertDigest,
-        ouGpgCert,
-        ouGpgOwner);
 }
 
 void XMLSignatureHelper::SetDateTime( sal_Int32 nSecurityId, const ::DateTime& rDateTime )

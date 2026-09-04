@@ -286,7 +286,7 @@ namespace
 
             // create content from current extension configuration
             cpo::uno::Sequence< cpo::uno::Sequence< uno::Reference< deployment::XPackage > > > xAllPackages;
-            const uno::Reference< uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
+            const uno::Reference< cpo::uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
             uno::Reference< deployment::XExtensionManager > m_xExtensionManager = deployment::ExtensionManager::get(xContext);
 
             try
@@ -1245,11 +1245,6 @@ namespace comphelper
 
             tryPush_extensionInfo(aPackURL);
         }
-    }
-
-    const OUString& BackupFileHelper::getUserProfileURL()
-    {
-        return maUserConfigBaseURL;
     }
 
     /////////////////// helpers ///////////////////////

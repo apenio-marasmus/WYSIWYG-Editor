@@ -44,7 +44,6 @@
 #include <sfx2/request.hxx>
 #include <sfx2/dispatch.hxx>
 #include <sfx2/new.hxx>
-#include <sfx2/notebookbar/SfxNotebookBar.hxx>
 #include <sfx2/filedlghelper.hxx>
 #include <sfx2/printer.hxx>
 #include <sfx2/evntconf.hxx>
@@ -781,7 +780,7 @@ void SwDocShell::Execute(SfxRequest& rReq)
                             ErrCodeMsg eErr = aWrt.Write( xWrt );
                             if( !eErr.IgnoreWarning() )
                             {
-                                const uno::Reference< uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
+                                const uno::Reference< cpo::uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
                                 uno::Reference< frame::XDispatchProvider > xProv = drawing::ModuleDispatcher::create( xContext );
 
                                 uno::Reference< frame::XDispatchHelper > xHelper( frame::DispatchHelper::create(xContext) );
@@ -839,7 +838,7 @@ void SwDocShell::Execute(SfxRequest& rReq)
                     pStrm->Seek( STREAM_SEEK_TO_BEGIN );
                     if ( nWhich == FN_OUTLINE_TO_IMPRESS )
                     {
-                        const uno::Reference< uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
+                        const uno::Reference< cpo::uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
                         uno::Reference< frame::XDispatchProvider > xProv = drawing::ModuleDispatcher::create( xContext );
 
                         uno::Reference< frame::XDispatchHelper > xHelper( frame::DispatchHelper::create(xContext) );
@@ -1283,20 +1282,6 @@ void SwDocShell::Execute(SfxRequest& rReq)
                                                                                   rBindings);
                     weld::DialogController::runAsync(xDlg, [](sal_Int32 /*nResult*/){});
                 }
-            }
-        }
-        break;
-        case SID_NOTEBOOKBAR:
-        {
-            const SfxStringItem* pFile = rReq.GetArg( SID_NOTEBOOKBAR );
-            SfxViewShell* pViewShell = GetView()? GetView(): SfxViewShell::Current();
-            SfxBindings& rBindings( pViewShell->GetViewFrame().GetBindings() );
-
-            if ( SfxNotebookBar::IsActive() )
-                sfx2::SfxNotebookBar::ExecMethod( rBindings, pFile ? pFile->GetValue() : u""_ustr );
-            else
-            {
-                sfx2::SfxNotebookBar::CloseMethod( rBindings );
             }
         }
         break;

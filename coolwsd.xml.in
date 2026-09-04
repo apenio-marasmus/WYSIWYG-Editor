@@ -32,10 +32,10 @@
         <enabled desc="Master switch for AI features. When false, AI is disabled server-wide regardless of WOPI or per-user settings." type="bool" default="false">false</enabled>
         <allow_user_settings desc="If true, users may configure their own AI provider (base URL, key, model) in the settings dialog, overriding the defaults below. Set to false to force every user onto the central endpoint configured here: the per-user AI settings are hidden and any user-provided credentials are ignored, so no user can point AI at their own endpoint." type="bool" default="true">true</allow_user_settings>
         <ethical_rating_message desc="If true, the ethical AI rating badge in the assistant sidebar explains itself - as a tooltip on hover and as a description for screen readers. Set to false to show the bare rating letter without the explanation. The badge itself is always shown." type="bool" default="true">true</ethical_rating_message>
-        <api_url desc="Default AI provider base URL (e.g. http://localhost:11434 for local Ollama, or https://api.openai.com for OpenAI). Must support the /v1/chat/completions endpoint." type="string" default=""></api_url>
+        <api_url desc="Default AI provider base URL (e.g. http://localhost:11434 for local Ollama, or https://api.openai.com for OpenAI). Must support the /v1/chat/completions endpoint. While ai.enabled is true, AI requests reach this host without a net.lok_allow entry. Documents that fetch external data from the same host still need one." type="string" default=""></api_url>
         <api_key desc="Default API key for the AI provider. May be left empty for self-hosted models that do not require authentication." type="string" default=""></api_key>
         <model desc="Default AI model name. For tool use (inspecting and editing the document) the model must support native function/tool calling - e.g. gpt-4o, llama3.1, qwen2.5. Models without it (e.g. base llama3, gemma) can still chat but cannot drive document tools." type="string" default=""></model>
-        <image_api_url desc="Default AI image-generation provider base URL (e.g. https://api.openai.com). Leave empty to reuse the text-AI endpoint if the same provider is used. Must support the /v1/images/generations endpoint." type="string" default=""></image_api_url>
+        <image_api_url desc="Default AI image-generation provider base URL (e.g. https://api.openai.com). Leave empty to reuse the text-AI endpoint if the same provider is used. Must support the /v1/images/generations endpoint. While ai.enabled is true, AI requests reach this host without a net.lok_allow entry. Documents that fetch external data from the same host still need one." type="string" default=""></image_api_url>
         <image_api_key desc="Default API key for the image-generation provider. Leave empty to reuse the text-AI key if the same provider is used, or when a self-hosted model needs no authentication." type="string" default=""></image_api_key>
         <image_model desc="Default image-generation model name (e.g. dall-e-3, stable-diffusion-3, flux-schnell)." type="string" default=""></image_model>
         <image_size desc="Default generated image size in WxH pixels (e.g. 1024x1024). Provider-specific - leave empty to let the provider pick." type="string" default=""></image_size>
@@ -186,39 +186,31 @@
            https://my.com/browser/a123... to https://my.com/my/sub/path/browser/a123... -->
       <service_root type="path" default="" desc="Prefix the base URL for all the pages, websockets, etc. with this path. This includes the discovery URL."></service_root>
       <!-- The host list below always filters the client IP address for POST
-           and REST requests such as convert-to. The allow attribute is
-           separate from that filter: when it is true these hosts also count as
-           allowed external data sources, the same role as net.lok_allow below.
-           Turning the attribute off does not disable the POST and REST filter. -->
+           and REST requests such as convert-to. Each host entry is either a
+           network in CIDR notation (100.64.0.0/10, fd00::/8) or a regular
+           expression that must match the whole client IP address. An IPv4
+           network also matches the IPv4-mapped IPv6 spelling of its addresses
+           (::ffff:100.64.1.2), so one CIDR entry replaces a pair of regular
+           expressions. The allow attribute is separate from that filter: when
+           it is true these hosts also count as allowed external data sources,
+           the same role as net.lok_allow below. Turning the attribute off does
+           not disable the POST and REST filter. -->
       <post_allow desc="Allow/deny client IP address for POST(REST)." allow="true">
-        <host desc="The IPv4 private 192.168 block as plain IPv4 dotted decimal addresses.">192\.168\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 addresses">::ffff:192\.168\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="The IPv4 loopback (localhost) address.">127\.0\.0\.1</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 address">::ffff:127\.0\.0\.1</host>
-        <host desc="The IPv6 loopback (localhost) address.">::1</host>
-        <host desc="The IPv4 private 172.16.0.0/12 subnet part 1.">172\.1[6789]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 addresses">::ffff:172\.1[6789]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="The IPv4 private 172.16.0.0/12 subnet part 2.">172\.2[0-9]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 addresses">::ffff:172\.2[0-9]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="The IPv4 private 172.16.0.0/12 subnet part 3.">172\.3[01]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 addresses">::ffff:172\.3[01]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="The IPv4 private 10.0.0.0/8 subnet (Podman).">10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 addresses">::ffff:10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}</host>
+        <host desc="The IPv4 private 192.168.0.0/16 block.">192.168.0.0/16</host>
+        <host desc="The IPv4 loopback (localhost) address.">127.0.0.1/32</host>
+        <host desc="The IPv6 loopback (localhost) address.">::1/128</host>
+        <host desc="The IPv4 private 172.16.0.0/12 block.">172.16.0.0/12</host>
+        <host desc="The IPv4 private 10.0.0.0/8 block (Podman).">10.0.0.0/8</host>
+        <!-- example: allow a Kubernetes pod network that is outside the private ranges
+        <host desc="Carrier-grade NAT range used as the pod network">100.64.0.0/10</host>
+        -->
       </post_allow>
-      <lok_allow desc="Allowed hosts as an external data source inside edited files. All allowed post_allow.host and storage.wopi entries are also considered to be allowed as a data source. Used for example in: PostMessage Action_InsertGraphic, =WEBSERVICE() function, external reference in the cell.">
-        <host desc="The IPv4 private 192.168 block as plain IPv4 dotted decimal addresses.">192\.168\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 addresses">::ffff:192\.168\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="The IPv4 loopback (localhost) address.">127\.0\.0\.1</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 address">::ffff:127\.0\.0\.1</host>
-        <host desc="The IPv6 loopback (localhost) address.">::1</host>
-        <host desc="The IPv4 private 172.16.0.0/12 subnet part 1.">172\.1[6789]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 addresses">::ffff:172\.1[6789]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="The IPv4 private 172.16.0.0/12 subnet part 2.">172\.2[0-9]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 addresses">::ffff:172\.2[0-9]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="The IPv4 private 172.16.0.0/12 subnet part 3.">172\.3[01]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 addresses">::ffff:172\.3[01]\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="The IPv4 private 10.0.0.0/8 subnet (Podman).">10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}</host>
-        <host desc="Ditto, but as IPv4-mapped IPv6 addresses">::ffff:10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}</host>
+      <lok_allow desc="Allowed hosts as an external data source inside edited files. Each entry is either a network in CIDR notation or a regular expression matched against the host of the URL. All allowed post_allow.host and storage.wopi entries are also considered to be allowed as a data source. Used for example in: PostMessage Action_InsertGraphic, =WEBSERVICE() function, external reference in the cell.">
+        <host desc="The IPv4 private 192.168.0.0/16 block.">192.168.0.0/16</host>
+        <host desc="The IPv4 loopback (localhost) address.">127.0.0.1/32</host>
+        <host desc="The IPv6 loopback (localhost) address.">::1/128</host>
+        <host desc="The IPv4 private 172.16.0.0/12 block.">172.16.0.0/12</host>
+        <host desc="The IPv4 private 10.0.0.0/8 block (Podman).">10.0.0.0/8</host>
         <host desc="Localhost access by name">localhost</host>
       </lok_allow>
       <content_security_policy desc="Customize the CSP header by specifying one or more policy-directive, separated by semicolons. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy">

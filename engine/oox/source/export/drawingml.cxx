@@ -268,6 +268,7 @@ DrawingML::DrawingML(::sax_fastparser::FSHelperPtr pFS, ::oox::core::XmlFilterBa
     , mbDiagaramExport(false)
     , mbDiagaramReplacementExport(false)
     , mbDiagramModelTextExport(false)
+    , mnDiagramModelTextParagraph(-1)
 {
     uno::Reference<beans::XPropertySet> xSettings(pFB->getModelFactory()->createInstance(u"com.sun.star.document.Settings"_ustr), uno::UNO_QUERY);
     if (xSettings.is())
@@ -4560,6 +4561,33 @@ void DrawingML::WriteBodyProps(const css::uno::Reference< css::uno::XInterface >
     mpFS->endElementNS((nXmlNamespace ? nXmlNamespace : XML_a), XML_bodyPr);
 }
 
+void DrawingML::WriteTextlessParagraph(const Reference<XInterface>& rXIface)
+{
+    Reference<XTextContent> xParagraph;
+    if (auto xAccess = rXIface.query<XEnumerationAccess>())
+    {
+        if (auto xParagraphs = xAccess->createEnumeration();
+            xParagraphs && xParagraphs->hasMoreElements())
+            xParagraph = xParagraphs->nextElement().query<XTextContent>();
+    }
+
+    if (!xParagraph)
+    {
+        mpFS->singleElementNS(XML_a, XML_p);
+        return;
+    }
+
+    // tdf#144092: with no run to ask, the run properties come from the shape's propset
+    auto xShapeProps = rXIface.query<XPropertySet>();
+    assert(xShapeProps);
+
+    mpFS->startElementNS(XML_a, XML_p);
+    WriteParagraphProperties(xParagraph, -1, XML_pPr);
+    WriteRunInput aInput{ .xShapePropSet = xShapeProps };
+    WriteRunProperties(xShapeProps, XML_endParaRPr, aInput);
+    mpFS->endElementNS(XML_a, XML_p);
+}
+
 void DrawingML::WriteText(const Reference<XInterface>& rXIface, bool bBodyPr, bool bText,
                           sal_Int32 nXmlNamespace, bool bWritePropertiesAsLstStyles)
 {
@@ -4696,29 +4724,13 @@ void DrawingML::WriteText(const Reference<XInterface>& rXIface, bool bBodyPr, bo
     sal_Int32 nCharHeight = -1;
     bool bFirstParagraph = true;
 
-    // tdf#144092 For shapes without text: Export run properties (into
-    // endParaRPr) from the shape's propset instead of the paragraph's.
-    if(xXText->getString().isEmpty() && enumeration->hasMoreElements())
+    if (xXText->getString().isEmpty())
     {
-        Any aAny (enumeration->nextElement());
-        Reference<XTextContent> xParagraph;
-        if( aAny >>= xParagraph )
-        {
-            mpFS->startElementNS(XML_a, XML_p);
-            WriteParagraphProperties(xParagraph, nCharHeight, XML_pPr);
-
-            WriteRunInput aInput;
-            aInput.xShapePropSet = rXPropSet;
-            aInput.bOverridingCharHeight = bOverridingCharHeight;
-            aInput.nCharHeight = nCharHeight;
-            WriteRunProperties(rXPropSet, XML_endParaRPr, aInput);
-            bOverridingCharHeight = aInput.bOverridingCharHeight;
-            nCharHeight = aInput.nCharHeight;
-
-            mpFS->endElementNS(XML_a, XML_p);
-        }
+        WriteTextlessParagraph(rXIface);
         return;
     }
+
+    sal_Int32 nParagraphIndex(0);
 
     while( enumeration->hasMoreElements() )
     {
@@ -4727,6 +4739,15 @@ void DrawingML::WriteText(const Reference<XInterface>& rXIface, bool bBodyPr, bo
 
         if( any >>= paragraph)
         {
+            // A shape of a Diagram can represent several Points, one paragraph of it each. Only
+            // the paragraph that represents the Point being written belongs in it.
+            const bool bOtherPoint(isDiagramModelTextExport() && mnDiagramModelTextParagraph >= 0
+                                   && nParagraphIndex != mnDiagramModelTextParagraph);
+            nParagraphIndex++;
+
+            if (bOtherPoint)
+                continue;
+
             if (bFirstParagraph && bWritePropertiesAsLstStyles)
                 WriteLstStyles(paragraph, bOverridingCharHeight, nCharHeight, rXPropSet);
 

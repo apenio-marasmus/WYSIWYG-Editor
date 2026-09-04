@@ -33,7 +33,7 @@
 #include <com/sun/star/frame/XDispatchRecorderSupplier.hpp>
 #include <com/sun/star/frame/XLayoutManager.hpp>
 #include <com/sun/star/frame/XPopupMenuController.hpp>
-#include <com/sun/star/uno/XComponentContext.hpp>
+#include <cpo/uno/XComponentContext.hpp>
 #include <com/sun/star/ui/ContextMenuExecuteEvent.hpp>
 
 #include <COKit/COKit.hxx>
@@ -54,6 +54,7 @@
 #include <sfx2/module.hxx>
 #include <sfx2/msg.hxx>
 #include <sfx2/msgpool.hxx>
+#include <sfx2/notebookbar/SfxNotebookBar.hxx>
 #include <sfx2/objface.hxx>
 #include <sfx2/request.hxx>
 #include <sfx2/sfxsids.hrc>
@@ -1123,12 +1124,10 @@ void SfxDispatcher::Update_Impl( bool bForce )
     if ( xLayoutManager.is() )
         xLayoutManager->unlock();
 
-    const SfxViewShell* pViewShell = SfxViewShell::Current();
+    // create or update the online notebookbar for the current view
+    SfxViewShell* pViewShell = SfxViewShell::Current();
     if (pViewShell && pViewShell->GetDispatcher())
-    {
-        SfxPoolItemHolder aItem;
-        pViewShell->GetDispatcher()->QueryState(SID_NOTEBOOKBAR, aItem);
-    }
+        sfx2::SfxNotebookBar::StateMethod(pViewShell->GetViewFrame().GetBindings());
 }
 
 void SfxDispatcher::Update_Impl_( bool bUIActive, bool bIsMDIApp, bool bIsIPOwner, SfxWorkWindow *pTaskWin )
@@ -1932,7 +1931,7 @@ void SfxDispatcher::ExecutePopup( const OUString& rResName, vcl::Window* pWin, c
         cpo::uno::Any(comphelper::makePropertyValue( u"IsContextMenu"_ustr, true ))
     };
 
-    const css::uno::Reference< css::uno::XComponentContext >& xContext = comphelper::getProcessComponentContext();
+    const css::uno::Reference< cpo::uno::XComponentContext >& xContext = comphelper::getProcessComponentContext();
     css::uno::Reference< css::frame::XPopupMenuController > xPopupController(
         xContext->getServiceManager()->createInstanceWithArgumentsAndContext(
         u"com.sun.star.comp.framework.ResourceMenuController"_ustr, aArgs, xContext ), css::uno::UNO_QUERY );
