@@ -44,7 +44,7 @@
 #include <sal/log.hxx>
 
 using namespace ::com::sun::star;
-using namespace ::com::sun::star::uno;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace ::com::sun::star::frame;
 using namespace ::com::sun::star::beans;
@@ -210,7 +210,7 @@ Reference < XFrame > SfxFrame::CreateBlankFrame()
     Reference < XFrame > xFrame;
     try
     {
-        Reference < XDesktop2 > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
+        Reference < XDesktop > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
         xFrame.set( xDesktop->findFrame( u"_blank"_ustr, 0 ), UNO_SET_THROW );
     }
     catch( const Exception& )

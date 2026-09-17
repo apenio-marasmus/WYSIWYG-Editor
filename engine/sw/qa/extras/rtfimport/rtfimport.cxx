@@ -50,7 +50,8 @@
 #include <test/commontesttools.hxx>
 
 using namespace css;
-using namespace css::uno;
+using namespace ::cpo;
+using namespace ::cpo::uno;
 
 namespace
 {
@@ -644,6 +645,14 @@ CPPUNIT_TEST_FIXTURE(Test, testPoshLeftRight)
                          getProperty<sal_Int16>(getShape(1), u"HoriOrient"_ustr));
     CPPUNIT_ASSERT_EQUAL(text::HoriOrientation::LEFT,
                          getProperty<sal_Int16>(getShape(2), u"HoriOrient"_ustr));
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testShapeWrapSide)
+{
+    createSwDoc("shape-wrap-side.rtf");
+    // A square wrap that names one side keeps the text off the other side.
+    CPPUNIT_ASSERT_EQUAL(text::WrapTextMode_LEFT,
+                         getProperty<text::WrapTextMode>(getShape(1), u"Surround"_ustr));
 }
 
 CPPUNIT_TEST_FIXTURE(Test, testTdf96326)

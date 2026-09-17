@@ -60,7 +60,11 @@ function _createEntryImageFromCommand(
 		{ once: true },
 	);
 
-	img.src = app.LOUtil.getImageURL(app.LOUtil.getIconNameOfCommand(command));
+	app.LOUtil.setImage(
+		img,
+		app.LOUtil.getIconNameOfCommand(command),
+		builder.map,
+	);
 }
 
 /// What the pointer shows on an entry. The placeholder carries it while the
@@ -114,10 +118,6 @@ function _createEntryImage(
 			img.style.height = img.naturalHeight / ratio + 'px';
 		});
 	}
-
-	if (entryData.tooltip) img.title = entryData.tooltip;
-	else if (entryData.text) img.title = entryData.text;
-	else img.title = '';
 
 	setupSize(entryData, img);
 }
@@ -396,6 +396,20 @@ JSDialog.iconView = function (
 		iconview.setAttribute('aria-labelledby', ids);
 	} else if (data.aria?.label) {
 		JSDialog.AddAriaLabel(iconview, data, builder);
+	} else {
+		// Built detached, so the group is only there to be found once the
+		// layout has run.
+		app.layoutingService.appendLayoutingTask(() => {
+			if (iconview.hasAttribute('aria-labelledby')) return;
+
+			const group = iconview.closest('.ui-overflow-group');
+			const caption = group
+				? (group.querySelector('.ui-overflow-group-label') as HTMLElement)
+				: null;
+
+			if (caption && caption.id && caption.innerText)
+				iconview.setAttribute('aria-labelledby', caption.id);
+		});
 	}
 
 	const disabled = data.enabled === false;

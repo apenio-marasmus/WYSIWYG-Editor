@@ -18,6 +18,7 @@
  */
 
 #include <sfx2/objsh.hxx>
+#include <drwlayer.hxx>
 #include <rtl/ustring.hxx>
 
 #include <document.hxx>
@@ -65,6 +66,7 @@
 #include <memory>
 
 using namespace oox;
+using namespace ::cpo;
 
 static OUString lcl_GetVbaTabName( SCTAB n )
 {

@@ -46,6 +46,7 @@
 #include <com/sun/star/util/XCloseable.hpp>
 
 using namespace ::com::sun::star;
+using namespace ::cpo;
 
 namespace
 {
@@ -161,7 +162,7 @@ extern "C" SAL_DLLPUBLIC_EXPORT bool TestPDFExportRTF(SvStream& rStream)
         return false;
 #endif
 
-    uno::Reference<css::frame::XDesktop2> xDesktop
+    uno::Reference<css::frame::XDesktop> xDesktop
         = css::frame::Desktop::create(comphelper::getProcessComponentContext());
     uno::Reference<css::frame::XFrame> xTargetFrame = xDesktop->findFrame(u"_blank"_ustr, 0);
 
@@ -220,7 +221,7 @@ extern "C" SAL_DLLPUBLIC_EXPORT bool TestPDFExportRTF(SvStream& rStream)
 
     if (ret)
     {
-        css::uno::Reference<css::frame::XController2> xController(
+        cpo::uno::Reference<css::frame::XController2> xController(
             xModel->createDefaultViewController(xTargetFrame), uno::UNO_SET_THROW);
         utl::ConnectFrameControllerModel(xTargetFrame, xController, xModel);
 
@@ -246,7 +247,7 @@ extern "C" SAL_DLLPUBLIC_EXPORT bool TestPDFExportRTF(SvStream& rStream)
         xPDFFilter->filter(aDescriptor);
     }
 
-    css::uno::Reference<css::util::XCloseable> xClose(xModel, css::uno::UNO_QUERY);
+    cpo::uno::Reference<css::util::XCloseable> xClose(xModel, cpo::uno::UNO_QUERY);
     xClose->close(false);
 
     return ret;

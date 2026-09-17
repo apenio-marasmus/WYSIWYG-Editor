@@ -81,6 +81,7 @@
 #include <outleeng.hxx>
 
 using namespace ::com::sun::star;
+using namespace ::cpo;
 
 static sal_uInt16 lcl_CalcExtraSpace( const SvxLineSpacingItem& rLSItem )
 {
@@ -659,7 +660,7 @@ bool ImpEditEngine::MouseButtonUp( const MouseEvent& rMEvt, EditView* pView )
         if ((bCtrlClickHappened && bCtrlClickSecOption)
             || (!bCtrlClickHappened && !bCtrlClickSecOption))
         {
-            css::uno::Reference<css::system::XSystemShellExecute> exec(
+            cpo::uno::Reference<css::system::XSystemShellExecute> exec(
                 css::system::SystemShellExecute::create(
                     comphelper::getProcessComponentContext()));
             exec->execute(pUrlField->GetURL(), OUString(),
@@ -3306,8 +3307,7 @@ tools::Rectangle ImpEditEngine::GetEditCursor(ParaPortion const& rPortion, EditL
             {
                 if (!IsRightToLeft(GetEditDoc().GetPos(rPortion.GetNode())))
                 {
-                    nX = rLine.GetStartPosX() - rLine.GetNextLinePosXDiff()
-                         + pEI->nLastLineTextWidth;
+                    nX = GetMultiLineFieldRowLeft(rLine) + pEI->nLastLineTextWidth;
                 }
                 nYShift = GetWrappedFieldExtraHeight(rLine, pEI);
             }
@@ -3596,6 +3596,51 @@ bool ImpEditEngine::IsAtMultiLineFieldEnd(const EditPaM& rPaM)
     return IsAtMultiLineFieldEnd(*pPortion, rPaM.GetIndex());
 }
 
+WrappedFieldRows ImpEditEngine::GetWrappedFieldRows(ParaPortion const& rParaPortion,
+                                                    EditLine const& rLine, sal_Int32 nStartIndex,
+                                                    sal_Int32 nEndIndex) const
+{
+    // The first subline of a wrapped field sits on the row of the line that
+    // carries the field, so nRowsBelow counts only the rows under that one.
+    // A right-to-left paragraph reports no rows, as the wrapped field
+    // positions are only worked out for left-to-right text.
+    WrappedFieldRows aRows;
+    if (IsRightToLeft(GetEditDoc().GetPos(rParaPortion.GetNode())))
+        return aRows;
+
+    sal_Int32 nPortionStart = rLine.GetStart();
+    for (sal_Int32 nPortion = rLine.GetStartPortion(); nPortion <= rLine.GetEndPortion();
+         ++nPortion)
+    {
+        const TextPortion& rTextPortion = rParaPortion.GetTextPortions()[nPortion];
+        const sal_Int32 nPortionEnd = nPortionStart + rTextPortion.GetLen();
+        const ExtraPortionInfo* pExtraInfo = rTextPortion.GetExtraInfos();
+        const bool bInRange = nPortionStart >= nStartIndex && nPortionEnd <= nEndIndex;
+        if (rTextPortion.GetKind() == PortionKind::FIELD && bInRange && pExtraInfo
+            && pExtraInfo->lineBreaksList.size() > 1)
+        {
+            aRows.nRowsBelow = static_cast<sal_Int32>(pExtraInfo->lineBreaksList.size()) - 1;
+            aRows.nLeft = GetMultiLineFieldRowLeft(rLine);
+            // A field breaks where the next character no longer fits, so every
+            // row but the bottom one reaches the width the field had room for.
+            aRows.nRight = rLine.GetStartPosX() + pExtraInfo->nOrgWidth;
+            aRows.nBottomRowRight = aRows.nLeft + pExtraInfo->nLastLineTextWidth;
+            // A field long enough to wrap is wider on its own than the line
+            // has room for, so the line ends with it and there is no second
+            // wrapped field to find here.
+            break;
+        }
+        nPortionStart = nPortionEnd;
+    }
+
+    return aRows;
+}
+
+tools::Long ImpEditEngine::GetMultiLineFieldRowLeft(EditLine const& rLine)
+{
+    return rLine.GetStartPosX() - rLine.GetNextLinePosXDiff();
+}
+
 tools::Long ImpEditEngine::GetMultiLineFieldEndX(const ParaPortion& rPortion, sal_Int32 nLine,
                                                  sal_Int32 nIndex, tools::Long nFallback) const
 {
@@ -3610,7 +3655,7 @@ tools::Long ImpEditEngine::GetMultiLineFieldEndX(const ParaPortion& rPortion, sa
     if (!pEI || pEI->lineBreaksList.size() <= 1)
         return nFallback;
     const EditLine& rFieldLine = rPortion.GetLines()[nLine - 1];
-    return rFieldLine.GetStartPosX() - rFieldLine.GetNextLinePosXDiff() + pEI->nLastLineTextWidth;
+    return GetMultiLineFieldRowLeft(rFieldLine) + pEI->nLastLineTextWidth;
 }
 
 EditPaM ImpEditEngine::GetPaM( Point aDocPos, bool bSmart )

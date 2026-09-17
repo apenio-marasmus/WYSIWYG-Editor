@@ -51,6 +51,8 @@
 /// <reference path="./VectorPrimitiveRenderer.test.ts" />
 /// <reference path="./Matrix2D.test.ts" />
 /// <reference path="./Range2D.test.ts" />
+/// <reference path="./VectorGradientFrame.test.ts" />
+/// <reference path="./VectorGradientPrimitives.test.ts" />
 /// <reference path="./InternUtil.test.ts" />
 /// <reference path="./Plural.test.ts" />
 /// <reference path="./VectorManager.test.ts" />
@@ -60,4 +62,6 @@
 /// <reference path="./AIChatMessageCodes.test.ts" />
 /// <reference path="./OtherViewCursorSection.test.ts" />
 /// <reference path="./SlideLinks.test.ts" />
+/// <reference path="./SlideLinkToolbar.test.ts" />
+/// <reference path="./ExportFormats.test.ts" />
 // NOTE: reference new tests here ...

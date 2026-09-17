@@ -21,6 +21,7 @@
 #include <xmloff/xmltoken.hxx>
 
 using namespace com::sun::star;
+using namespace ::cpo;
 using namespace xmloff::token;
 
 ScXMLSheetViewsContext::ScXMLSheetViewsContext(ScXMLImport& rImport)
@@ -29,7 +30,7 @@ ScXMLSheetViewsContext::ScXMLSheetViewsContext(ScXMLImport& rImport)
 }
 
 uno::Reference<xml::sax::XFastContextHandler>
-    SAL_CALL ScXMLSheetViewsContext::createFastChildContext(
+    ScXMLSheetViewsContext::createFastChildContext(
         sal_Int32 nElement, const uno::Reference<xml::sax::XFastAttributeList>& xAttrList)
 {
     if (nElement != XML_ELEMENT(CO_EXT, XML_SHEET_VIEW))
@@ -98,7 +99,7 @@ ScXMLSheetViewContext::ScXMLSheetViewContext(
 }
 
 uno::Reference<xml::sax::XFastContextHandler>
-    SAL_CALL ScXMLSheetViewContext::createFastChildContext(
+    ScXMLSheetViewContext::createFastChildContext(
         sal_Int32 nElement, const uno::Reference<xml::sax::XFastAttributeList>& xAttrList)
 {
     sax_fastparser::FastAttributeList* pAttribList
@@ -117,7 +118,7 @@ uno::Reference<xml::sax::XFastContextHandler>
     return nullptr;
 }
 
-void SAL_CALL ScXMLSheetViewContext::endFastElement(sal_Int32 /*nElement*/)
+void ScXMLSheetViewContext::endFastElement(sal_Int32 /*nElement*/)
 {
     if (maData.maTableName.isEmpty())
         return;

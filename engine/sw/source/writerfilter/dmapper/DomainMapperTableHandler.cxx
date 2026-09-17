@@ -76,6 +76,7 @@
 namespace writerfilter::dmapper {
 
 using namespace ::com::sun::star;
+using namespace ::cpo;
 
 #define DEF_BORDER_DIST 190  //0,19cm
 #define CNF_FIRST_ROW               0x800
@@ -690,7 +691,15 @@ TableStyleSheetEntry * DomainMapperTableHandler::endTableGetTableStyle(TableInfo
         }
 
         sal_Int32 nHoriOrient = text::HoriOrientation::LEFT_AND_WIDTH;
-        // Fetch Horizontal Orientation in rFrameProperties if not set in m_aTableProperties
+        // The table style carries the alignment as a plain property.
+        if (const std::optional<PropertyMap::Property> oStyleHoriOrient
+                = m_aTableProperties->getProperty(PROP_HORI_ORIENT))
+        {
+            sal_Int16 nStyleHoriOrient{};
+            if (oStyleHoriOrient->second >>= nStyleHoriOrient)
+                nHoriOrient = nStyleHoriOrient;
+        }
+        // Direct formatting wins over it, then Horizontal Orientation in rFrameProperties.
         if ( !m_aTableProperties->getValue( TablePropertyMap::HORI_ORIENT, nHoriOrient ) )
             lcl_extractHoriOrient( rFrameProperties, nHoriOrient );
         m_aTableProperties->Insert( PROP_HORI_ORIENT, cpo::uno::Any( sal_Int16(nHoriOrient) ) );
@@ -2028,7 +2037,7 @@ void DomainMapperTableHandler::endRow()
 #endif
 }
 
-void DomainMapperTableHandler::startCell(const css::uno::Reference< css::text::XTextRange > & start,
+void DomainMapperTableHandler::startCell(const cpo::uno::Reference< css::text::XTextRange > & start,
                                          const TablePropertyMapPtr& pProps )
 {
     sal_uInt32 nRow = m_aRowProperties.size();
@@ -2059,7 +2068,7 @@ void DomainMapperTableHandler::startCell(const css::uno::Reference< css::text::X
     m_aCellRange.push_back(xStart);
 }
 
-void DomainMapperTableHandler::endCell(const css::uno::Reference< css::text::XTextRange > & end)
+void DomainMapperTableHandler::endCell(const cpo::uno::Reference< css::text::XTextRange > & end)
 {
 #ifdef DBG_UTIL
     TagLogger::getInstance().startElement("table.cell.end");

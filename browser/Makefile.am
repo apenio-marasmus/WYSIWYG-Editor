@@ -364,6 +364,7 @@ COOL_JS_LST =\
 	src/app/DocEvents.ts \
 	src/docstate.ts \
 	src/docstatefunctions.js \
+	src/app/ExportFormats.ts \
 	src/docdispatcher.ts \
 	src/app/TableStylesService.ts \
 	src/app/ImpressTableStylesService.ts \
@@ -463,6 +464,7 @@ COOL_JS_LST =\
 	src/canvas/vector/PreviewId.ts \
 	src/canvas/vector/RenderedPreview.ts \
 	src/canvas/vector/SlideObject.ts \
+	src/canvas/vector/VectorRenderOptions.ts \
 	src/canvas/vector/primitive/BackgroundColorPrimitive.ts \
 	src/canvas/vector/primitive/BitmapAlphaPrimitive.ts \
 	src/canvas/vector/primitive/BitmapPrimitive.ts \
@@ -482,12 +484,19 @@ COOL_JS_LST =\
 	src/canvas/vector/primitive/PolyPolygonColorPrimitive.ts \
 	src/canvas/vector/primitive/PolyPolygonRGBAPrimitive.ts \
 	src/canvas/vector/primitive/PolyPolygonStrokePrimitive.ts \
+	src/canvas/vector/primitive/FillGradientPrimitive.ts \
+	src/canvas/vector/primitive/GradientAttribute.ts \
+	src/canvas/vector/primitive/PolyPolygonAlphaGradientPrimitive.ts \
+	src/canvas/vector/primitive/PolyPolygonGradientPrimitive.ts \
 	src/canvas/vector/primitive/Primitive.ts \
 	src/canvas/vector/primitive/SingleLinePrimitive.ts \
 	src/canvas/vector/primitive/TextDecoratedPortionPrimitive.ts \
 	src/canvas/vector/primitive/TextSimplePortionPrimitive.ts \
 	src/canvas/vector/primitive/TransformPrimitive.ts \
 	src/canvas/vector/primitive/UnifiedTransparencePrimitive.ts \
+	src/canvas/vector/VectorGradientFrame.ts \
+	src/canvas/vector/VectorGradientPrimitiveRenderer.ts \
+	src/canvas/vector/VectorScratchCanvases.ts \
 	src/canvas/vector/VectorResourceWalker.ts \
 	src/canvas/vector/VectorPrimitiveRenderer.ts \
 	src/canvas/vector/VectorRenderingConfig.ts \
@@ -614,6 +623,7 @@ COOL_JS_LST =\
 	src/control/SlideDragGhost.tsx \
 	src/control/SlideSectionHeader.tsx \
 	src/control/Control.SlideImportPane.tsx \
+	src/control/Control.SlideLinkToolbar.tsx \
 	src/control/Control.PaneExpander.ts \
 	src/control/Control.SecurityLabelBanner.ts \
 	src/control/Control.PaneSplitter.tsx \
@@ -628,6 +638,7 @@ COOL_JS_LST =\
 	src/control/jsdialog/Definitions.WindowId.ts \
 	src/control/jsdialog/Util.Accessibility.ts \
 	src/control/jsdialog/Util.ButtonType.ts \
+	src/control/jsdialog/Util.ContentEditable.ts \
 	src/control/jsdialog/Util.Dropdown.ts \
 	src/control/jsdialog/Util.PopoutWindow.ts \
 	src/control/jsdialog/Util.GenerateTableIcon.ts \
@@ -662,6 +673,7 @@ COOL_JS_LST =\
 	src/control/jsdialog/Widget.CustomWidget.ts \
 	src/control/jsdialog/Widget.CsvGrid.ts \
 	src/control/jsdialog/Widget.SpellSentence.ts \
+	src/control/jsdialog/Widget.EditEngine.ts \
 	src/control/jsdialog/Widget.Edit.ts \
 	src/control/jsdialog/Widget.EmojiPicker.ts \
 	src/control/jsdialog/Widget.FormulabarEdit.js \
@@ -743,6 +755,7 @@ COOL_JS_LST =\
 	src/control/Sidebar.FromNotebookbarPanel.ts \
 	src/control/Control.NavigatorPanel.ts \
 	src/control/Control.QuickFindPanel.ts \
+	src/control/Control.NotesPanel.ts \
 	src/control/AutoCompletePopup.ts \
 	src/control/Control.Mention.ts \
 	src/control/Control.FormulaUsagePopup.ts \
@@ -1002,10 +1015,6 @@ $(DIST_FOLDER)/emscripten-module.js: ../wasm/emscripten-module.js
 	@mkdir -p $(dir $@)
 	@cp $< $@
 
-$(DIST_FOLDER)/emscripten-zetajs-example.js: $(abs_top_srcdir)/wasm/emscripten-zetajs-example.js
-	@mkdir -p $(dir $@)
-	@cp $< $@
-
 $(DIST_FOLDER)/online%: ../wasm/online%
 	@mkdir -p $(dir $@)
 	@cp $< $@
@@ -1030,28 +1039,6 @@ if ENABLE_DEBUG
 WASM_FILES += \
 	$(DIST_FOLDER)/online.wasm.debug.wasm \
 	$(DIST_FOLDER)/online.wasm.debug.wasm.dwp
-endif
-
-if ENABLE_WASM_ZETAJS
-
-$(DIST_FOLDER)/smoketest.js: $(WITH_WASM_ZETAJS)/test/smoketest.js
-	@mkdir -p $(dir $@)
-	@cp $< $@
-
-$(DIST_FOLDER)/zeta.js: $(WITH_WASM_ZETAJS)/source/zeta.js
-	@mkdir -p $(dir $@)
-	@cp $< $@
-
-WASM_FILES += $(DIST_FOLDER)/zeta.js
-
-if ENABLE_WASM_EMBINDTEST
-WASM_FILES += $(DIST_FOLDER)/smoketest.js
-endif
-
-endif
-
-if ENABLE_WASM_ZETAJS_EXAMPLE
-WASM_FILES += $(DIST_FOLDER)/emscripten-zetajs-example.js
 endif
 
 endif
@@ -1582,6 +1569,7 @@ pot:
 		admin/src/Util.js \
 		js/global.js \
 		src/app/Debug.ts \
+		src/app/ExportFormats.ts \
 		src/app/IconUtil.ts \
 		src/app/LOUtil.ts \
 		src/app/TableStylesService.ts \
@@ -1656,6 +1644,7 @@ pot:
 		src/control/Control.PresentationBar.js \
 		src/control/Control.SaveState.tsx \
 		src/control/Control.SlideImportPane.tsx \
+		src/control/Control.SlideLinkToolbar.tsx \
 		src/control/SlideDragGhost.tsx \
 		src/control/SlideSectionHeader.tsx \
 		src/slideimport/SlideImportSession.ts \

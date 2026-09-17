@@ -81,16 +81,17 @@
 
 using namespace ::com::sun::star;
 using namespace ::com::sun::star::accessibility;
+using namespace ::cpo;
 
 namespace {
 
 struct ScAccessibleShapeData
 {
-    ScAccessibleShapeData(css::uno::Reference< css::drawing::XShape > xShape_);
+    ScAccessibleShapeData(cpo::uno::Reference< css::drawing::XShape > xShape_);
     ~ScAccessibleShapeData();
     mutable rtl::Reference< ::accessibility::AccessibleShape > pAccShape;
     std::optional<ScAddress> xRelationCell; // if it is NULL this shape is anchored on the table
-    css::uno::Reference< css::drawing::XShape > xShape;
+    cpo::uno::Reference< css::drawing::XShape > xShape;
     bool                    bSelected;
     bool                    bSelectable;
     // cache these to make the sorting cheaper
@@ -100,7 +101,7 @@ struct ScAccessibleShapeData
 
 }
 
-ScAccessibleShapeData::ScAccessibleShapeData(css::uno::Reference< css::drawing::XShape > xShape_)
+ScAccessibleShapeData::ScAccessibleShapeData(cpo::uno::Reference< css::drawing::XShape > xShape_)
     : xShape(std::move(xShape_)),
     bSelected(false), bSelectable(true)
 {
@@ -209,7 +210,7 @@ public:
 
     virtual bool ReplaceChild (
         ::accessibility::AccessibleShape* pCurrentChild,
-        const css::uno::Reference< css::drawing::XShape >& _rxShape,
+        const cpo::uno::Reference< css::drawing::XShape >& _rxShape,
         const tools::Long _nIndex,
         const ::accessibility::AccessibleShapeTreeInfo& _rShapeTreeInfo
     ) override;
@@ -217,7 +218,7 @@ public:
     virtual ::accessibility::AccessibleControlShape* GetAccControlShapeFromModel
         (css::beans::XPropertySet* pSet) override;
     virtual ::accessibility::AccessibleShape*
-        GetAccessibleCaption (const css::uno::Reference<css::drawing::XShape>& xShape) override;
+        GetAccessibleCaption (const cpo::uno::Reference<css::drawing::XShape>& xShape) override;
     ///=====  Internal  ========================================================
     void SetDrawBroadcaster();
 
@@ -229,7 +230,7 @@ public:
     // gets the index of the shape starting on 0 (without the index of the table)
     // returns the selected shape
     bool IsSelected(sal_Int32 nIndex,
-        css::uno::Reference<css::drawing::XShape>& rShape) const;
+        cpo::uno::Reference<css::drawing::XShape>& rShape) const;
 
     bool SelectionChanged();
 
@@ -248,21 +249,21 @@ public:
     void VisAreaChanged() const;
 private:
     typedef std::vector<ScAccessibleShapeData*> SortedShapes;
-    typedef std::unordered_map<css::uno::Reference< css::drawing::XShape >, ScAccessibleShapeData*> ShapesMap;
+    typedef std::unordered_map<cpo::uno::Reference< css::drawing::XShape >, ScAccessibleShapeData*> ShapesMap;
 
     mutable SortedShapes maZOrderedShapes; // a null pointer represents the sheet in the correct order
     mutable ShapesMap maShapesMap;
     mutable bool mbShapesNeedSorting; // set if maZOrderedShapes needs sorting
 
     mutable ::accessibility::AccessibleShapeTreeInfo maShapeTreeInfo;
-    mutable css::uno::Reference<css::view::XSelectionSupplier> xSelectionSupplier;
+    mutable cpo::uno::Reference<css::view::XSelectionSupplier> xSelectionSupplier;
     mutable sal_uInt32 mnShapesSelected;
     ScTabViewShell* mpViewShell;
     ScAccessibleDocument* mpAccessibleDocument;
     ScSplitPos meSplitPos;
 
     void FillShapes(std::vector < uno::Reference < drawing::XShape > >& rShapes) const;
-    bool FindSelectedShapesChanges(const css::uno::Reference<css::drawing::XShapes>& xShapes) const;
+    bool FindSelectedShapesChanges(const cpo::uno::Reference<css::drawing::XShapes>& xShapes) const;
 
     std::optional<ScAddress> GetAnchor(const uno::Reference<drawing::XShape>& xShape) const;
     rtl::Reference<utl::AccessibleRelationSetHelper> GetRelationSet(const ScAccessibleShapeData* pData) const;
@@ -409,7 +410,7 @@ void ScChildrenShapes::Notify(SfxBroadcaster&, const SfxHint& rHint)
 }
 
 bool ScChildrenShapes::ReplaceChild (::accessibility::AccessibleShape* pCurrentChild,
-        const css::uno::Reference< css::drawing::XShape >& _rxShape,
+        const cpo::uno::Reference< css::drawing::XShape >& _rxShape,
         const tools::Long /*_nIndex*/, const ::accessibility::AccessibleShapeTreeInfo& _rShapeTreeInfo)
 {
     // create the new child
@@ -470,7 +471,7 @@ bool ScChildrenShapes::ReplaceChild (::accessibility::AccessibleShape* pCurrentC
 }
 
 ::accessibility::AccessibleShape*
-ScChildrenShapes::GetAccessibleCaption (const css::uno::Reference < css::drawing::XShape>& xShape)
+ScChildrenShapes::GetAccessibleCaption (const cpo::uno::Reference < css::drawing::XShape>& xShape)
 {
     GetCount(); // populate
     auto it = maShapesMap.find(xShape);
@@ -1337,7 +1338,7 @@ ScAccessibleDocument::~ScAccessibleDocument()
     }
 }
 
-void SAL_CALL ScAccessibleDocument::disposing()
+void ScAccessibleDocument::disposing()
 {
     SolarMutexGuard aGuard;
     FreeAccessibleSpreadsheet();
@@ -1355,7 +1356,7 @@ void SAL_CALL ScAccessibleDocument::disposing()
     ScAccessibleDocumentBase::disposing();
 }
 
-void SAL_CALL ScAccessibleDocument::disposing( const lang::EventObject& /* Source */ )
+void ScAccessibleDocument::disposing( const lang::EventObject& /* Source */ )
 {
     disposing();
 }
@@ -1531,7 +1532,7 @@ void ScAccessibleDocument::Notify( SfxBroadcaster& rBC, const SfxHint& rHint )
     ScAccessibleDocumentBase::Notify(rBC, rHint);
 }
 
-void SAL_CALL ScAccessibleDocument::selectionChanged( const lang::EventObject& /* aEvent */ )
+void ScAccessibleDocument::selectionChanged( const lang::EventObject& /* aEvent */ )
 {
     bool bSelectionChanged(false);
     if (mpAccessibleSpreadsheet.is())
@@ -1554,7 +1555,7 @@ void SAL_CALL ScAccessibleDocument::selectionChanged( const lang::EventObject& /
 
     //=====  XAccessibleComponent  ============================================
 
-uno::Reference< XAccessible > SAL_CALL ScAccessibleDocument::getAccessibleAtPoint(
+uno::Reference< XAccessible > ScAccessibleDocument::getAccessibleAtPoint(
         const awt::Point& rPoint )
 {
     uno::Reference<XAccessible> xAccessible;
@@ -1584,7 +1585,7 @@ uno::Reference< XAccessible > SAL_CALL ScAccessibleDocument::getAccessibleAtPoin
     return xAccessible;
 }
 
-void SAL_CALL ScAccessibleDocument::grabFocus(  )
+void ScAccessibleDocument::grabFocus(  )
 {
     SolarMutexGuard aGuard;
     ensureAlive();
@@ -1608,7 +1609,7 @@ void SAL_CALL ScAccessibleDocument::grabFocus(  )
     //=====  XAccessibleContext  ==============================================
 
     /// Return the number of currently visible children.
-sal_Int64 SAL_CALL
+sal_Int64
     ScAccessibleDocument::getAccessibleChildCount()
 {
     SolarMutexGuard aGuard;
@@ -1624,7 +1625,7 @@ sal_Int64 SAL_CALL
 }
 
     /// Return the specified child or NULL if index is invalid.
-uno::Reference<XAccessible> SAL_CALL
+uno::Reference<XAccessible>
     ScAccessibleDocument::getAccessibleChild(sal_Int64 nIndex)
 {
     SolarMutexGuard aGuard;
@@ -1654,7 +1655,7 @@ uno::Reference<XAccessible> SAL_CALL
 }
 
     /// Return the set of current states.
-sal_Int64 SAL_CALL
+sal_Int64
     ScAccessibleDocument::getAccessibleStateSet()
 {
     SolarMutexGuard aGuard;
@@ -1680,7 +1681,7 @@ sal_Int64 SAL_CALL
     return nStateSet;
 }
 
-OUString SAL_CALL
+OUString
     ScAccessibleDocument::getAccessibleName()
 {
     SolarMutexGuard g;
@@ -1715,7 +1716,7 @@ OUString SAL_CALL
 
 ///=====  XAccessibleSelection  ===========================================
 
-void SAL_CALL
+void
     ScAccessibleDocument::selectAccessibleChild( sal_Int64 nChildIndex )
 {
     SolarMutexGuard aGuard;
@@ -1744,7 +1745,7 @@ void SAL_CALL
     }
 }
 
-bool SAL_CALL
+bool
     ScAccessibleDocument::isAccessibleChildSelected( sal_Int64 nChildIndex )
 {
     SolarMutexGuard aGuard;
@@ -1776,7 +1777,7 @@ bool SAL_CALL
     return bResult;
 }
 
-void SAL_CALL
+void
     ScAccessibleDocument::clearAccessibleSelection(  )
 {
     SolarMutexGuard aGuard;
@@ -1786,7 +1787,7 @@ void SAL_CALL
         mpChildrenShapes->DeselectAll(); //deselects all (also the table)
 }
 
-void SAL_CALL
+void
     ScAccessibleDocument::selectAllAccessibleChildren(  )
 {
     SolarMutexGuard aGuard;
@@ -1802,7 +1803,7 @@ void SAL_CALL
     }
 }
 
-sal_Int64 SAL_CALL
+sal_Int64
     ScAccessibleDocument::getSelectedAccessibleChildCount(  )
 {
     SolarMutexGuard aGuard;
@@ -1821,7 +1822,7 @@ sal_Int64 SAL_CALL
     return nCount;
 }
 
-uno::Reference<XAccessible > SAL_CALL
+uno::Reference<XAccessible >
     ScAccessibleDocument::getSelectedAccessibleChild( sal_Int64 nSelectedChildIndex )
 {
     SolarMutexGuard aGuard;
@@ -1848,7 +1849,7 @@ uno::Reference<XAccessible > SAL_CALL
     return xAccessible;
 }
 
-void SAL_CALL
+void
     ScAccessibleDocument::deselectAccessibleChild( sal_Int64 nChildIndex )
 {
     SolarMutexGuard aGuard;
@@ -2081,7 +2082,7 @@ ScAddress   ScAccessibleDocument::GetCurCellAddress() const
     return mpViewShell ? mpViewShell->GetViewData().GetCurPos() : ScAddress();
 }
 
-OUString SAL_CALL ScAccessibleDocument::getExtendedAttributes()
+OUString ScAccessibleDocument::getExtendedAttributes()
 {
     SolarMutexGuard g;
 
@@ -2097,12 +2098,12 @@ OUString SAL_CALL ScAccessibleDocument::getExtendedAttributes()
     return sValue;
 }
 
-sal_Int32 SAL_CALL ScAccessibleDocument::getForeground(  )
+sal_Int32 ScAccessibleDocument::getForeground(  )
 {
     return sal_Int32(COL_BLACK);
 }
 
-sal_Int32 SAL_CALL ScAccessibleDocument::getBackground(  )
+sal_Int32 ScAccessibleDocument::getBackground(  )
 {
     SolarMutexGuard aGuard;
     ensureAlive();

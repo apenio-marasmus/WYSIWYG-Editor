@@ -65,7 +65,7 @@
 using namespace ::com::sun::star::sdbc;
 using namespace ::com::sun::star::sdb;
 using namespace ::com::sun::star::beans;
-using namespace ::com::sun::star::uno;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace ::com::sun::star::document;
 using namespace ::com::sun::star::frame;
@@ -91,7 +91,7 @@ namespace dbaccess
         class DatabaseDocumentLoader : public DatabaseDocumentLoader_Base
         {
         private:
-            Reference< XDesktop2 >               m_xDesktop;
+            Reference< XDesktop >               m_xDesktop;
             std::vector< const ODatabaseModelImpl* >  m_aDatabaseDocuments;
 
         public:

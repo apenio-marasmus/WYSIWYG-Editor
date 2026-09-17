@@ -46,7 +46,7 @@ void setFooterOnAllSlides(SdDrawDocument* pDoc, const OUString& rText, bool bVis
 }
 }
 
-uno::Reference<frame::XModel> SdSecurityLabelTarget::getModel() const
+cpo::uno::Reference<frame::XModel> SdSecurityLabelTarget::getModel() const
 {
     sd::DrawDocShell* pDocShell = m_rViewShell.GetDocSh();
     if (!pDocShell)
@@ -56,8 +56,10 @@ uno::Reference<frame::XModel> SdSecurityLabelTarget::getModel() const
 
 void SdSecurityLabelTarget::applyMarking(const svx::seclabel::LabelPlacement& rPlacement)
 {
-    // The marking becomes the slide footer. Colour/cover/portion/watermark
-    // placements do not apply to Impress.
+    // The marking becomes the visible slide footer on every standard slide. Its colour
+    // follows the master's footer placeholder (HeaderFooterSettings carries only text +
+    // visibility, no colour). Cover/portion placements and the watermark are Writer-only
+    // (Impress has no native watermark; a master-slide text object is the deferred option).
     setFooterOnAllSlides(m_rViewShell.GetDoc(), rPlacement.aMarking, true);
 }
 

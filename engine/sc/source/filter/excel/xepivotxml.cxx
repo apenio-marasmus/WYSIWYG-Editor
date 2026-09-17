@@ -54,6 +54,7 @@
 
 using namespace oox;
 using namespace com::sun::star;
+using namespace ::cpo;
 
 namespace {
 
@@ -341,8 +342,7 @@ void XclExpXmlPivotCaches::SavePivotCacheXml( XclExpXmlStream& rStrm, const Entr
     if (aSourceName.isEmpty())
         pDefStrm->singleElement(XML_worksheetSource, XML_ref, aRef, XML_sheet, aSheetName.toUtf8());
     else
-        pDefStrm->singleElement(XML_worksheetSource, XML_ref, aRef, XML_sheet, aSheetName.toUtf8(),
-            XML_name, aSourceName.toUtf8());
+        pDefStrm->singleElement(XML_worksheetSource, XML_name, aSourceName.toUtf8());
 
     pDefStrm->endElement(XML_cacheSource);
 
@@ -1637,7 +1637,7 @@ void XclExpXmlPivotTables::SavePivotTableXml( XclExpXmlStream& rStrm, const ScDP
 
     if (!aDataFields.empty())
     {
-        css::uno::Reference<css::container::XNameAccess> xDimsByName;
+        cpo::uno::Reference<css::container::XNameAccess> xDimsByName;
         if (auto xDimSupplier = const_cast<ScDPObject&>(rDPObj).GetSource())
             xDimsByName = xDimSupplier->getDimensions();
 
@@ -1667,7 +1667,7 @@ void XclExpXmlPivotTables::SavePivotTableXml( XclExpXmlStream& rStrm, const ScDP
             {
                 try
                 {
-                    css::uno::Reference<css::beans::XPropertySet> xDimProps(
+                    cpo::uno::Reference<css::beans::XPropertySet> xDimProps(
                         xDimsByName->getByName(rDim.GetName()), uno::UNO_QUERY_THROW);
                     cpo::uno::Any aVal = xDimProps->getPropertyValue(SC_UNONAME_NUMFMT);
                     sal_uInt32 nScNumFmt = aVal.get<sal_uInt32>();

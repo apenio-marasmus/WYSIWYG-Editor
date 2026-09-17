@@ -2112,12 +2112,6 @@ else
     enable_emscripten_proxy_posix_sockets=
 fi
 
-AC_ARG_ENABLE(embind-uno,
-    AS_HELP_STRING([--enable-embind-uno],
-        [Enable the UNO embind feature.  (For enabling that against emsdk 4.0.11 or later, see
-         <https://gerrit.libreoffice.org/c/core/+/188465> "Emscripten: Adapt to internal
-         emscripten/val.h change in Emscripten 4.0.11".)]))
-
 AC_ARG_ENABLE(xmlhelp,
     AS_HELP_STRING([--disable-xmlhelp],
         [Disable XML help support]),
@@ -2922,7 +2916,7 @@ AC_SUBST(COMPRESSIONTOOL)
 
 AC_MSG_CHECKING([for GNU or BSD tar])
 for a in $GNUTAR gtar gnutar tar bsdtar /usr/sfw/bin/gtar; do
-    $a --version 2> /dev/null | grep -E "GNU|bsdtar"  2>&1 > /dev/null
+    $a --version 2> /dev/null | grep -E "GNU|bsdtar|busybox"  2>&1 > /dev/null
     if test $? -eq 0;  then
         GNUTAR=$a
         break
@@ -2935,7 +2929,7 @@ fi
 AC_SUBST(GNUTAR)
 
 AC_MSG_CHECKING([for tar's option to strip components])
-$GNUTAR --help 2> /dev/null | grep -E "bsdtar|strip-components" 2>&1 >/dev/null
+$GNUTAR --help 2>&1 | grep -E "bsdtar|strip-components" 2>&1 >/dev/null
 if test $? -eq 0; then
     STRIP_COMPONENTS="--strip-components"
 else
@@ -4009,14 +4003,6 @@ else
     ENABLE_EMSCRIPTEN_PROXY_POSIX_SOCKETS=
 fi
 AC_SUBST(ENABLE_EMSCRIPTEN_PROXY_POSIX_SOCKETS)
-
-if test "$enable_embind_uno" = yes; then
-    ENABLE_EMBIND_UNO=TRUE
-    AC_DEFINE(HAVE_EMBIND_UNO)
-else
-    ENABLE_EMBIND_UNO=
-fi
-AC_SUBST(ENABLE_EMBIND_UNO)
 
 # Use -isystem (gcc) if possible, to avoid warnings in 3rd party headers.
 # NOTE: must _not_ be used for bundled external libraries!
@@ -6030,7 +6016,6 @@ if test "$cross_compiling" = "yes"; then
     test "${enable_ld+set}" = set -a "$build_cpu" = "$host_cpu" && sub_conf_opts="$sub_conf_opts --enable-ld=${enable_ld}"
     test "${enable_pch+set}" = set && sub_conf_opts="$sub_conf_opts --enable-pch=${enable_pch}"
     test "$enable_wasm_strip" = "yes" && sub_conf_opts="$sub_conf_opts --enable-wasm-strip"
-    test "$enable_embind_uno" = "yes" && sub_conf_opts="$sub_conf_opts --enable-embind-uno"
     test "${with_system_lockfile+set}" = set && sub_conf_opts="$sub_conf_opts --with-system-lockfile=${with_system_lockfile}"
     test "${enable_fuzzers}" = yes && sub_conf_opts="$sub_conf_opts --without-system-libxml"
     if test "$_os" = "Emscripten" -o "$_os" = "Android" -o "$_os" = "iOS"; then
@@ -11437,7 +11422,7 @@ elif $GNUCP --version 2>/dev/null | grep "GNU fileutils" >/dev/null 2>/dev/null;
     AC_MSG_RESULT([yes])
 else
     case "$build_os" in
-    darwin*|netbsd*|openbsd*|freebsd*|dragonfly*)
+    darwin*|netbsd*|openbsd*|freebsd*|dragonfly*|linux*)
         x_GNUCP=[\#]
         GNUCP=''
         AC_MSG_RESULT([no gnucp found - using the system's cp command])

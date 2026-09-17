@@ -17,7 +17,6 @@
  *   the License at http://www.apache.org/licenses/LICENSE-2.0 .
  */
 
-#include <config_features.h>
 
 #include "text/TextPropertyPanel.hxx"
 #include "styles/StylesPropertyPanel.hxx"
@@ -33,9 +32,6 @@
 #include "possize/PosSizePropertyPanel.hxx"
 #include "textcolumns/TextColumnsPropertyPanel.hxx"
 #include <DefaultShapesPanel.hxx>
-#if HAVE_FEATURE_AVMEDIA
-#include "media/MediaPlaybackPanel.hxx"
-#endif
 #include <GalleryControl.hxx>
 #include "EmptyPanel.hxx"
 #include <sfx2/sidebar/SidebarPanelBase.hxx>
@@ -50,7 +46,7 @@
 #include <cpo/uno/XComponentContext.hpp>
 
 using namespace css;
-using namespace css::uno;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace svx::sidebar;
 
@@ -74,7 +70,7 @@ public:
     PanelFactory& operator=(const PanelFactory&) = delete;
 
     // XUIElementFactory
-    css::uno::Reference<css::ui::XUIElement> createUIElement (
+    cpo::uno::Reference<css::ui::XUIElement> createUIElement (
         const OUString& rsResourceURL,
         const ::cpo::uno::Sequence<css::beans::PropertyValue>& rArguments) override;
 
@@ -175,12 +171,6 @@ Reference<ui::XUIElement> PanelFactory::createUIElement (
     {
         xControl = DefaultShapesPanel::Create(pParent, xFrame);
     }
-#if HAVE_FEATURE_AVMEDIA
-    else if (rsResourceURL.endsWith("/MediaPlaybackPanel"))
-    {
-        xControl = MediaPlaybackPanel::Create(pParent, pBindings);
-    }
-#endif
     else if (rsResourceURL.endsWith("/GalleryPanel"))
     {
         xControl = std::make_unique<GalleryControl>(pParent);

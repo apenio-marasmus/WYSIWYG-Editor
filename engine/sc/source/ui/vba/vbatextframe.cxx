@@ -24,13 +24,14 @@
 
 using namespace ::ooo::vba;
 using namespace ::com::sun::star;
+using namespace ::cpo;
 
 ScVbaTextFrame::ScVbaTextFrame( cpo::uno::Sequence< cpo::uno::Any> const & args, uno::Reference< cpo::uno::XComponentContext> const & xContext ) :  ScVbaTextFrame_BASE( getXSomethingFromArgs< XHelperInterface >( args, 0 ), xContext, getXSomethingFromArgs< drawing::XShape >( args, 1, false ) )
 {
 }
 
 // Methods
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaTextFrame::Characters()
 {
     uno::Reference< text::XSimpleText > xSimpleText( m_xShape, uno::UNO_QUERY_THROW );

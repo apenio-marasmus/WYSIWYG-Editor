@@ -40,7 +40,7 @@ namespace oox::xls {
 
 using namespace ::com::sun::star::lang;
 using namespace ::com::sun::star::sheet;
-using namespace ::com::sun::star::uno;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace ::oox::core;
 
@@ -180,7 +180,7 @@ GraphicHelper* ExcelFilter::implCreateGraphicHelper() const
     return new ExcelVbaProject( getComponentContext(), Reference< XSpreadsheetDocument >( getModel(), UNO_QUERY ) );
 }
 
-bool SAL_CALL ExcelFilter::filter( const cpo::uno::Sequence< css::beans::PropertyValue >& rDescriptor )
+bool ExcelFilter::filter( const cpo::uno::Sequence< css::beans::PropertyValue >& rDescriptor )
 {
     if ( XmlFilterBase::filter( rDescriptor ) )
         return true;

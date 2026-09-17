@@ -21,7 +21,7 @@
 
 #include <vcl/idle.hxx>
 #include <comphelper/errcode.hxx>
-#include <com/sun/star/uno/Reference.hxx>
+#include <cpo/uno/Reference.hxx>
 #include <vcl/vclptr.hxx>
 #include "patattr.hxx"
 #include <sal/types.h>
@@ -29,7 +29,6 @@
 #include "interpretercontext.hxx"
 #include "rangelst.hxx"
 #include "rangenam.hxx"
-#include "recursionhelper.hxx"
 #include "tabopparams.hxx"
 #include "types.hxx"
 #include <formula/grammar.hxx>
@@ -57,7 +56,6 @@
 #include <vector>
 
 #include "markdata.hxx"
-#include "drwlayer.hxx"
 
 #include "SheetViewTypes.hxx"
 
@@ -137,6 +135,7 @@ class SfxItemPool;
 class SfxPrinter;
 class SfxStyleSheetBase;
 class SvMemoryStream;
+class SvStream;
 class SvxBoxInfoItem;
 class SvxBoxItem;
 class SvxForbiddenCharactersTable;
@@ -161,12 +160,14 @@ class ScDetOpList;
 class ScDocOptions;
 class ScDocProtection;
 class ScDocumentPool;
+class ScDrawLayer;
 class ScExtDocOptions;
 class ScExternalRefManager;
 class ScFormulaCell;
 class ScMacroManager;
 class ScOutlineTable;
 class ScPrintRangeSaver;
+class ScRecursionHelper;
 class ScStyleSheet;
 class ScStyleSheetPool;
 class ScTable;
@@ -383,25 +384,15 @@ private:
 public:
     SC_DLLPUBLIC CellAttributeHelper& getCellAttributeHelper() const;
 
-    void setConnectionVector(const ConnectionVector& rIn)
-    {
-        maConnectionVector = rIn;
-    }
+    SC_DLLPUBLIC void setConnectionVector(const ConnectionVector& rIn);
 
     const ConnectionVector& getConnectionVector() const
     {
         return maConnectionVector;
     }
 
-    void setSheetQueryTables(SCTAB nTab, QueryTableModelVector aIn)
-    {
-        maSheetQueryTables[nTab] = std::move(aIn);
-    }
-    const QueryTableModelVector* getSheetQueryTables(SCTAB nTab) const
-    {
-        auto it = maSheetQueryTables.find(nTab);
-        return it == maSheetQueryTables.end() ? nullptr : &it->second;
-    }
+    SC_DLLPUBLIC void setSheetQueryTables(SCTAB nTab, QueryTableModelVector aIn);
+    SC_DLLPUBLIC const QueryTableModelVector* getSheetQueryTables(SCTAB nTab) const;
     bool hasAnyQueryTables() const { return !maSheetQueryTables.empty(); }
 
     void UpdateQueryTables(const sc::RefUpdateInsertTabContext& rCxt);
@@ -498,7 +489,7 @@ private:
 
     Idle                aTrackIdle;
 
-    css::uno::Reference< css::script::vba::XVBAEventProcessor >
+    cpo::uno::Reference< css::script::vba::XVBAEventProcessor >
                         mxVbaEvents;
 
     // Stores Goal Seek settings
@@ -1045,7 +1036,7 @@ public:
     SdrObject*      GetObjectAtPoint( SCTAB nTab, const Point& rPos );
     bool            HasChartAtPoint( SCTAB nTab, const Point& rPos, OUString& rName );
 
-    css::uno::Reference< css::chart2::XChartDocument > GetChartByName( std::u16string_view rChartName );
+    cpo::uno::Reference< css::chart2::XChartDocument > GetChartByName( std::u16string_view rChartName );
 
     SC_DLLPUBLIC void GetChartRanges( std::u16string_view rChartName, std::vector< ScRangeList >& rRanges, const ScDocument& rSheetNameDoc );
     void              SetChartRanges( std::u16string_view rChartName, const std::vector< ScRangeList >& rRanges );
@@ -1057,7 +1048,7 @@ public:
                                        bool bColHeaders, bool bRowHeaders, bool bAdd );
     void              GetOldChartParameters( std::u16string_view rName,
                                              ScRangeList& rRanges, bool& rColHeaders, bool& rRowHeaders );
-    css::uno::Reference<
+    cpo::uno::Reference<
             css::embed::XEmbeddedObject >
                     FindOleObjectByName( std::u16string_view rName );
 
@@ -1598,18 +1589,6 @@ public:
     void              CompileAll();
     void              CompileXML();
 
-    /**
-     * Re-compile formula cells with error.
-     *
-     * @param nErrCode specified error code to match. Only those cells with
-     *                 this error code will be re-compiled.  If this value is
-     *                 0, cells with any error values will be re-compiled.
-     *
-     * @return true if at least one cell is re-compiled, false if no cells are
-     *         re-compiled.
-     */
-    bool CompileErrorCells(FormulaError nErrCode);
-
     ScAutoNameCache*     GetAutoNameCache()     { return pAutoNameCache.get(); }
     void                 SetPreviewFont( std::unique_ptr<SfxItemSet> pFontSet );
     SfxItemSet*          GetPreviewFont() { return pPreviewFont.get(); }
@@ -2068,7 +2047,7 @@ public:
         return static_cast<const T*>(GetEffItem(nCol, nRow, nTab, sal_uInt16(nWhich)));
     }
 
-    SC_DLLPUBLIC const css::uno::Reference< css::i18n::XBreakIterator >& GetBreakIterator();
+    SC_DLLPUBLIC const cpo::uno::Reference< css::i18n::XBreakIterator >& GetBreakIterator();
     bool                        HasStringWeakCharacters( const OUString& rString );
     SC_DLLPUBLIC SvtScriptType  GetStringScriptType( const OUString& rString );
     // pCell is an optimization, must point to rPos
@@ -2812,7 +2791,7 @@ public:
     void               AddUnoObject( SfxListener& rObject );
     void               RemoveUnoObject( SfxListener& rObject );
     void               BroadcastUno( const SfxHint &rHint );
-    void               AddUnoListenerCall( const css::uno::Reference<
+    void               AddUnoListenerCall( const cpo::uno::Reference<
                                            css::util::XModifyListener >& rListener,
                                            const css::lang::EventObject& rEvent );
 
@@ -2840,9 +2819,9 @@ public:
     void SC_DLLPUBLIC GetSortParam( ScSortParam& rParam, SCTAB nTab );
     void SC_DLLPUBLIC SetSortParam( const ScSortParam& rParam, SCTAB nTab );
 
-    void SetVbaEventProcessor( const css::uno::Reference< css::script::vba::XVBAEventProcessor >& rxVbaEvents )
+    void SetVbaEventProcessor( const cpo::uno::Reference< css::script::vba::XVBAEventProcessor >& rxVbaEvents )
                         { mxVbaEvents = rxVbaEvents; }
-    const css::uno::Reference< css::script::vba::XVBAEventProcessor >& GetVbaEventProcessor() const { return mxVbaEvents; }
+    const cpo::uno::Reference< css::script::vba::XVBAEventProcessor >& GetVbaEventProcessor() const { return mxVbaEvents; }
 
     /** Should only be GRAM_PODF or GRAM_ODFF. */
     void                              SetStorageGrammar( formula::FormulaGrammar::Grammar eGrammar );
@@ -3048,14 +3027,7 @@ public:
         if (mpDoc)
             mpDoc->BeginDrawUndo();
     }
-    ~DrawUndoGuard()
-    {
-        if (mpDoc)
-        {
-            if (auto* pLayer = mpDoc->GetDrawLayer())
-                (void)pLayer->GetCalcUndo();
-        }
-    }
+    ~DrawUndoGuard();
     DrawUndoGuard(const DrawUndoGuard&) = delete;
     DrawUndoGuard& operator=(const DrawUndoGuard&) = delete;
 };

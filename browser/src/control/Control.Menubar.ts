@@ -31,6 +31,32 @@ interface MenuItem {
 	accessibility?: { combination?: string; };
 }
 
+/// The 'Export as' submenu: the formats which can be exported to the storage.
+function exportAsMenu(docType: string): MenuItem[] {
+	return app
+		.getExportFormats(docType)
+		.filter((entry: ExportFormat) => entry.storage)
+		.map((entry: ExportFormat) => {
+			return { name: entry.label, id: 'exportas-' + entry.format, type: 'action' };
+		});
+}
+
+/// The 'Download as' submenu, with the dialog offering the PDF export options
+/// right after the direct PDF export.
+function downloadAsMenu(docType: string): MenuItem[] {
+	const items: MenuItem[] = [];
+	app.getExportFormats(docType).forEach((entry: ExportFormat) => {
+		items.push({ name: entry.label, id: entry.downloadId, type: 'action' });
+		if (entry.format === 'pdf')
+			items.push({
+				name: _('PDF Document (.pdf) as...'),
+				id: 'exportpdf',
+				type: 'action',
+			});
+	});
+	return items;
+}
+
 interface MenuStructure {
 	id?: string;
 	type: string;
@@ -106,26 +132,13 @@ class Menubar extends window.L.Control {
 					{name: _('Word Document (.docx)'), id: 'saveas-docx', type: 'action'},
 					{name: _('Rich Text (.rtf)'), id: 'saveas-rtf', type: 'action'},
 				]},
-				{name: _('Export as'), id: 'exportas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: 'exportas-pdf', type: 'action'},
-					{name: _('EPUB (.epub)'), id: 'exportas-epub', type: 'action'},
-					{name: _('Markdown (.md)'), id: 'exportas-md', type: 'action'}
-				]},
+				{name: _('Export as'), id: 'exportas', type: 'menu', menu: exportAsMenu('text')},
 				{name: _('Rename Document'), id: 'renamedocument', type: 'action'},
 				{name: _('Share...'), id:'shareas', type: 'action'},
 				{name: _('See revision history'), id: 'rev-history', type: 'action'},
-				{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: !window.ThisIsAMobileApp ? 'exportdirectpdf' : 'downloadas-pdf', type: 'action'},
-					{name: _('PDF Document (.pdf) as...'), id: 'exportpdf' , type: 'action'},
-					{name: _('ODF text document (.odt)'), id: 'downloadas-odt', type: 'action'},
-					{name: _('Word 2003 Document (.doc)'), id: 'downloadas-doc', type: 'action'},
-					{name: _('Word Document (.docx)'), id: 'downloadas-docx', type: 'action'},
-					{name: _('Rich Text (.rtf)'), id: 'downloadas-rtf', type: 'action'},
-					{name: _('EPUB (.epub)'), id: !window.ThisIsAMobileApp ? 'exportepub' : 'downloadas-epub', type: 'action'},
-					{name: _('HTML file (.html)'), id: 'downloadas-html', type: 'action'},
-					{name: _('Markdown (.md)'), id: 'downloadas-md', type: 'action'}]},
+				{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: downloadAsMenu('text')},
 				{name: _UNO('.uno:SetDocumentProperties', 'text'), uno: '.uno:SetDocumentProperties', id: 'properties'},
-				{name: _('Security label'), uno: '.uno:SecurityLabel', id: 'securitylabel'},
+				{name: _UNO('.uno:SecurityLabel', 'text'), uno: '.uno:SecurityLabel', id: 'securitylabel'},
 				{name: _UNO('.uno:Signature', 'text'), uno: '.uno:Signature', id: 'signature'},
 				{name: _('Options'), id: 'settings-dialog', type: 'action', mobileapp: false},
 				{type: 'separator'},
@@ -456,27 +469,13 @@ class Menubar extends window.L.Control {
 					{name: _('PowerPoint 2003 Presentation (.ppt)'), id: 'saveas-ppt', type: 'action'},
 					{name: _('PowerPoint Presentation (.pptx)'), id: 'saveas-pptx', type: 'action'},
 				]},
-				{name: _('Export as'), id: 'exportas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: 'exportas-pdf', type: 'action'}
-				]},
+				{name: _('Export as'), id: 'exportas', type: 'menu', menu: exportAsMenu('presentation')},
 				{name: _('Save Comments'), id: 'savecomments', type: 'action'},
 				{name: _('Share...'), id:'shareas', type: 'action'},
 				{name: _('See revision history'), id: 'rev-history', type: 'action'},
-				{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: !window.ThisIsAMobileApp ? 'exportdirectpdf' : 'downloadas-pdf', type: 'action'},
-					{name: _('PDF Document (.pdf) as...'), id: 'exportpdf' , type: 'action'},
-					{name: _('ODF presentation (.odp)'), id: 'downloadas-odp', type: 'action'},
-					{name: _('PowerPoint 2003 Presentation (.ppt)'), id: 'downloadas-ppt', type: 'action'},
-					{name: _('PowerPoint Presentation (.pptx)'), id: 'downloadas-pptx', type: 'action'},
-					{name: _('HTML Document (.html)'), id: 'downloadas-html', type: 'action'},
-					{name: _('Scalable Vector Graphics (.svg)'), id: 'downloadas-svg', type: 'action'},
-					{name: _('Current slide as Bitmap (.bmp)'), id: 'downloadas-bmp', type: 'action'},
-					{name: _('Current slide as Graphics Interchange Format (.gif)'), id: 'downloadas-gif', type: 'action'},
-					{name: _('Current slide as Portable Network Graphics (.png)'), id: 'downloadas-png', type: 'action'},
-					{name: _('Current slide as Tag Image File Format (.tiff)'), id: 'downloadas-tiff', type: 'action'},
-				]},
+				{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: downloadAsMenu('presentation')},
 				{name: _UNO('.uno:SetDocumentProperties', 'presentation'), uno: '.uno:SetDocumentProperties', id: 'properties'},
-				{name: _('Security label'), uno: '.uno:SecurityLabel', id: 'securitylabel'},
+				{name: _UNO('.uno:SecurityLabel', 'presentation'), uno: '.uno:SecurityLabel', id: 'securitylabel'},
 				{name: _UNO('.uno:Signature', 'presentation'), uno: '.uno:Signature', id: 'signature'},
 				{name: _('Options'), id: 'settings-dialog', type: 'action', mobileapp: false},
 				{type: 'separator'},
@@ -517,7 +516,11 @@ class Menubar extends window.L.Control {
 				   {name: _('Toggle UI Mode'), id: 'toggleuimode', type: 'action'},
 				   {name: _('Show Ruler'), id: 'showruler', type: 'action'},
 				   {name: _('Show Status Bar'), id: 'showstatusbar', type: 'action'},
-				   {name: _('Notes View'), id: 'notesmode', type: 'action'},
+				   {name: _('View Notes'), id: 'viewnotes', type: 'menu', menu: [
+					{name: _('Bottom Panel'), id: 'notespanelbottom', type: 'action'},
+					{name: _('Handout Page'), id: 'notespanelhandout', type: 'action'},
+					{name: _('Hidden'), id: 'notespanelhidden', type: 'action'},
+				   ]},
 				   {name: _('Hide Menu Bar'), id: 'togglemenubar', type: 'action'},
 				   {name: _('Dark Mode'), id: 'toggledarktheme', type: 'action'},
 				   {name: _('Invert Background'), id: 'invertbackground', type: 'action'},
@@ -669,18 +672,12 @@ class Menubar extends window.L.Control {
 			{name: _UNO('.uno:PickList', 'presentation'), id: 'file', type: 'menu', accessibility: {combination: 'MF'}, menu: [
 				{name: _UNO('.uno:Save', 'presentation'), unoid: '.uno:Save', id: 'save', type: 'action'},
 				{name: _UNO('.uno:SaveAs', 'presentation'), unoid: '.uno:SaveAs', id: 'saveas', type: 'action'},
-				{name: _('Export as'), id: 'exportas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: 'exportas-pdf', type: 'action'}
-				]},
+				{name: _('Export as'), id: 'exportas', type: 'menu', menu: exportAsMenu('drawing')},
 				{name: _('Save Comments'), id: 'savecomments', type: 'action'},
 				{name: _('Share...'), id:'shareas', type: 'action'},
 				{name: _UNO('.uno:Print', 'presentation'), unoid: '.uno:Print', id: 'print', type: 'action'},
 				{name: _('See revision history'), id: 'rev-history', type: 'action'},
-				{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: !window.ThisIsAMobileApp ? 'exportdirectpdf' : 'downloadas-pdf', type: 'action'},
-					{name: _('PDF Document (.pdf) as...'), id: 'exportpdf' , type: 'action'},
-					{name: _('ODF Drawing (.odg)'), id: 'downloadas-odg', type: 'action'}
-				]},
+				{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: downloadAsMenu('drawing')},
 				{name: _UNO('.uno:SetDocumentProperties', 'presentation'), uno: '.uno:SetDocumentProperties', id: 'properties'},
 				{name: _UNO('.uno:Signature', 'presentation'), uno: '.uno:Signature', id: 'signature'},
 				{name: _('Options'), id: 'settings-dialog', type: 'action', mobileapp: false},
@@ -842,21 +839,12 @@ class Menubar extends window.L.Control {
 					{name: _('Excel 2003 Spreadsheet (.xls)'), id: 'saveas-xls', type: 'action'},
 					{name: _('Excel Spreadsheet (.xlsx)'), id: 'saveas-xlsx', type: 'action'},
 				]},
-				{name: _('Export as'), id: 'exportas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: 'exportas-pdf', type: 'action'}
-				]},
+				{name: _('Export as'), id: 'exportas', type: 'menu', menu: exportAsMenu('spreadsheet')},
 				{name: _('Share...'), id:'shareas', type: 'action'},
 				{name: _('See revision history'), id: 'rev-history', type: 'action'},
-				{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id:'downloadas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: !window.ThisIsAMobileApp ? 'exportdirectpdf' : 'downloadas-pdf', type: 'action'},
-					{name: _('PDF Document (.pdf) as...'), id: 'exportpdf' , type: 'action'},
-					{name: _('ODF spreadsheet (.ods)'), id: 'downloadas-ods', type: 'action'},
-					{name: _('Excel 2003 Spreadsheet (.xls)'), id: 'downloadas-xls', type: 'action'},
-					{name: _('Excel Spreadsheet (.xlsx)'), id: 'downloadas-xlsx', type: 'action'},
-					{name: _('CSV file (.csv)'), id: 'downloadas-csv', type: 'action'},
-					{name: _('HTML file (.html)'), id: 'downloadas-html', type: 'action'}]},
+				{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: downloadAsMenu('spreadsheet')},
 				{name: _UNO('.uno:SetDocumentProperties', 'spreadsheet'), uno: '.uno:SetDocumentProperties', id: 'properties'},
-				{name: _('Security label'), uno: '.uno:SecurityLabel', id: 'securitylabel'},
+				{name: _UNO('.uno:SecurityLabel', 'spreadsheet'), uno: '.uno:SecurityLabel', id: 'securitylabel'},
 				{name: _UNO('.uno:Signature', 'spreadsheet'), uno: '.uno:Signature', id: 'signature'},
 				{name: _('Options'), id: 'settings-dialog', type: 'action', mobileapp: false},
 				{type: 'separator'},
@@ -1161,26 +1149,13 @@ class Menubar extends window.L.Control {
 			{name: _UNO('.uno:PickList', 'text'), id: 'file', type: 'menu', menu: [
 				{name: _UNO('.uno:Save', 'text'), unoid: '.uno:Save', id: 'save', type: 'action'},
 				{name: _UNO('.uno:SaveAs', 'text'), unoid: '.uno:SaveAs', id: 'saveas', type: 'action'},
-				{name: _('Export as'), id: 'exportas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: 'exportas-pdf', type: 'action'},
-					{name: _('EPUB (.epub)'), id: 'exportas-epub', type: 'action'},
-					{name: _('Markdown (.md)'), id: 'exportas-md', type: 'action'}
-				]},
+				{name: _('Export as'), id: 'exportas', type: 'menu', menu: exportAsMenu('text')},
 				{name: _('Share...'), id:'shareas', type: 'action'},
 				{name: _('See revision history'), id: 'rev-history', type: 'action'},
 				{type: 'separator'},
 				{name: _UNO('.uno:Print', 'text'), unoid: '.uno:Print', id: 'print', type: 'action'},
 			]},
-			{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: [
-				{name: _('PDF Document (.pdf)'), id: !window.ThisIsAMobileApp ? 'exportdirectpdf' : 'downloadas-pdf', type: 'action'},
-				{name: _('PDF Document (.pdf) as...'), id: 'exportpdf', type: 'action'},
-				{name: _('ODF text document (.odt)'), id: 'downloadas-odt', type: 'action'},
-				{name: _('Word 2003 Document (.doc)'), id: 'downloadas-doc', type: 'action'},
-				{name: _('Word Document (.docx)'), id: 'downloadas-docx', type: 'action'},
-				{name: _('Rich Text (.rtf)'), id: 'downloadas-rtf', type: 'action'},
-				{name: _('EPUB (.epub)'), id: !window.ThisIsAMobileApp ? 'exportepub' : 'downloadas-epub', type: 'action'},
-				{name: _('Markdown (.md)'), id: 'downloadas-md', type: 'action'},
-			]},
+			{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: downloadAsMenu('text')},
 			{name: _UNO('.uno:EditMenu', 'text'), id: 'editmenu', type: 'menu', menu: [
 				{uno: '.uno:Undo'},
 				{uno: '.uno:Redo'},
@@ -1227,22 +1202,13 @@ class Menubar extends window.L.Control {
 			{name: _UNO('.uno:PickList', 'presentation'), id: 'file', type: 'menu', menu: [
 				{name: _UNO('.uno:Save', 'presentation'), unoid: '.uno:Save', id: 'save', type: 'action'},
 				{name: _UNO('.uno:SaveAs', 'presentation'), unoid: '.uno:SaveAs', id: 'saveas', type: 'action'},
-				{name: _('Export as'), id: 'exportas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: 'exportas-pdf', type: 'action'}
-				]},
+				{name: _('Export as'), id: 'exportas', type: 'menu', menu: exportAsMenu('presentation')},
 				{name: _('Share...'), id:'shareas', type: 'action'},
 				{name: _('See revision history'), id: 'rev-history', type: 'action'},
 				{type: 'separator'},
 				{name: _UNO('.uno:Print', 'presentation'), uno: '.uno:Print', id: 'print', type: 'action'},
 			]},
-			{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id:'downloadas', type: 'menu', menu: [
-				{name: _('PDF Document (.pdf)'), id: !window.ThisIsAMobileApp ? 'exportdirectpdf' : 'downloadas-pdf', type: 'action'},
-				{name: _('PDF Document (.pdf) as...'), id: 'exportpdf' , type: 'action'},
-				{name: _('ODF presentation (.odp)'), id: 'downloadas-odp', type: 'action'},
-				{name: _('PowerPoint 2003 Presentation (.ppt)'), id: 'downloadas-ppt', type: 'action'},
-				{name: _('PowerPoint Presentation (.pptx)'), id: 'downloadas-pptx', type: 'action'},
-				{name: _('ODF Drawing (.odg)'), id: 'downloadas-odg', type: 'action'}
-			]},
+			{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: downloadAsMenu('presentation')},
 			{name: _UNO('.uno:EditMenu', 'presentation'), id: 'editmenu', type: 'menu', menu: [
 				{uno: '.uno:Undo'},
 				{uno: '.uno:Redo'},
@@ -1290,18 +1256,12 @@ class Menubar extends window.L.Control {
 			{name: _UNO('.uno:PickList', 'presentation'), id: 'file', type: 'menu', menu: [
 				{name: _UNO('.uno:Save', 'presentation'), unoid: '.uno:Save', id: 'save', type: 'action'},
 				{name: _UNO('.uno:SaveAs', 'presentation'), unoid: '.uno:SaveAs', id: 'saveas', type: 'action'},
-				{name: _('Export as'), id: 'exportas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: 'exportas-pdf', type: 'action'}
-				]},
+				{name: _('Export as'), id: 'exportas', type: 'menu', menu: exportAsMenu('drawing')},
 				{name: _('Share...'), id:'shareas', type: 'action'},
 				{name: _UNO('.uno:Print', 'presentation'), unoid: '.uno:Print', id: 'print', type: 'action'},
 				{name: _('See revision history'), id: 'rev-history', type: 'action'},
 			]},
-			{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id:'downloadas', type: 'menu', menu: [
-				{name: _('PDF Document (.pdf)'), id: !window.ThisIsAMobileApp ? 'exportdirectpdf' : 'downloadas-pdf', type: 'action'},
-				{name: _('PDF Document (.pdf) as...'), id: 'exportpdf', type: 'action'},
-				{name: _('ODF Drawing (.odg)'), id: 'downloadas-odg', type: 'action'}
-			]},
+			{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: downloadAsMenu('drawing')},
 			{name: _UNO('.uno:EditMenu', 'presentation'), id: 'editmenu', type: 'menu', menu: [
 				{uno: '.uno:Undo'},
 				{uno: '.uno:Redo'},
@@ -1343,9 +1303,7 @@ class Menubar extends window.L.Control {
 			{name: _UNO('.uno:PickList', 'spreadsheet'), id: 'file', type: 'menu', menu: [
 				{name: _UNO('.uno:Save', 'spreadsheet'), unoid: '.uno:Save', id: 'save', type: 'action'},
 				{name: _UNO('.uno:SaveAs', 'spreadsheet'), unoid: '.uno:SaveAs', id: 'saveas', type: 'action'},
-				{name: _('Export as'), id: 'exportas', type: 'menu', menu: [
-					{name: _('PDF Document (.pdf)'), id: 'exportas-pdf', type: 'action'}
-				]},
+				{name: _('Export as'), id: 'exportas', type: 'menu', menu: exportAsMenu('spreadsheet')},
 				{name: _('Share...'), id:'shareas', type: 'action'},
 				{name: _('See revision history'), id: 'rev-history', type: 'action'},
 				{type: 'separator'},
@@ -1353,13 +1311,7 @@ class Menubar extends window.L.Control {
 				{name: _('Define print area'), uno: '.uno:DefinePrintArea' },
 				{name: _('Remove print area'), uno: '.uno:DeletePrintArea' },
 			]},
-			{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id:'downloadas', type: 'menu', menu: [
-				{name: _('PDF Document (.pdf)'), id: !window.ThisIsAMobileApp ? 'exportdirectpdf' : 'downloadas-pdf', type: 'action'},
-				{name: _('PDF Document (.pdf) as...'), id: 'exportpdf' , type: 'action'},
-				{name: _('ODF spreadsheet (.ods)'), id: 'downloadas-ods', type: 'action'},
-				{name: _('Excel 2003 Spreadsheet (.xls)'), id: 'downloadas-xls', type: 'action'},
-				{name: _('Excel Spreadsheet (.xlsx)'), id: 'downloadas-xlsx', type: 'action'}
-			]},
+			{name: !window.ThisIsAMobileApp ? _('Download as') : _('Export as'), id: 'downloadas', type: 'menu', menu: downloadAsMenu('spreadsheet')},
 			{name: _UNO('.uno:EditMenu', 'spreadsheet'), id: 'editmenu', type: 'menu', menu: [
 				{uno: '.uno:Undo'},
 				{uno: '.uno:Redo'},
@@ -2251,8 +2203,20 @@ class Menubar extends window.L.Control {
 						} else {
 							$(aItem).removeClass(constChecked);
 						}
-					} else if (id === 'notesmode') {
+					} else if (id === 'notespanelbottom') {
+						if (this._map.notesPanel && this._map.notesPanel.isVisible())
+							$(aItem).addClass(constChecked);
+						else
+							$(aItem).removeClass(constChecked);
+					} else if (id === 'notespanelhandout') {
 						if (app.impress.notesMode)
+							$(aItem).addClass(constChecked);
+						else
+							$(aItem).removeClass(constChecked);
+					} else if (id === 'notespanelhidden') {
+						const bottomVisible =
+							this._map.notesPanel && this._map.notesPanel.isVisible();
+						if (!bottomVisible && !app.impress.notesMode)
 							$(aItem).addClass(constChecked);
 						else
 							$(aItem).removeClass(constChecked);
@@ -2649,11 +2613,11 @@ class Menubar extends window.L.Control {
 			// request new tiles for now.
 			app.map._docLayer.requestNewFiledBasedViewTiles();
 		} else if (id === 'insertgraphic') {
-			window.L.DomUtil.get('insertgraphic').click();
+			app.LOUtil.openFilePicker('insertgraphic');
 		} else if (id === 'insertgraphicremote') {
 			this._map.fire('postMessage', {msgId: 'UI_InsertGraphic'});
 		} else if (id === 'insertmultimedia') {
-			window.L.DomUtil.get('insertmultimedia').click();
+			app.LOUtil.openFilePicker('insertmultimedia');
 		} else if (id === 'remotemultimedia') {
 			this._map.fire('postMessage', {
 				msgId: 'UI_InsertFile', args: {
@@ -2684,8 +2648,12 @@ class Menubar extends window.L.Control {
 			app.dispatcher.dispatch('toggleuimode');
 		} else if (id === 'showstatusbar') {
 			app.dispatcher.dispatch('showstatusbar');
-		} else if (id === 'notesmode') {
-			app.dispatcher.dispatch('notesmode');
+		} else if (id === 'notespanelbottom') {
+			app.dispatcher.dispatch('notespanelbottom');
+		} else if (id === 'notespanelhandout') {
+			app.dispatcher.dispatch('notespanelhandout');
+		} else if (id === 'notespanelhidden') {
+			app.dispatcher.dispatch('notespanelhidden');
 		} else if (id === 'togglemenubar') {
 			this._map.uiManager.toggleMenubar();
 		} else if (id === 'collapsenotebookbar') {
@@ -2978,41 +2946,8 @@ class Menubar extends window.L.Control {
 		if (menuItem.id === 'invertbackground' && !window.prefs.getBoolean('darkTheme'))
 			return false;
 
-
-		// Keep track of all 'downloadas-' options and register them as
-		// export formats with docLayer which can then be publicly accessed unlike
-		// this Menubar control for which there doesn't seem to be any easy way
-		// to get access to.
-		if (menuItem.id && menuItem.id.startsWith('downloadas-')) {
-			var format = menuItem.id.substring('downloadas-'.length);
-
-			const docType: string = this._map.getDocType();
-			const extraFormats = docType === 'presentation' ? ['svg', 'bmp', 'gif', 'png', 'tiff']
-				: [];
-
-			const appNames: Record<string, string> = {
-				'presentation': 'impress'
-			};
-
-			if (extraFormats.includes(format) && !window.extraExportFormats.includes(`${format}_${appNames[docType]}`)) {
-				return false;
-			}
-
-			app.registerExportFormat(menuItem.name, format);
-
-			if (this._map['wopi'].HideExportOption)
-				return false;
-		}
-
-		if (menuItem.id && menuItem.id.startsWith('export')) {
-			if (!menuItem.id.startsWith('exportas-')) {
-				var format = menuItem.id.substring('export'.length);
-				app.registerExportFormat(menuItem.name, format);
-			}
-
-			if (this._map['wopi'].HideExportOption)
-				return false;
-		}
+		if (menuItem.id && !app.isExportEntryVisible(menuItem.id))
+			return false;
 
 		if (this._hiddenItems &&
 		    $.inArray(menuItem.id, this._hiddenItems) !== -1)

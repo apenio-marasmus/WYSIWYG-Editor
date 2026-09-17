@@ -73,6 +73,7 @@
                             m_pEmbedObj->getCurrentState()!=embed::EmbedStates::UI_ACTIVE) ? 0 : 4 )
 
 using namespace ::com::sun::star;
+using namespace ::cpo;
 
 namespace {
 
@@ -162,7 +163,7 @@ DocumentHolder::DocumentHolder( uno::Reference< cpo::uno::XComponentContext > xC
   m_nNoBorderResizeReact( 0 ),
   m_nNoResizeReact( 0 )
 {
-    uno::Reference< frame::XDesktop2 > xDesktop = frame::Desktop::create( m_xContext );
+    uno::Reference< frame::XDesktop > xDesktop = frame::Desktop::create( m_xContext );
     osl_atomic_increment(&m_refCount);
     try
     {
@@ -236,7 +237,7 @@ void DocumentHolder::CloseFrame()
 void DocumentHolder::FreeOffice()
 {
     try {
-        uno::Reference< frame::XDesktop2 > xDesktop = frame::Desktop::create( m_xContext );
+        uno::Reference< frame::XDesktop > xDesktop = frame::Desktop::create( m_xContext );
         xDesktop->removeTerminateListener( this );
     } catch (const cpo::uno::DeploymentException&) {
         // if this happens, the desktop is already gone
@@ -953,7 +954,7 @@ bool DocumentHolder::LoadDocToFrame( bool bInPlace )
         aArgs.put( u"ReadOnly"_ustr, m_bReadOnly );
 
         // set document title to show in the title bar
-        css::uno::Reference< css::frame::XTitle > xModelTitle( xDoc, css::uno::UNO_QUERY );
+        cpo::uno::Reference< css::frame::XTitle > xModelTitle( xDoc, cpo::uno::UNO_QUERY );
         if( xModelTitle.is() && m_pEmbedObj && !m_pEmbedObj->getContainerName().isEmpty() )
         {
             std::locale aResLoc = Translate::Create("sfx");

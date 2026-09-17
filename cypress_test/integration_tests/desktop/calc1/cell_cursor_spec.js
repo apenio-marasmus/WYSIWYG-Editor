@@ -117,6 +117,8 @@ describe(['tagdesktop', 'tagnextcloud', 'tagproxy'], 'Test jumping on large cell
 	});
 
 	it('Check selected text visual.', function() {
+		cy.viewport(1000, helper.maxScreenshotableViewportHeight);
+
 		cy.cGet('#insertsheet-button').click();
 
 		helper.processToIdle(this.win);
@@ -139,6 +141,8 @@ describe(['tagdesktop', 'tagnextcloud', 'tagproxy'], 'Test jumping on large cell
 		helper.processToIdle(this.win);
 
 		cy.cGet('#busypopup').should('not.exist');
+
+		helper.waitForCanvasAnimation(this.win);
 
 		cy.cGet('#document-container').compareSnapshot('text-selection', 0.02);
 	});
@@ -195,12 +199,14 @@ describe(['tagdesktop', 'tagnextcloud', 'tagproxy'], 'Test Cell Selections', fun
 		calcHelper.clickOnACell(2, 3, 4, 3, { ctrlKey: true });
 
 		cy.wait(500);
-		calcHelper.clickOnACell(4, 3, 2, 6);
+		calcHelper.clickOnACell(4, 3, 2, 6, { ctrlKey: true });
 
 		cy.wait(500);
 		calcHelper.clickOnACell(2, 6, 2, 10, { shiftKey: true });
 
 		helper.processToIdle(this.win);
+
+		helper.waitForCanvasAnimation(this.win);
 
 		cy.cGet('#document-container').compareSnapshot('selections', 0.02);
 	});
@@ -231,6 +237,8 @@ describe(['tagdesktop', 'tagnextcloud', 'tagproxy'], 'Test Cell Selections', fun
 		});
 
 		cy.wait(1000);
+
+		helper.waitForCanvasAnimation(this.win);
 
 		// This doesn't pass without the fix in this commit.
 		cy.cGet('#document-container').compareSnapshot('scroll-check', 0.02);
@@ -333,6 +341,8 @@ describe(['tagdesktop', 'tagnextcloud', 'tagproxy'], 'Test triple click content 
 	});
 
 	it('Triple click should select the cell content.', function() {
+		cy.viewport(1000, helper.maxScreenshotableViewportHeight);
+
 		calcHelper.enterCellAddressAndConfirm(this.win, 'A1');
 
 		// Triple click on second first in second row
@@ -346,6 +356,8 @@ describe(['tagdesktop', 'tagnextcloud', 'tagproxy'], 'Test triple click content 
 
 		helper.waitForTimers(this.win, 'clicktimer');
 		helper.processToIdle(this.win);
+
+		helper.waitForCanvasAnimation(this.win);
 
 		//TODO: The blinking cursor changes between frames, so the difference swings with
 		// the screenshot timing, requiring a ridiculously large threshold:

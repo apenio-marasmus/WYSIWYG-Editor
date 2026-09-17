@@ -104,6 +104,7 @@
 #include <sfx2/kit/helper.hxx>
 
 using namespace com::sun::star;
+using namespace ::cpo;
 
 const sal_uInt16 ScDocument::nSrcVer = SC_CURRENT_VERSION;
 
@@ -133,6 +134,22 @@ CellAttributeHelper& ScDocument::getCellAttributeHelper() const
     }
 
     return *mpCellAttributeHelper;
+}
+
+void ScDocument::setConnectionVector(const ConnectionVector& rIn)
+{
+    maConnectionVector = rIn;
+}
+
+void ScDocument::setSheetQueryTables(SCTAB nTab, QueryTableModelVector aIn)
+{
+    maSheetQueryTables[nTab] = std::move(aIn);
+}
+
+const QueryTableModelVector* ScDocument::getSheetQueryTables(SCTAB nTab) const
+{
+    auto it = maSheetQueryTables.find(nTab);
+    return it == maSheetQueryTables.end() ? nullptr : &it->second;
 }
 
 ScDocument::ScDocument( ScDocumentMode eMode, ScDocShell* pDocShell ) :

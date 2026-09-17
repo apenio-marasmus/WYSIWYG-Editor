@@ -29,7 +29,7 @@
 #include <strings.hrc>
 #include <cppuhelper/supportsservice.hxx>
 
-using namespace com::sun::star::uno;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace com::sun::star::lang;
 using namespace com::sun::star::beans;
@@ -188,7 +188,7 @@ MacabDriver::MacabDriver(
     osl_atomic_increment( &m_refCount );
     try
     {
-        Reference< XDesktop2 > xDesktop = Desktop::create( m_xContext );
+        Reference< XDesktop > xDesktop = Desktop::create( m_xContext );
         xDesktop->addTerminateListener( this );
     }
     catch( const Exception& )

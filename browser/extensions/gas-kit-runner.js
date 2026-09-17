@@ -16,25 +16,6 @@ window.__gasKitRunner = function(proxyId, gsSources, gsNames, fnName, callArgs) 
     try {
         function activeDoc() { return cool.getActiveDocument(); }
 
-        function cursorFacade() {
-            const xc = activeDoc().getCursor();
-            return {
-                getElement: function() {
-                    const p = xc.getElement();
-                    return p ? p : { getType: function() {
-                        return uno.idl.scriptinterop.ElementType.TEXT;
-                    } };
-                },
-                getOffset: function() { return xc.getOffset(); },
-                getSurroundingText: function() {
-                    const t = xc.getSurroundingText();
-                    return { getText: function() { return t; } };
-                },
-                getSurroundingTextOffset: function() { return xc.getOffset(); },
-                insertText: function(t) { xc.insertText(String(t)); }
-            };
-        }
-
         const uiStub = {
             createAddonMenu: function() {
                 const m = { addItem: function() { return m; }, addToUi: function() {} };
@@ -76,7 +57,7 @@ window.__gasKitRunner = function(proxyId, gsSources, gsNames, fnName, callArgs) 
             getActiveDocument: function() {
                 return {
                     getSelection: function() { return activeDoc().getSelection(); },
-                    getCursor: cursorFacade,
+                    getCursor: function() { return activeDoc().getCursor(); },
                     getBody: function() { return activeDoc().getBody(); },
                     getFootnotes: function() { return activeDoc().getFootnotes(); },
                     newRange: function() { return activeDoc().newRange(); },
@@ -120,20 +101,10 @@ window.__gasKitRunner = function(proxyId, gsSources, gsNames, fnName, callArgs) 
                 UNSUPPORTED: uno.idl.scriptinterop.ElementType.UNSUPPORTED
             },
             TextAlignment: uno.idl.scriptinterop.TextAlignment,
-            HorizontalAlignment: {
-                LEFT: 'LEFT', CENTER: 'CENTER', RIGHT: 'RIGHT', JUSTIFY: 'JUSTIFY'
-            },
+            HorizontalAlignment: uno.idl.scriptinterop.HorizontalAlignment,
             VerticalAlignment: { TOP: 'TOP', MIDDLE: 'MIDDLE', BOTTOM: 'BOTTOM' },
-            ParagraphHeading: {
-                NORMAL: 'NORMAL', TITLE: 'TITLE', SUBTITLE: 'SUBTITLE', HEADING1: 'HEADING1',
-                HEADING2: 'HEADING2', HEADING3: 'HEADING3', HEADING4: 'HEADING4',
-                HEADING5: 'HEADING5', HEADING6: 'HEADING6'
-            },
-            GlyphType: {
-                BULLET: 'BULLET', HOLLOW_BULLET: 'HOLLOW_BULLET', SQUARE_BULLET: 'SQUARE_BULLET',
-                NUMBER: 'NUMBER', LATIN_UPPER: 'LATIN_UPPER', LATIN_LOWER: 'LATIN_LOWER',
-                ROMAN_UPPER: 'ROMAN_UPPER', ROMAN_LOWER: 'ROMAN_LOWER'
-            }
+            ParagraphHeading: uno.idl.scriptinterop.ParagraphHeading,
+            GlyphType: uno.idl.scriptinterop.GlyphType
         };
 
         function makeHtmlOutput() {

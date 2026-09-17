@@ -25,12 +25,14 @@
 
 #include <config_fonts.h>
 #include <officecfg/Office/Writer.hxx>
+#include <vcl/outdev.hxx>
 #include <vcl/svapp.hxx>
 #include <comphelper/scopeguard.hxx>
 #include <test/commontesttools.hxx>
 
 using namespace css;
-using namespace css::uno;
+using namespace ::cpo;
+using namespace ::cpo::uno;
 
 class Test : public SwModelTestBase
 {

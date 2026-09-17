@@ -160,7 +160,9 @@
 #include <unoparagraph.hxx>
 
 using namespace ::com::sun::star;
+using namespace ::cpo;
 using namespace oox;
+
 namespace writerfilter::dmapper{
 
 //line numbering for header/footer
@@ -2309,8 +2311,9 @@ void DomainMapper_Impl::finishParagraph( const ParagraphPropertyMapPtr& pParaCon
     TagLogger::getInstance().attribute("isTextAppend", sal_uInt32(xTextAppend.is()));
 #endif
 
+    // A file may name a paragraph style it never defines, which leaves nothing to read the
+    // numbering and the spacing below out of; everything that uses it checks first.
     const StyleSheetEntryPtr pEntry = GetStyleSheetTable()->FindStyleSheetByConvertedStyleName( GetCurrentParaStyleName() );
-    SAL_WARN_IF(!pEntry, "writerfilter.dmapper", "no style sheet found");
     sal_Int32 nListId = pParaContext ? pParaContext->props().GetListId() : -1;
     bool isNumberingViaStyle(false);
     bool isNumberingViaRule = nListId > -1;
@@ -3058,7 +3061,7 @@ void DomainMapper_Impl::finishParagraph( const ParagraphPropertyMapPtr& pParaCon
                     CheckParaMarkerRedline( xCur );
                 }
 
-                css::uno::Reference<css::beans::XPropertySet> xParaProps(xTextRange, uno::UNO_QUERY);
+                cpo::uno::Reference<css::beans::XPropertySet> xParaProps(xTextRange, uno::UNO_QUERY);
 
                 // table style precedence and not hidden shapes anchored to hidden empty table paragraphs
                 if (xParaProps && !IsInComments()
@@ -3516,7 +3519,7 @@ void DomainMapper_Impl::applyToggleAttributes(const PropertyMapPtr& pPropertyMap
     }
 }
 
-void DomainMapper_Impl::MergeAtContentImageRedlineWithNext(const css::uno::Reference<css::text::XTextAppend>& xTextAppend)
+void DomainMapper_Impl::MergeAtContentImageRedlineWithNext(const cpo::uno::Reference<css::text::XTextAppend>& xTextAppend)
 {
     // remove workaround for change tracked images, if they are part of a redline,
     // i.e. if the next run is a tracked change with the same type, author and date,
@@ -3933,18 +3936,18 @@ static void checkAndAddPropVal(const OUString& prop, const cpo::uno::Any& val,
 }
 
 static uno::Reference<lang::XComponent>
-getParagraphOfRange(const css::uno::Reference<css::text::XTextRange>& xRange)
+getParagraphOfRange(const cpo::uno::Reference<css::text::XTextRange>& xRange)
 {
     uno::Reference<container::XEnumerationAccess> xEA{ xRange, uno::UNO_QUERY_THROW };
     return { xEA->createEnumeration()->nextElement(), uno::UNO_QUERY_THROW };
 }
 
-static void copyAllProps(const css::uno::Reference<cpo::uno::XInterface>& from,
-                         const css::uno::Reference<cpo::uno::XInterface>& to)
+static void copyAllProps(const cpo::uno::Reference<cpo::uno::XInterface>& from,
+                         const cpo::uno::Reference<cpo::uno::XInterface>& to)
 {
-    css::uno::Reference<css::beans::XPropertySet> xFromProps(from, css::uno::UNO_QUERY_THROW);
-    css::uno::Reference<css::beans::XPropertySetInfo> xFromInfo(xFromProps->getPropertySetInfo(),
-                                                                css::uno::UNO_SET_THROW);
+    cpo::uno::Reference<css::beans::XPropertySet> xFromProps(from, cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::beans::XPropertySetInfo> xFromInfo(xFromProps->getPropertySetInfo(),
+                                                                cpo::uno::UNO_SET_THROW);
     cpo::uno::Sequence<css::beans::Property> rawProps(xFromInfo->getProperties());
     std::vector<OUString> props;
     props.reserve(rawProps.getLength());
@@ -3952,7 +3955,7 @@ static void copyAllProps(const css::uno::Reference<cpo::uno::XInterface>& from,
         if ((prop.Attributes & css::beans::PropertyAttribute::READONLY) == 0)
             props.push_back(prop.Name);
 
-    if (css::uno::Reference<css::beans::XPropertyState> xFromState{ from, css::uno::UNO_QUERY })
+    if (cpo::uno::Reference<css::beans::XPropertyState> xFromState{ from, cpo::uno::UNO_QUERY })
     {
         const auto propsSeq = comphelper::containerToSequence(props);
         const auto statesSeq = xFromState->getPropertyStates(propsSeq);
@@ -3964,8 +3967,8 @@ static void copyAllProps(const css::uno::Reference<cpo::uno::XInterface>& from,
 
     std::vector<cpo::uno::Any> values;
     values.reserve(props.size());
-    if (css::uno::Reference<css::beans::XMultiPropertySet> xFromMulti{ xFromProps,
-                                                                       css::uno::UNO_QUERY })
+    if (cpo::uno::Reference<css::beans::XMultiPropertySet> xFromMulti{ xFromProps,
+                                                                       cpo::uno::UNO_QUERY })
     {
         const auto propsSeq = comphelper::containerToSequence(props);
         const auto valuesSeq = xFromMulti->getPropertyValues(propsSeq);
@@ -3984,9 +3987,9 @@ static void copyAllProps(const css::uno::Reference<cpo::uno::XInterface>& from,
     }
     assert(props.size() == values.size());
 
-    css::uno::Reference<css::beans::XPropertySet> xToProps(to, css::uno::UNO_QUERY_THROW);
-    if (css::uno::Reference<css::beans::XMultiPropertySet> xToMulti{ xToProps,
-                                                                     css::uno::UNO_QUERY })
+    cpo::uno::Reference<css::beans::XPropertySet> xToProps(to, cpo::uno::UNO_QUERY_THROW);
+    if (cpo::uno::Reference<css::beans::XMultiPropertySet> xToMulti{ xToProps,
+                                                                     cpo::uno::UNO_QUERY })
     {
         try
         {
@@ -6085,7 +6088,7 @@ void DomainMapper_Impl::SetNumberFormat( const OUString& rCommand,
         {
             try
             {
-                css::uno::Reference<css::i18n::XNumberFormatCode> const xNumberFormatCode =
+                cpo::uno::Reference<css::i18n::XNumberFormatCode> const xNumberFormatCode =
                     i18n::NumberFormatMapper::create(m_xComponentContext);
                 sFormatString = xNumberFormatCode->getFormatCode(
                     css::i18n::NumberFormatIndex::DATE_SYSTEM_SHORT, aCurrentLocale).Code;
@@ -6147,7 +6150,7 @@ void DomainMapper_Impl::ChainTextFrames()
         return ;
 
     struct TextFramesForChaining {
-        css::uno::Reference< css::drawing::XShape > xShape;
+        cpo::uno::Reference< css::drawing::XShape > xShape;
         sal_Int32 nId;
         sal_Int32 nSeq;
         OUString s_mso_next_textbox;
@@ -6337,7 +6340,7 @@ void DomainMapper_Impl::PopTextBoxContent()
     }
 }
 
-void DomainMapper_Impl::AttachTextBoxContentToShape(const css::uno::Reference<css::drawing::XShape> & xShape)
+void DomainMapper_Impl::AttachTextBoxContentToShape(const cpo::uno::Reference<css::drawing::XShape> & xShape)
 {
     // Without textbox or shape pointless to continue
     if (m_xPendingTextBoxFrames.empty() || !xShape)
@@ -7665,7 +7668,7 @@ void DomainMapper_Impl::handleToc
         else
         {
             // create TOC section
-            css::uno::Reference<css::text::XTextRange> xTextRangeEndOfTocHeader = GetTopTextAppend()->getEnd();
+            cpo::uno::Reference<css::text::XTextRange> xTextRangeEndOfTocHeader = GetTopTextAppend()->getEnd();
             xTOC = createSectionForRange(m_StreamStateStack.top().xSdtEntryStart, xTextRangeEndOfTocHeader, sTOCServiceName, false);
 
             // init [xTOCMarkerCursor]

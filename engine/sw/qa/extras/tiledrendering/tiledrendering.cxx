@@ -91,7 +91,8 @@
 #include <swtestviewcallback.hxx>
 
 using namespace css;
-using namespace css::uno;
+using namespace ::cpo;
+using namespace ::cpo::uno;
 
 static std::ostream& operator<<(std::ostream& os, ViewShellId id)
 {
@@ -495,6 +496,22 @@ CPPUNIT_TEST_FIXTURE(SwTiledRenderingTest, testDocumentSizeChanged)
     CPPUNIT_ASSERT_EQUAL(aSize.getWidth(), m_aDocumentSize.getWidth());
     // Document height should be smaller now.
     CPPUNIT_ASSERT(aSize.getHeight() > m_aDocumentSize.getHeight());
+}
+
+CPPUNIT_TEST_FIXTURE(SwTiledRenderingTest, testDocumentSizeChangedOutsideAction)
+{
+    // The view learns the document size also when the layout reports it outside an action.
+    SwXTextDocument* pXTextDocument = createDoc("2-pages.odt");
+    SwWrtShell* pWrtShell = getSwDocShell()->GetWrtShell();
+    setupCOKitViewCallback(pWrtShell->GetSfxViewShell());
+    m_aDocumentSize = Size();
+
+    // A cursor placed on a page that is formatted only then reports the size like this, after
+    // the action around the cursor move has ended.
+    CPPUNIT_ASSERT(!pWrtShell->ActionPend());
+    pWrtShell->SizeChgNotify();
+
+    CPPUNIT_ASSERT_EQUAL(pXTextDocument->getDocumentSize(), m_aDocumentSize);
 }
 
 CPPUNIT_TEST_FIXTURE(SwTiledRenderingTest, testSearchAll)
@@ -1059,7 +1076,7 @@ CPPUNIT_TEST_FIXTURE(SwTiledRenderingTest, testUndoDispatch)
     pXTextDocument->postMouseEvent(COKitMouseEventType::BUTTONDOWN, aStart.getX(), aStart.getY(), 1, MOUSE_LEFT, 0);
     pXTextDocument->postMouseEvent(COKitMouseEventType::BUTTONUP, aStart.getX(), aStart.getY(), 1, MOUSE_LEFT, 0);
     Scheduler::ProcessEventsToIdle();
-    uno::Reference<frame::XDesktop2> xDesktop = frame::Desktop::create(comphelper::getProcessComponentContext());
+    uno::Reference<frame::XDesktop> xDesktop = frame::Desktop::create(comphelper::getProcessComponentContext());
     uno::Reference<frame::XFrame> xFrame2 = xDesktop->getActiveFrame();
 
     // Now switch back to the first view, and make sure that the active frame is updated.
@@ -3660,7 +3677,7 @@ CPPUNIT_TEST_FIXTURE(SwTiledRenderingTest, testCondCollCopy)
 
     // When getting the text selection, then make sure it doesn't crash:
     uno::Reference<datatransfer::XTransferable2> xTransferable(pXTextDocument->getSelection(),
-                                                               css::uno::UNO_QUERY);
+                                                               cpo::uno::UNO_QUERY);
     datatransfer::DataFlavor aFlavor;
     aFlavor.MimeType = u"text/plain;charset=utf-16"_ustr;
     aFlavor.DataType = cppu::UnoType<OUString>::get();

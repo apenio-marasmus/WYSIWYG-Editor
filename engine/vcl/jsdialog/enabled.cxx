@@ -521,7 +521,6 @@ constexpr auto SidebarList
         { u"svx/ui/accessibilitychecklevel.ui" },
         { u"svx/ui/defaultshapespanel.ui" },
         { u"svx/ui/inspectortextpanel.ui" },
-        { u"svx/ui/mediaplayback.ui" },
         { u"svx/ui/sidebararea.ui" },
         { u"svx/ui/sidebareffect.ui" },
         { u"svx/ui/sidebarempty.ui" },
@@ -553,6 +552,13 @@ constexpr auto QuickFindList
         { u"modules/swriter/ui/sidebarquickfind.ui" },
 });
 
+
+// ========== NOTESPANEL ================================================== //
+
+constexpr auto NotesPanelList
+    = frozen::make_unordered_set<std::u16string_view>({
+        { u"modules/simpress/ui/notespanel.ui" }
+});
 
 // ========== NOTEBOOKBAR ================================================= //
 
@@ -684,6 +690,11 @@ bool isBuilderEnabledForNavigator(std::u16string_view rUIFile)
 bool isBuilderEnabledForQuickFind(std::u16string_view rUIFile)
 {
     return isInMap(QuickFindList, rUIFile);
+}
+
+bool isBuilderEnabledForNotesPanel(std::u16string_view rUIFile)
+{
+    return isInMap(NotesPanelList, rUIFile);
 }
 
 bool isInterimBuilderEnabledForNotebookbar(std::u16string_view rUIFile)
@@ -879,12 +890,8 @@ std::vector<OUString> completeCommonSidebarList(const o3tl::sorted_vector<OUStri
 
         if (docType != COKitDocumentType::PRESENTATION && docType != COKitDocumentType::DRAWING)
         {
-            // Skip this one, in practice it appears in draw/impress
-            // TODO: it should probably be made to appear in writer/calc too
-            if (entry == u"svx/ui/mediaplayback.ui")
-                continue;
             // Skip this one, its context means it can only appear in draw/impress
-            else if (entry == u"svx/ui/defaultshapespanel.ui")
+            if (entry == u"svx/ui/defaultshapespanel.ui")
                 continue;
             // Skip this one, its context means it can only appear in draw/impress
             else if (entry == u"svx/ui/sidebarlists.ui")

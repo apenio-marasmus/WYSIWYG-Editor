@@ -30,9 +30,22 @@ function documentTest() {
     console.assert(p0.getType() === DocumentApp.ElementType.PARAGRAPH);
     console.assert(p0.getText() === 'BoldItalicPlain');
     console.assert(p0.isLeftToRight() === true);
+    console.assert(p0.getParent().getType() === DocumentApp.ElementType.BODY_SECTION);
+    console.assert(p0.copy().getText() === 'BoldItalicPlain');
+    console.assert(p0.getNumChildren() === 1);
+    console.assert(p0.getChild(0).getType() === DocumentApp.ElementType.TEXT);
+    console.assert(p0.getChild(0).getText() === 'BoldItalicPlain');
+    console.assert(p0.getChild(0).getParent().getType() === DocumentApp.ElementType.PARAGRAPH);
+    console.assert(p0.getHeading() === DocumentApp.ParagraphHeading.NORMAL);
+    console.assert(checkEqual(p0.getAlignment(), DocumentApp.HorizontalAlignment.LEFT));
+    console.assert(checkEqual(p0.getIndentStart(), 0));
+    console.assert(p0.getPreviousSibling() === null);
+    console.assert(p0.getNextSibling().getType() === DocumentApp.ElementType.PARAGRAPH);
+    console.assert(p0.getNextSibling().getText() === 'UnderStrikeSuperPlain');
     const t0 = p0.editAsText();
     console.assert(t0.getType() === DocumentApp.ElementType.PARAGRAPH);
     console.assert(t0.getText() === 'BoldItalicPlain');
+    console.assert(t0.getParent().getType() === DocumentApp.ElementType.BODY_SECTION);
     console.assert(t0.isBold(0) === true);
     console.assert(checkEqual(t0.isBold(4), false));
     console.assert(checkEqual(t0.isItalic(0), false));
@@ -68,14 +81,21 @@ function documentTest() {
     console.assert(table.getNumRows() === 2);
     console.assert(table.getNumChildren() === 2);
     console.assert(table.getChild(0).getType() === DocumentApp.ElementType.TABLE_ROW);
+    console.assert(table.getParent().getType() === DocumentApp.ElementType.BODY_SECTION);
     const row0 = table.getRow(0);
     console.assert(row0.getNumCells() === 2);
     console.assert(row0.getNumChildren() === 2);
+    console.assert(row0.getParent().getType() === DocumentApp.ElementType.TABLE);
     const cell00 = row0.getCell(0);
     console.assert(cell00.getType() === DocumentApp.ElementType.TABLE_CELL);
     console.assert(cell00.getText() === 'A1');
     console.assert(cell00.getNumChildren() >= 1);
     console.assert(cell00.getChild(0).getType() === DocumentApp.ElementType.PARAGRAPH);
+    console.assert(cell00.getParent().getType() === DocumentApp.ElementType.TABLE_ROW);
+    console.assert(cell00.getRowSpan() === 1);
+    console.assert(cell00.getColSpan() === 1);
+    console.assert(cell00.getChild(0).getParent().getType() === DocumentApp.ElementType.TABLE_CELL);
+    console.assert(body.copy().getNumChildren() === body.getNumChildren());
     console.assert(row0.getCell(1).getText() === 'B1');
     console.assert(table.getRow(1).getCell(0).getText() === 'A2');
     console.assert(table.getRow(1).getCell(1).getText() === 'B2');
@@ -89,6 +109,9 @@ function documentTest() {
     console.assert(noteContents.getType() === DocumentApp.ElementType.FOOTNOTE_SECTION);
     console.assert(noteContents.getNumChildren() >= 1);
     console.assert(noteContents.getChild(0).getText() === 'Note');
+
+    // No user selection on a freshly opened document, so getSelection returns null:
+    console.assert(DocumentApp.getActiveDocument().getSelection() === null);
 
     // Build a selection spanning all of paragraph 0 plus the first three characters of paragraph 1,
     // set it on the document, and verify the per-paragraph range split:
@@ -131,5 +154,45 @@ function documentTest() {
     const listItem = body.appendListItem('Item');
     console.assert(listItem.getType() === DocumentApp.ElementType.LIST_ITEM);
     console.assert(listItem.getText() === 'Item');
+    console.assert(listItem.getNestingLevel() === 0);
+    console.assert(listItem.getGlyphType() === DocumentApp.GlyphType.NUMBER);
+    console.assert(typeof listItem.getListId() === 'string');
     console.assert(body.getNumChildren() === 7);
+
+    // clear empties the paragraph text without removing the paragraph from the body:
+    const cleared = body.appendParagraph('Doomed');
+    console.assert(body.getNumChildren() === 8);
+    console.assert(cleared.getText() === 'Doomed');
+    cleared.clear();
+    console.assert(cleared.getText() === '');
+    console.assert(body.getNumChildren() === 8);
+
+    // GAS refuses to remove the section's last paragraph, so append a guard first, then remove
+    // cleared (which is no longer the last):
+    body.appendParagraph('Guard');
+    console.assert(body.getNumChildren() === 9);
+    cleared.removeFromParent();
+    console.assert(body.getNumChildren() === 8);
+
+    // Removing a whole added paragraph via its Text view works too, again with a guard so what
+    // we remove is not the last paragraph:
+    const viaText = body.appendParagraph('AlsoDoomed');
+    body.appendParagraph('Guard');
+    console.assert(body.getNumChildren() === 10);
+    viaText.editAsText().removeFromParent();
+    console.assert(body.getNumChildren() === 9);
+
+    // A table cell's clear empties the cell's text:
+    const tab = body.getChild(3);
+    console.assert(tab.getType() === DocumentApp.ElementType.TABLE);
+    const cell = tab.getChild(0).getChild(0);
+    console.assert(cell.getType() === DocumentApp.ElementType.TABLE_CELL);
+    console.assert(cell.getText().length > 0);
+    cell.clear();
+    console.assert(cell.getText() === '');
+
+    // Removing a table row shrinks the surrounding table:
+    console.assert(tab.getNumChildren() === 2);
+    tab.getChild(0).removeFromParent();
+    console.assert(tab.getNumChildren() === 1);
 }

@@ -12,10 +12,12 @@
 #include "ViewShell.hxx"
 #include "fuoltext.hxx"
 #include <glob.hxx>
+#include <vcl/vclptr.hxx>
 
 namespace sd
 {
 class NotesPanelView;
+class NotesPanelWidget;
 
 class NotesPanelViewShell final : public ViewShell
 {
@@ -54,7 +56,7 @@ public:
     virtual void ArrangeGUIElements() override;
     virtual SdPage* GetActualPage() override;
     virtual SdPage* getCurrentPage() const override;
-    virtual css::uno::Reference<css::drawing::XDrawSubController> CreateSubController() override;
+    virtual cpo::uno::Reference<css::drawing::XDrawSubController> CreateSubController() override;
 
     void ExecCtrl(SfxRequest& rReq);
     void GetCtrlState(SfxItemSet& rSet);
@@ -90,6 +92,8 @@ public:
 
 private:
     std::unique_ptr<NotesPanelView> mpNotesPanelView;
+    /// Only set when the client renders the notes editor itself rather than receiving tiles.
+    VclPtr<NotesPanelWidget> mpNotesPanelWidget;
     bool mbInitialized = false;
 
     /** Initiates the shell with it's NotesPanelView instance

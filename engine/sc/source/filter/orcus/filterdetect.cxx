@@ -32,13 +32,13 @@ class OrcusFormatDetect : public ::cppu::WeakImplHelper<css::document::XExtended
 public:
     explicit OrcusFormatDetect();
 
-    virtual OUString SAL_CALL getImplementationName() override;
+    virtual OUString getImplementationName() override;
 
-    virtual bool SAL_CALL supportsService(const OUString& rServiceName) override;
+    virtual bool supportsService(const OUString& rServiceName) override;
 
-    virtual cpo::uno::Sequence<OUString> SAL_CALL getSupportedServiceNames() override;
+    virtual cpo::uno::Sequence<OUString> getSupportedServiceNames() override;
 
-    virtual OUString SAL_CALL
+    virtual OUString
     detect(cpo::uno::Sequence<css::beans::PropertyValue>& rMediaDescSeq) override;
 
 private:
@@ -89,8 +89,8 @@ OUString OrcusFormatDetect::detect(cpo::uno::Sequence<css::beans::PropertyValue>
     else
         return OUString();
 
-    css::uno::Reference<css::io::XInputStream> xInputStream(
-        aMediaDescriptor[utl::MediaDescriptor::PROP_INPUTSTREAM], css::uno::UNO_QUERY);
+    cpo::uno::Reference<css::io::XInputStream> xInputStream(
+        aMediaDescriptor[utl::MediaDescriptor::PROP_INPUTSTREAM], cpo::uno::UNO_QUERY);
 
     CopiedTempStream aTemp(xInputStream);
     auto aContent = toFileContent(aTemp.getFileName());

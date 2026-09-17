@@ -58,10 +58,7 @@ class Dispatcher {
 		};
 
 		this.actionsMap['closeapp'] = () => {
-			if (
-				(window as any).ThisIsAMobileApp &&
-				!(window as any).ThisIsTheEmscriptenApp
-			) {
+			if (window.ThisIsAMobileApp && !window.ThisIsTheEmscriptenApp) {
 				window.postMobileMessage('BYE');
 			} else {
 				if (app.map) app.map.acceptPendingCellEdit();
@@ -136,7 +133,7 @@ class Dispatcher {
 		};
 
 		this.actionsMap['insertmultimedia'] = function () {
-			window.L.DomUtil.get('insertmultimedia').click();
+			app.LOUtil.openFilePicker('insertmultimedia');
 		};
 		this.actionsMap['remotemultimedia'] = function () {
 			app.map.fire('postMessage', {
@@ -149,7 +146,7 @@ class Dispatcher {
 		};
 
 		this.actionsMap['localcomparedocuments'] = function () {
-			window.L.DomUtil.get('comparedocuments').click();
+			app.LOUtil.openFilePicker('comparedocuments');
 		};
 		this.actionsMap['remotecomparedocuments'] = function () {
 			app.map.fire('postMessage', {
@@ -204,7 +201,7 @@ class Dispatcher {
 			app.map.fire('morelanguages', { applyto: 'all' });
 		};
 		this.actionsMap['localgraphic'] = function () {
-			window.L.DomUtil.get('insertgraphic').click();
+			app.LOUtil.openFilePicker('insertgraphic');
 		};
 		this.actionsMap['remotegraphic'] = this.actionsMap['insertremotegraphic'] =
 			function () {
@@ -219,6 +216,15 @@ class Dispatcher {
 		};
 		this.actionsMap['updateslidelinks'] = function () {
 			if (app.map.slideLinks) app.map.slideLinks.updateAll();
+		};
+		// The two act on the slide on show alone.
+		this.actionsMap['updatelinkedslide'] = function () {
+			const links = app.map.slideLinks;
+			if (links) links.updatePage(links.currentPart());
+		};
+		this.actionsMap['unlinkslide'] = function () {
+			const links = app.map.slideLinks;
+			if (links) links.breakLink(links.currentPart());
 		};
 
 		this.actionsMap['showhelp'] = function () {
@@ -318,6 +324,8 @@ class Dispatcher {
 		};
 		this.actionsMap['hidesearchbar'] = () => {
 			$('#toolbar-search').hide();
+			app.map.fire('searchend');
+			app.map._onGotFocus();
 			if (app.map.isEditMode()) $('#toolbar-down').show();
 			/** show edit button if only we are able to edit but in readonly mode */
 			if (!app.isReadOnly() && app.map.isReadOnlyMode())
@@ -1006,13 +1014,58 @@ class Dispatcher {
 		};
 
 		this.actionsMap['selectbackground'] = function () {
-			window.L.DomUtil.get('selectbackground').click();
+			app.LOUtil.openFilePicker('selectbackground');
 		};
 
 		this.actionsMap['notesmode'] = function () {
 			if (app.impress.notesMode)
 				app.map.sendUnoCommand('.uno:NormalMultiPaneGUI');
 			else app.map.sendUnoCommand('.uno:NotesMode');
+		};
+
+		// The three notes views are mutually exclusive. Picking one turns the
+		// others off, and "Hidden" turns both off.
+
+		// The status bar button switches the bottom panel on and off, so
+		// switching it on leaves the handout page.
+		this.actionsMap['notespanel'] = () => {
+			if (app.map.notesPanel.isVisible()) this.actionsMap['notespanelhidden']();
+			else this.actionsMap['notespanelbottom']();
+		};
+
+		this.actionsMap['notespanelbottom'] = function () {
+			const openPanel = function () {
+				if (!app.map.notesPanel.isVisible()) app.map.notesPanel.toggle();
+			};
+
+			if (!app.impress.notesMode) {
+				openPanel();
+				return;
+			}
+
+			// The engine takes its time to leave the handout page, and it moves
+			// through other pages on the way. A panel opened before the normal
+			// view is up is dropped, or fills itself from one of those pages,
+			// so wait for the state that says the normal view is there.
+			const onStateChange = function (e: any) {
+				if (e.commandName !== '.uno:NormalMultiPaneGUI' || e.state !== 'true')
+					return;
+				app.map.off('commandstatechanged', onStateChange);
+				openPanel();
+			};
+			app.map.on('commandstatechanged', onStateChange);
+			app.map.sendUnoCommand('.uno:NormalMultiPaneGUI');
+		};
+
+		this.actionsMap['notespanelhandout'] = function () {
+			if (app.map.notesPanel.isVisible()) app.map.notesPanel.toggle();
+			if (!app.impress.notesMode) app.map.sendUnoCommand('.uno:NotesMode');
+		};
+
+		this.actionsMap['notespanelhidden'] = function () {
+			if (app.map.notesPanel.isVisible()) app.map.notesPanel.toggle();
+			if (app.impress.notesMode)
+				app.map.sendUnoCommand('.uno:NormalMultiPaneGUI');
 		};
 
 		this.actionsMap['animationdeck'] = () => {

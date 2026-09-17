@@ -30,7 +30,7 @@
 #include <cppuhelper/unourl.hxx>
 
 using namespace cppu;
-using namespace com::sun::star::uno;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace com::sun::star::lang;
 using namespace com::sun::star::connection;
@@ -50,12 +50,12 @@ public:
     explicit ResolverImpl( const Reference< XComponentContext > & xSMgr );
 
     // XServiceInfo
-    virtual OUString SAL_CALL getImplementationName() override;
-    virtual bool SAL_CALL supportsService( const OUString & rServiceName ) override;
-    virtual Sequence< OUString > SAL_CALL getSupportedServiceNames() override;
+    virtual OUString getImplementationName() override;
+    virtual bool supportsService( const OUString & rServiceName ) override;
+    virtual Sequence< OUString > getSupportedServiceNames() override;
 
     // XUnoUrlResolver
-    virtual Reference< XInterface > SAL_CALL resolve( const OUString & rUnoUrl ) override;
+    virtual Reference< XInterface > resolve( const OUString & rUnoUrl ) override;
 };
 
 }

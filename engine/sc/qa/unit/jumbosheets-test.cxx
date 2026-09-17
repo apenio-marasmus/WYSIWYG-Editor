@@ -9,6 +9,7 @@
 
 #include <sal/config.h>
 #include "helper/qahelper.hxx"
+#include <drwlayer.hxx>
 #include <COKit/COKit.hxx>
 #include <vcl/scheduler.hxx>
 #include <vcl/keycodes.hxx>
@@ -24,7 +25,7 @@
 #include <scdll.hxx>
 
 using namespace ::com::sun::star;
-using namespace ::com::sun::star::uno;
+using namespace ::cpo::uno;
 
 /* Tests for sheets larger than 1024 columns and/or 1048576 rows. */
 

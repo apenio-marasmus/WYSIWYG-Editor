@@ -56,7 +56,7 @@
 #include <comphelper/diagnose_ex.hxx>
 
 using namespace ::com::sun::star;
-using namespace css::uno;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace css::script;
 using namespace css::frame;
@@ -203,7 +203,7 @@ Reference< XInterface  >
 SvxScriptOrgDialog::getDocumentModel( Reference< XComponentContext > const & xCtx, std::u16string_view docName )
 {
     Reference< XInterface > xModel;
-    Reference< frame::XDesktop2 > desktop  = frame::Desktop::create(xCtx);
+    Reference< frame::XDesktop > desktop  = frame::Desktop::create(xCtx);
 
     Reference< container::XEnumerationAccess > componentsAccess =
         desktop->getComponents();

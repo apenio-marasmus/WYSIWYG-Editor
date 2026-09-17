@@ -28,9 +28,10 @@
 #include "vbachartobjects.hxx"
 
 using namespace ::com::sun::star;
+using namespace ::cpo;
 using namespace ::ooo::vba;
 
-ScVbaChartObject::ScVbaChartObject( const css::uno::Reference< ov::XHelperInterface >& _xParent, const css::uno::Reference< cpo::uno::XComponentContext >& _xContext, css::uno::Reference< css::table::XTableChart >  _xTableChart, css::uno::Reference< css::drawing::XDrawPageSupplier >  _xDrawPageSupplier ) : ChartObjectImpl_BASE( _xParent, _xContext ), xTableChart(std::move( _xTableChart )), xDrawPageSupplier(std::move( _xDrawPageSupplier ))
+ScVbaChartObject::ScVbaChartObject( const cpo::uno::Reference< ov::XHelperInterface >& _xParent, const cpo::uno::Reference< cpo::uno::XComponentContext >& _xContext, cpo::uno::Reference< css::table::XTableChart >  _xTableChart, cpo::uno::Reference< css::drawing::XDrawPageSupplier >  _xDrawPageSupplier ) : ChartObjectImpl_BASE( _xParent, _xContext ), xTableChart(std::move( _xTableChart )), xDrawPageSupplier(std::move( _xDrawPageSupplier ))
 {
         xDrawPage = xDrawPageSupplier->getDrawPage();
         xEmbeddedObjectSupplier.set( xTableChart, uno::UNO_QUERY_THROW );
@@ -77,19 +78,19 @@ ScVbaChartObject::setShape()
     return nullptr;
 }
 
-void SAL_CALL
+void
 ScVbaChartObject::setName( const OUString& sName )
 {
     xNamedShape->setName(sName);
 }
 
-OUString SAL_CALL
+OUString
 ScVbaChartObject::getName()
 {
     return xNamedShape->getName();
 }
 
-void SAL_CALL
+void
 ScVbaChartObject::Delete()
 {
     // parent of this object is sheet
@@ -121,7 +122,7 @@ ScVbaChartObject::Activate()
     }
 }
 
-uno::Reference< excel::XChart > SAL_CALL
+uno::Reference< excel::XChart >
 ScVbaChartObject::getChart()
 {
     return new ScVbaChart( this, mxContext, xEmbeddedObjectSupplier->getEmbeddedObject(), xTableChart );

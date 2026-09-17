@@ -71,6 +71,7 @@
 #include <COKit/COKit.hxx>
 
 using namespace com::sun::star;
+using namespace ::cpo;
 
 void ScTabViewShell::ConnectObject( const SdrOle2Obj* pObj )
 {
@@ -122,7 +123,7 @@ public:
     {}
 
     // XCallback
-    virtual void SAL_CALL notify(const cpo::uno::Any& aData) override
+    virtual void notify(const cpo::uno::Any& aData) override
     {
         cpo::uno::Sequence<beans::PropertyValue> aProperties;
         if (!(aData >>= aProperties))

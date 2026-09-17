@@ -31,12 +31,11 @@
  * bytes of the single format it chose; on a copy it hands over the list of
  * formats it offers so the app can advertise them to the platform clipboard.
  *
- * Every callback runs synchronously on the thread that runs the document's UNO
- * commands. In the in-process native apps that is the app's main thread, so the
- * callbacks may touch the platform clipboard directly. A callback must not
- * re-enter the engine.
+ * Every callback runs synchronously on the engine's main-loop thread, the one that runs
+ * the document's UNO commands. In the in-process desktop apps that thread is not the
+ * app's UI thread. A callback must not re-enter the engine.
  *
- * @see COKitDocument::installClipboardProvider().
+ * @see COKit::installClipboardProvider().
  */
 struct COKitClipboardProvider
 {
@@ -69,6 +68,39 @@ struct COKitClipboardProvider
      * return false.
      */
     bool (*getDataForMimeType)(const char* pMimeType, std::vector<char>* pOutData);
+};
+
+/**
+ * One file-type filter for a native file picker: a name the picker can show, and the
+ * wildcards that match the type, separated by semicolons ("*.png;*.jpg").
+ */
+struct COKitFilePickerFilter
+{
+    const char* pName;
+    const char* pWildcards;
+};
+
+/**
+ * A native file picker the in-process desktop app provides to the engine.
+ *
+ * When the provider is installed, a command that needs the user to pick a file calls it
+ * instead of opening the engine's own file dialog.
+ *
+ * @see COKit::installFilePickerProvider().
+ */
+struct COKitFilePickerProvider
+{
+    /**
+     * Show a native open-file picker. Called on the engine's main-loop thread and must
+     * not block: marshal to the app's UI thread, show the picker there, and return at
+     * once. Call pfnPicked exactly once, from any thread: pass pContext and the picked
+     * file's URL ("file://..."), or nullptr for the URL when the user cancelled.
+     *
+     * pTitle names the purpose of the pick, translated. pFilters is an array of
+     * nFilters entries; an empty array means any file can be picked.
+     */
+    void (*pick)(const char* pTitle, const COKitFilePickerFilter* pFilters, size_t nFilters,
+                 void (*pfnPicked)(void* pContext, const char* pUrl), void* pContext);
 };
 
 // getDocumentType is part of the API whether or not the unstable half is asked for, so the
@@ -1625,10 +1657,9 @@ struct COKit
     /**
      * Exports the document and signs its content.
      */
-    virtual bool signDocument(const char* pUrl, const unsigned char* pCertificateBinary,
-                               const int nCertificateBinarySize,
-                               const unsigned char* pPrivateKeyBinary,
-                               const int nPrivateKeyBinarySize) = 0;
+    virtual bool signDocument(const char* pUrl,
+                              std::span<const unsigned char> aCertificateBinary,
+                              std::span<const unsigned char> aPrivateKeyBinary) = 0;
 
     /**
      * Runs the main-loop in the current thread. To trigger this
@@ -1874,6 +1905,15 @@ struct COKit
      * clipboards (as used by the collaborative server).
      */
     virtual void installClipboardProvider(const COKitClipboardProvider* pProvider) = 0;
+
+    /**
+     * Give the engine a native file picker for the in-process desktop app. With a
+     * provider installed, a command that needs the user to pick a file - compare
+     * documents, insert an image - asks the provider instead of opening the engine's
+     * own file dialog, and continues with the picked file when the provider delivers
+     * it. Pass nullptr to remove the provider.
+     */
+    virtual void installFilePickerProvider(const COKitFilePickerProvider* pProvider) = 0;
 
     /**
      * Read the desktop app's single process-wide clipboard. See
@@ -2277,17 +2317,14 @@ struct COKitDocument
     /**
      *  Insert certificate (in binary form) to the certificate store.
      */
-    virtual bool insertCertificate(const unsigned char* pCertificateBinary,
-                                   const int nCertificateBinarySize,
-                                   const unsigned char* pPrivateKeyBinary,
-                                   const int nPrivateKeyBinarySize) = 0;
+    virtual bool insertCertificate(std::span<const unsigned char> aCertificateBinary,
+                                   std::span<const unsigned char> aPrivateKeyBinary) = 0;
 
     /**
      *  Add the certificate (in binary form) to the certificate store.
      *
      */
-    virtual bool addCertificate(const unsigned char* pCertificateBinary,
-                                const int nCertificateBinarySize) = 0;
+    virtual bool addCertificate(std::span<const unsigned char> aCertificateBinary) = 0;
 
     /**
      *  Verify signature of the document.
@@ -2672,11 +2709,16 @@ struct COKitDocument
      * @param pNotUpdated when given, takes a JSON array of the slides the file held no slide for,
      *        by the identifier of each one, in document order: ["{...}","{...}"]. It is an empty
      *        array when every linked slide was read, and empty when the refresh did not run.
+     * @param pPart one page, by the identifier getSlideLinks reports for it, which is then the
+     *        only page refreshed; no part at all refreshes every page linked to the source
+     *        document.
      * @return the number of pages refreshed, or -1 when no page is linked to that source document,
-     *         when the URL is not a file on this machine, or when the file could not be read.
+     *         when pPart names a page that is not, when the URL is not a file on this machine, or
+     *         when the file could not be read.
      */
     virtual int refreshSlideLinks(const char* pSourceName, const char* pUrl,
-                                  const char* pLastModifiedTime, std::string* pNotUpdated) = 0;
+                                  const char* pLastModifiedTime, std::string* pNotUpdated,
+                                  const char* pPart) = 0;
 
     /**
      * Take the source document off one linked page.

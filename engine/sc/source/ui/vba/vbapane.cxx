@@ -26,10 +26,11 @@
 #include "vbarange.hxx"
 
 using namespace com::sun::star;
+using namespace ::cpo;
 using namespace ooo::vba;
 
 ScVbaPane::ScVbaPane(
-        const css::uno::Reference< ov::XHelperInterface >& xParent,
+        const cpo::uno::Reference< ov::XHelperInterface >& xParent,
         uno::Reference< cpo::uno::XComponentContext > xContext,
         const uno::Reference< frame::XModel >& rModel,
         const uno::Reference< sheet::XViewPane >& rViewPane ) :
@@ -40,13 +41,13 @@ ScVbaPane::ScVbaPane(
 {
 }
 
-sal_Int32 SAL_CALL
+sal_Int32
 ScVbaPane::getScrollColumn()
 {
     return ( m_xViewPane->getFirstVisibleColumn() + 1 );
 }
 
-void SAL_CALL
+void
 ScVbaPane::setScrollColumn( sal_Int32 _scrollcolumn )
 {
     if( _scrollcolumn < 1 )
@@ -56,13 +57,13 @@ ScVbaPane::setScrollColumn( sal_Int32 _scrollcolumn )
     m_xViewPane->setFirstVisibleColumn( _scrollcolumn - 1 );
 }
 
-sal_Int32 SAL_CALL
+sal_Int32
 ScVbaPane::getScrollRow()
 {
     return ( m_xViewPane->getFirstVisibleRow() + 1 );
 }
 
-void SAL_CALL
+void
 ScVbaPane::setScrollRow( sal_Int32 _scrollrow )
 {
     if( _scrollrow < 1 )
@@ -72,7 +73,7 @@ ScVbaPane::setScrollRow( sal_Int32 _scrollrow )
     m_xViewPane->setFirstVisibleRow( _scrollrow - 1 );
 }
 
-uno::Reference< excel::XRange > SAL_CALL
+uno::Reference< excel::XRange >
 ScVbaPane::getVisibleRange()
 {
     // TODO: Excel includes partly visible rows/columns, Calc does not
@@ -86,7 +87,7 @@ ScVbaPane::getVisibleRange()
 }
 
 //Method
-void SAL_CALL
+void
 ScVbaPane::SmallScroll( const cpo::uno::Any& Down, const cpo::uno::Any& Up, const cpo::uno::Any& ToRight, const cpo::uno::Any& ToLeft )
 {
     OUString messageBuffer;
@@ -139,7 +140,7 @@ ScVbaPane::SmallScroll( const cpo::uno::Any& Down, const cpo::uno::Any& Up, cons
     m_xViewPane->setFirstVisibleColumn( newStartCol );
 }
 
-void SAL_CALL
+void
 ScVbaPane::LargeScroll( const cpo::uno::Any& Down, const cpo::uno::Any& Up, const cpo::uno::Any& ToRight, const cpo::uno::Any& ToLeft )
 {
     OUString messageBuffer;

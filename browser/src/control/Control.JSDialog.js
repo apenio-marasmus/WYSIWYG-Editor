@@ -692,6 +692,18 @@ window.L.Control.JSDialog = window.L.Control.extend({
 			// the focus from its container instead.
 			if (!firstFocusableElement)
 				firstFocusableElement = JSDialog.FindFocusableWithin(instance.container, 'next');
+
+			// A dialog whose only content is a message has nothing to focus, so
+			// it takes the focus itself and, with no title to be labelled by,
+			// carries the message as its name.
+			if (!firstFocusableElement && instance.form) {
+				if (!instance.form.hasAttribute('aria-labelledby')) {
+					const message = instance.form.innerText.trim();
+					if (message) instance.form.setAttribute('aria-label', message);
+				}
+				instance.form.tabIndex = -1;
+				firstFocusableElement = instance.form;
+			}
 		}
 
 		if (firstFocusableElement && document.activeElement !== firstFocusableElement && !instance.isAutoCompletePopup) {
@@ -851,35 +863,56 @@ window.L.Control.JSDialog = window.L.Control.extend({
 	},
 
 	// Measure the largest tab page in the grid. Every page is laid out in the
-	// same grid cell, but the grid only takes the size of the page that is
-	// shown, and a hidden page that wants to be wider would wrap and grow tall
-	// while constrained. So make each page in turn the only one in the grid and
+	// same grid cell, so make each page in turn the only one in the grid and
 	// read the grid size, in two passes: first the widest page, then the
 	// tallest page at that final width, so wrapping cannot inflate the height.
 	// The whole thing runs synchronously before paint, so nothing flickers.
 	measureLargestPage: function (grid) {
-		var panels = Array.prototype.slice.call(grid.querySelectorAll(':scope > .ui-content'));
+		const panels = Array.prototype.slice.call(grid.querySelectorAll(':scope > .ui-content'));
 		if (!panels.length)
 			return null;
 
-		var savedDisplay = panels.map(function (p) { return p.style.display; });
-		var savedMinWidth = grid.style.minWidth;
+		const savedWidth = grid.style.width;
+		const savedMinWidth = grid.style.minWidth;
+		const savedMinHeight = grid.style.minHeight;
 
-		var measure = function (dimension) {
-			var max = 0;
+		// The rule that keeps a page which is not the open one in the layout is
+		// marked important, so taking a page out of the layout for the time of a
+		// measurement needs an important inline display of its own.
+		const showOnly = function (shown) {
+			panels.forEach(function (page) {
+				page.style.setProperty('display', page === shown ? 'flex' : 'none', 'important');
+			});
+		};
+
+		const measure = function (dimension) {
+			let max = 0;
 			panels.forEach(function (shown) {
-				panels.forEach(function (p) { p.style.display = (p === shown) ? 'flex' : 'none'; });
+				showOnly(shown);
 				max = Math.max(max, grid.getBoundingClientRect()[dimension]);
 			});
 			return Math.ceil(max);
 		};
 
-		var width = measure('width');
-		grid.style.minWidth = width + 'px';
-		var height = measure('height');
+		// The dialog's containing block has no width of its own, so a page is laid
+		// out at the smallest width its widgets still fit in. Measure each page at
+		// that same width, with the floor of an earlier measurement lifted, so a
+		// page is free to report a width below it.
+		grid.style.minWidth = '0px';
+		grid.style.minHeight = '0px';
+		grid.style.width = 'min-content';
+		const width = measure('width');
 
-		panels.forEach(function (p, i) { p.style.display = savedDisplay[i]; });
+		// Read the heights at the width the widest page asked for, which is the
+		// width every page gets, so a page cannot wrap into a taller size here
+		// than it has on screen.
+		grid.style.width = width + 'px';
+		const height = measure('height');
+
+		panels.forEach(function (page) { page.style.removeProperty('display'); });
+		grid.style.width = savedWidth;
 		grid.style.minWidth = savedMinWidth;
+		grid.style.minHeight = savedMinHeight;
 
 		return { width: width, height: height };
 	},

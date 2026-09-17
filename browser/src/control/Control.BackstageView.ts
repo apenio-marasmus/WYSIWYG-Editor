@@ -1088,11 +1088,10 @@ class BackstageView extends window.L.Class {
 	}
 
 	private getExportOptionsFromNotebookbar(): ExportSections {
-		const docType = this.getDocTypeString();
 		const builder = new (window.L.Control.NotebookbarBuilder as any)();
 
 		const downloadAsOpts: ExportOptionItem[] = builder._getDownloadAsSubmenuOpts
-			? builder._getDownloadAsSubmenuOpts(docType) || []
+			? builder._getDownloadAsSubmenuOpts() || []
 			: [];
 
 		return {
@@ -1288,12 +1287,14 @@ class BackstageView extends window.L.Class {
 	}
 
 	private hideDocumentContainer(): void {
-		$('#document-container').addClass('hidden');
+		const container = document.getElementById('document-container');
+		if (container) container.classList.add('hidden');
 		$('.notebookbar-scroll-wrapper').addClass('hidden');
 	}
 
 	private showDocumentContainer(): void {
-		$('#document-container').removeClass('hidden');
+		const container = document.getElementById('document-container');
+		if (container) container.classList.remove('hidden');
 		$('.notebookbar-scroll-wrapper').removeClass('hidden');
 	}
 

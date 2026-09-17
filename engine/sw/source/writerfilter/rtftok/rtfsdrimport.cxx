@@ -56,6 +56,7 @@
 #include <unotxdoc.hxx>
 
 using namespace com::sun::star;
+using namespace ::cpo;
 
 namespace writerfilter::rtftok
 {
@@ -500,9 +501,9 @@ void RTFSdrImport::resolve(RTFShape& rShape, bool bClose, ShapeOrPict const shap
             resolveFLine(xPropertySet, rProperty.second.toInt32());
         else if (rProperty.first == "fillOpacity" && xPropertySet.is())
         {
-            int opacity = 100 - (rProperty.second.toInt32()) * 100 / RTF_MULTIPLIER;
-            xPropertySet->setPropertyValue(u"FillTransparence"_ustr,
-                                           cpo::uno::Any(sal_uInt32(opacity)));
+            sal_Int16 nOpacity = static_cast<sal_Int16>(
+                100 - (rProperty.second.toInt32()) * 100 / RTF_MULTIPLIER);
+            xPropertySet->setPropertyValue(u"FillTransparence"_ustr, cpo::uno::Any(nOpacity));
         }
         else if (rProperty.first == "lineWidth")
             aLineWidth <<= rProperty.second.toInt32() / 360;
@@ -1125,7 +1126,28 @@ void RTFSdrImport::resolve(RTFShape& rShape, bool bClose, ShapeOrPict const shap
             xPropertySet->setPropertyValue(u"VertOrientRelation"_ustr,
                                            cpo::uno::Any(rShape.getVertOrientRelation()));
         if (rShape.getWrap() != text::WrapTextMode::WrapTextMode_MAKE_FIXED_SIZE)
-            xPropertySet->setPropertyValue(u"Surround"_ustr, cpo::uno::Any(rShape.getWrap()));
+        {
+            text::WrapTextMode eWrap = rShape.getWrap();
+            // A square wrap can still keep the text off one of the two sides.
+            if (eWrap == text::WrapTextMode_PARALLEL)
+            {
+                switch (rShape.getWrapSide())
+                {
+                    case NS_ooxml::LN_Value_wordprocessingDrawing_ST_WrapText_left:
+                        eWrap = text::WrapTextMode_LEFT;
+                        break;
+                    case NS_ooxml::LN_Value_wordprocessingDrawing_ST_WrapText_right:
+                        eWrap = text::WrapTextMode_RIGHT;
+                        break;
+                    case NS_ooxml::LN_Value_wordprocessingDrawing_ST_WrapText_largest:
+                        eWrap = text::WrapTextMode_DYNAMIC;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            xPropertySet->setPropertyValue(u"Surround"_ustr, cpo::uno::Any(eWrap));
+        }
         oox::ModelObjectHelper aModelObjectHelper(m_rImport.getTextDocument());
         if (aFillModel.moType.has_value())
         {

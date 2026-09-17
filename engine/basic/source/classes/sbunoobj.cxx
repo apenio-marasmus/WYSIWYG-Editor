@@ -91,8 +91,8 @@
 #include <com/sun/star/reflection/XTypeDescriptionEnumerationAccess.hpp>
 #include <com/sun/star/reflection/XConstantsTypeDescription.hpp>
 
-using com::sun::star::uno::Reference;
-using namespace com::sun::star::uno;
+using cpo::uno::Reference;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace com::sun::star::lang;
 using namespace com::sun::star::reflection;
@@ -1590,7 +1590,7 @@ static OUString getDbgObjectNameImpl(SbUnoObject& rUnoObj)
     if( aName.isEmpty() )
     {
         Any aToInspectObj = rUnoObj.getUnoAny();
-        Reference< XInterface > xObj(aToInspectObj, css::uno::UNO_QUERY);
+        Reference< XInterface > xObj(aToInspectObj, cpo::uno::UNO_QUERY);
         if( xObj.is() )
         {
             Reference< XServiceInfo > xServiceInfo( xObj, UNO_QUERY );
@@ -1635,7 +1635,7 @@ OUString getBasicObjectTypeName( SbxObject* pObj )
 namespace {
 
 bool matchesBasicTypeName(
-    css::uno::Reference<css::reflection::XIdlClass> const & unoType, OUString const & basicTypeName)
+    cpo::uno::Reference<css::reflection::XIdlClass> const & unoType, OUString const & basicTypeName)
 {
     if (unoType->getName().endsWithIgnoreAsciiCase(basicTypeName)) {
         return true;
@@ -2569,7 +2569,7 @@ bool isVeryLargeUnoProperty(SbxVariable const * pVar)
         if (!pParent)
             return false;
         cpo::uno::Any aAny = const_cast<SbUnoObject*>(pParent)->getUnoAny();
-        css::uno::Reference<css::sheet::XSheetCellCursor> xCursor = aAny.query<css::sheet::XSheetCellCursor>();
+        cpo::uno::Reference<css::sheet::XSheetCellCursor> xCursor = aAny.query<css::sheet::XSheetCellCursor>();
         if (xCursor)
             return true;
     }
@@ -3929,7 +3929,7 @@ private:
 // Function to replace AllListenerAdapterService::createAllListerAdapter
 static Reference< XInterface > createAllListenerAdapter
 (
-    const Reference< XInvocationAdapterFactory2 >& xInvocationAdapterFactory,
+    const Reference< XInvocationAdapterFactory >& xInvocationAdapterFactory,
     const Reference< XIdlClass >& xListenerType,
     const Reference< XAllListener >& xListener,
     const Any& Helper
@@ -4064,7 +4064,7 @@ void SbRtl_CreateUnoListener(StarBASIC * pBasic, SbxArray & rPar, bool)
         return;
 
     // From 1999-11-30: get the InvocationAdapterFactory
-    Reference< XInvocationAdapterFactory2 > xInvocationAdapterFactory =
+    Reference< XInvocationAdapterFactory > xInvocationAdapterFactory =
          InvocationAdapterFactory::create( xContext );
 
     rtl::Reference<BasicAllListener_Impl> xAllLst = new BasicAllListener_Impl( aPrefixName );

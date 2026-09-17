@@ -38,7 +38,7 @@
 #include <com/sun/star/ui/dialogs/AddressBookSourcePilot.hpp>
 #include <com/sun/star/ui/UIElementType.hpp>
 #include <com/sun/star/ui/XUIElement.hpp>
-#include <com/sun/star/uno/Reference.hxx>
+#include <cpo/uno/Reference.hxx>
 #include <com/sun/star/util/XCloseable.hpp>
 #include <com/sun/star/util/CloseVetoException.hpp>
 #include <org/freedesktop/PackageKit/SyncDbusSessionHelper.hpp>
@@ -113,8 +113,8 @@
 
 using namespace ::com::sun::star;
 using namespace ::com::sun::star::beans;
-using namespace ::com::sun::star::uno;
-using namespace cpo::uno;
+using namespace ::cpo;
+using namespace ::cpo::uno;
 using namespace ::com::sun::star::frame;
 using namespace ::com::sun::star::container;
 using namespace ::com::sun::star::util;
@@ -229,7 +229,7 @@ static bool checkURL( const char *pName, const char *pExt, OUString &rURL )
 static void showDocument( const char* pBaseName )
 {
     try {
-        Reference < XDesktop2 > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
+        Reference < XDesktop > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
         auto args(::comphelper::InitPropertySequence({
             {u"ViewOnly"_ustr,    Any(true)},
             {u"ReadOnly"_ustr,    Any(true)}
@@ -391,7 +391,7 @@ void SfxApplication::MiscExec_Impl( SfxRequest& rReq )
 
             // block reentrant calls
             pImpl->bInQuit = true;
-            Reference < XDesktop2 > xDesktop = Desktop::create ( ::comphelper::getProcessComponentContext() );
+            Reference < XDesktop > xDesktop = Desktop::create ( ::comphelper::getProcessComponentContext() );
 
             rReq.ForgetAllArgs();
 
@@ -1018,7 +1018,7 @@ void SfxApplication::MiscExec_Impl( SfxRequest& rReq )
 
             if ( pToolbarName )
             {
-                Reference < XDesktop2 > xDesktop = Desktop::create ( ::comphelper::getProcessComponentContext() );
+                Reference < XDesktop > xDesktop = Desktop::create ( ::comphelper::getProcessComponentContext() );
                 Reference< XFrame > xFrame = xDesktop->getActiveFrame();
 
                 Reference< css::beans::XPropertySet > xPropSet( xFrame, UNO_QUERY );
@@ -1191,7 +1191,7 @@ void SfxApplication::MiscState_Impl(SfxItemSet &rSet)
                         rSet.DisableItem(nWhich);
                         return;
                     }
-                    Reference < XDesktop2 > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
+                    Reference < XDesktop > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
                     Reference< XIndexAccess > xTasks = xDesktop->getFrames();
                     if ( !xTasks.is() || !xTasks->getCount() )
                         rSet.DisableItem(nWhich);
@@ -1248,7 +1248,7 @@ void SfxApplication::MiscState_Impl(SfxItemSet &rSet)
 
                 case SID_MENUBAR:
                 {
-                    Reference < XDesktop2 > xDesktop = Desktop::create ( ::comphelper::getProcessComponentContext() );
+                    Reference < XDesktop > xDesktop = Desktop::create ( ::comphelper::getProcessComponentContext() );
                     Reference< XFrame > xFrame = xDesktop->getActiveFrame();
 
                     Reference< css::beans::XPropertySet > xPropSet( xFrame, UNO_QUERY );
@@ -1386,7 +1386,7 @@ namespace
     {
         try
         {
-            Reference < XDesktop2 > xDesktop = Desktop::create( rxContext );
+            Reference < XDesktop > xDesktop = Desktop::create( rxContext );
             Reference < XIndexAccess > xContainer( xDesktop->getFrames(), UNO_QUERY_THROW );
 
             Reference< XModuleManager2 > xCheck = ModuleManager::create(rxContext);

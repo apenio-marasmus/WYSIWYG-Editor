@@ -91,7 +91,7 @@
 
 using namespace ::com::sun::star;
 using namespace view;
-using namespace uno;
+using namespace ::cpo;
 using namespace ::cpo::uno;
 using namespace util;
 using namespace ucb;
@@ -566,7 +566,7 @@ public:
 
 void ODocumentDefinition::impl_removeFrameFromDesktop_throw( const Reference<XComponentContext> & _rxContext, const Reference< XFrame >& _rxFrame )
 {
-    Reference< XDesktop2 > xDesktop = Desktop::create( _rxContext );
+    Reference< XDesktop > xDesktop = Desktop::create( _rxContext );
     Reference< XFrames > xFrames( xDesktop->getFrames(), UNO_SET_THROW );
     xFrames->remove( _rxFrame );
 }
@@ -1171,7 +1171,7 @@ void ODocumentDefinition::onCommandInsert( const OUString& _sURL, const Referenc
     aGuard.clear();
 }
 
-bool ODocumentDefinition::save(bool _bApprove, const css::uno::Reference<css::awt::XTopWindow>& rDialogParent)
+bool ODocumentDefinition::save(bool _bApprove, const cpo::uno::Reference<css::awt::XTopWindow>& rDialogParent)
 {
     // default handling: instantiate an interaction handler and let it handle the parameter request
     if ( !m_bOpenInDesign )
@@ -1269,7 +1269,7 @@ void ODocumentDefinition::saveAs()
         if ( m_pImpl->m_aProps.aTitle.isEmpty() )
         {
             aGuard.clear();
-            save(false, css::uno::Reference<css::awt::XTopWindow>()); // (false) : we don't want an approve dialog
+            save(false, cpo::uno::Reference<css::awt::XTopWindow>()); // (false) : we don't want an approve dialog
             return;
         }
     }
@@ -1458,7 +1458,7 @@ Sequence< PropertyValue > ODocumentDefinition::fillLoadArgs( const Reference< XC
         xParentFrame = lcl_getDatabaseDocumentFrame( *m_pImpl->m_pDataSource );
     if ( !xParentFrame.is() )
     { // i87957 we need a parent frame
-        Reference< XDesktop2 > xDesktop = Desktop::create( m_aContext );
+        Reference< XDesktop > xDesktop = Desktop::create( m_aContext );
         xParentFrame.set( xDesktop, UNO_QUERY_THROW );
         rtl::Reference<ODatabaseDocument> xCloseable(m_pImpl->m_pDataSource->getModel_noCreate());
         if ( xCloseable.is() )

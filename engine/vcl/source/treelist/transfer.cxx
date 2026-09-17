@@ -72,7 +72,7 @@
 #include <utility>
 #include <vcl/TypeSerializer.hxx>
 
-using namespace ::com::sun::star::uno;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace ::com::sun::star::lang;
 using namespace ::com::sun::star::frame;
@@ -525,7 +525,7 @@ void TransferableHelper::lostOwnership( const Reference< XClipboard >&, const Re
     {
         if( mxTerminateListener.is() )
         {
-            Reference< XDesktop2 > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
+            Reference< XDesktop > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
             xDesktop->removeTerminateListener( mxTerminateListener );
 
             mxTerminateListener.clear();
@@ -972,7 +972,7 @@ void TransferableHelper::CopyToClipboard(const Reference<XClipboard>& rClipboard
     try
     {
         mxTerminateListener = new TerminateListener(*this);
-        Reference< XDesktop2 > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
+        Reference< XDesktop > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
         xDesktop->addTerminateListener(mxTerminateListener);
 
         mxClipboard->setContents(this, this);
@@ -1001,7 +1001,7 @@ void TransferableHelper::CopyToSelection(const Reference<XClipboard>& rSelection
     try
     {
         mxTerminateListener = new TerminateListener(*this);
-        Reference< XDesktop2 > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
+        Reference< XDesktop > xDesktop = Desktop::create( ::comphelper::getProcessComponentContext() );
         xDesktop->addTerminateListener(mxTerminateListener);
 
         rSelection->setContents(this, this);
@@ -2183,7 +2183,7 @@ void TransferableDataHelper::StopClipboardListening( )
     }
 }
 
-TransferableDataHelper TransferableDataHelper::CreateFromClipboard(const css::uno::Reference<css::datatransfer::clipboard::XClipboard>& rClipboard)
+TransferableDataHelper TransferableDataHelper::CreateFromClipboard(const cpo::uno::Reference<css::datatransfer::clipboard::XClipboard>& rClipboard)
 {
     TransferableDataHelper  aRet;
 

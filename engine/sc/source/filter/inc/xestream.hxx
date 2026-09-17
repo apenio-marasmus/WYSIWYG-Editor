@@ -285,7 +285,7 @@ public:
 class XclExpXmlStream : public oox::core::XmlFilterBase
 {
 public:
-    XclExpXmlStream( const css::uno::Reference< cpo::uno::XComponentContext >& rCC, bool bExportVBA, bool bExportTemplate );
+    XclExpXmlStream( const cpo::uno::Reference< cpo::uno::XComponentContext >& rCC, bool bExportVBA, bool bExportTemplate );
     virtual ~XclExpXmlStream() override;
 
     /** Returns the filter root data. */
@@ -313,7 +313,7 @@ public:
     sax_fastparser::FSHelperPtr     CreateOutputStream (
                                         const OUString& sFullStream,
                                         std::u16string_view sRelativeStream,
-                                        const css::uno::Reference< css::io::XOutputStream >& xParentRelation,
+                                        const cpo::uno::Reference< css::io::XOutputStream >& xParentRelation,
                                         const char* sContentType,
                                         const OUString& sRelationshipType,
                                         OUString* pRelationshipId = nullptr);
@@ -337,7 +337,7 @@ public:
 
 private:
     virtual ::oox::ole::VbaProject* implCreateVbaProject() const override;
-    virtual OUString SAL_CALL getImplementationName() override;
+    virtual OUString getImplementationName() override;
     ScDocShell *getDocShell();
     void WriteAttribute(sal_Int32 nAttr, std::u16string_view sVal);
     void WriteAttribute(sal_Int32 nAttr, std::string_view sVal)

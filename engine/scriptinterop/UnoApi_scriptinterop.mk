@@ -27,7 +27,10 @@ $(eval $(call gb_UnoApi_add_idlfiles,scriptinterop,,\
 
 $(eval $(call gb_UnoApi_add_idlfiles,scriptinterop,scriptinterop,\
     ElementType \
+    GlyphType \
+    HorizontalAlignment \
     ImageOptions \
+    ParagraphHeading \
     TextAlignment \
     XBase \
     XBody \
@@ -42,10 +45,12 @@ $(eval $(call gb_UnoApi_add_idlfiles,scriptinterop,scriptinterop,\
     XPage \
     XParagraph \
     XPresentation \
+    XRange \
     XRangeBuilder \
     XRangeElement \
     XSelection \
     XShape \
+    XSheet \
     XSlide \
     XSlideSelection \
     XSpreadsheet \

@@ -30,7 +30,7 @@
 #include <com/sun/star/lang/XServiceInfo.hpp>
 #include <cpo/uno/DeploymentException.hpp>
 #include <cpo/uno/Exception.hpp>
-#include <com/sun/star/uno/Reference.hxx>
+#include <cpo/uno/Reference.hxx>
 #include <cpo/uno/RuntimeException.hpp>
 #include <cpo/uno/Sequence.hxx>
 #include <cpo/uno/XComponentContext.hpp>
@@ -57,18 +57,18 @@ public:
     Provider(const Provider&) = delete;
     const Provider& operator=(const Provider&) = delete;
 
-    static css::uno::Reference<cpo::uno::XInterface>
-        SAL_CALL static_create(css::uno::Reference<cpo::uno::XComponentContext> const& xContext)
+    static cpo::uno::Reference<cpo::uno::XInterface>
+        static_create(cpo::uno::Reference<cpo::uno::XComponentContext> const& xContext)
     {
         return static_cast<cppu::OWeakObject*>(new Provider(xContext));
     }
 
-    static rtl::OUString SAL_CALL static_getImplementationName();
+    static rtl::OUString static_getImplementationName();
 
-    static cpo::uno::Sequence<rtl::OUString> SAL_CALL static_getSupportedServiceNames();
+    static cpo::uno::Sequence<rtl::OUString> static_getSupportedServiceNames();
 
 private:
-    explicit Provider(css::uno::Reference<cpo::uno::XComponentContext> const& context)
+    explicit Provider(cpo::uno::Reference<cpo::uno::XComponentContext> const& context)
         : context_(context)
     {
         assert(context.is());
@@ -76,28 +76,28 @@ private:
 
     virtual ~Provider() {}
 
-    virtual rtl::OUString SAL_CALL getImplementationName() override
+    virtual rtl::OUString getImplementationName() override
     {
         return static_getImplementationName();
     }
 
-    virtual bool SAL_CALL supportsService(rtl::OUString const& ServiceName) override
+    virtual bool supportsService(rtl::OUString const& ServiceName) override
     {
         return cppu::supportsService(this, ServiceName);
     }
 
-    virtual cpo::uno::Sequence<rtl::OUString> SAL_CALL getSupportedServiceNames() override
+    virtual cpo::uno::Sequence<rtl::OUString> getSupportedServiceNames() override
     {
         return static_getSupportedServiceNames();
     }
 
-    virtual css::uno::Reference<css::frame::XDispatch>
-        SAL_CALL queryDispatch(css::util::URL const&, rtl::OUString const&, sal_Int32) override;
+    virtual cpo::uno::Reference<css::frame::XDispatch>
+        queryDispatch(css::util::URL const&, rtl::OUString const&, sal_Int32) override;
 
-    virtual cpo::uno::Sequence<css::uno::Reference<css::frame::XDispatch>> SAL_CALL
+    virtual cpo::uno::Sequence<cpo::uno::Reference<css::frame::XDispatch>>
     queryDispatches(cpo::uno::Sequence<css::frame::DispatchDescriptor> const& Requests) override;
 
-    css::uno::Reference<cpo::uno::XComponentContext> context_;
+    cpo::uno::Reference<cpo::uno::XComponentContext> context_;
 };
 
 rtl::OUString Provider::static_getImplementationName()
@@ -111,10 +111,10 @@ cpo::uno::Sequence<rtl::OUString> Provider::static_getSupportedServiceNames()
     return cpo::uno::Sequence<rtl::OUString>(&name, 1);
 }
 
-css::uno::Reference<css::frame::XDispatch> Provider::queryDispatch(css::util::URL const&,
+cpo::uno::Reference<css::frame::XDispatch> Provider::queryDispatch(css::util::URL const&,
                                                                    rtl::OUString const&, sal_Int32)
 {
-    css::uno::Reference<css::frame::XDispatch> dispatch;
+    cpo::uno::Reference<css::frame::XDispatch> dispatch;
     if (!(context_->getValueByName(u"/singletons/org.libreoffice.rust_uno.example_singleton"_ustr)
           >>= dispatch)
         || !dispatch.is())
@@ -127,10 +127,10 @@ css::uno::Reference<css::frame::XDispatch> Provider::queryDispatch(css::util::UR
     return dispatch;
 }
 
-cpo::uno::Sequence<css::uno::Reference<css::frame::XDispatch>>
+cpo::uno::Sequence<cpo::uno::Reference<css::frame::XDispatch>>
 Provider::queryDispatches(cpo::uno::Sequence<css::frame::DispatchDescriptor> const& Requests)
 {
-    cpo::uno::Sequence<css::uno::Reference<css::frame::XDispatch>> s(Requests.getLength());
+    cpo::uno::Sequence<cpo::uno::Reference<css::frame::XDispatch>> s(Requests.getLength());
     auto const elems = s.getArray();
     for (sal_Int32 i = 0; i < s.getLength(); ++i)
     {
@@ -146,21 +146,21 @@ public:
     Dispatch(const Dispatch&) = delete;
     const Dispatch& operator=(const Dispatch&) = delete;
 
-    static css::uno::Reference<cpo::uno::XInterface>
-        SAL_CALL static_create(css::uno::Reference<cpo::uno::XComponentContext> const& xContext)
+    static cpo::uno::Reference<cpo::uno::XInterface>
+        static_create(cpo::uno::Reference<cpo::uno::XComponentContext> const& xContext)
     {
         return static_cast<cppu::OWeakObject*>(new Dispatch(xContext));
     }
 
-    static rtl::OUString SAL_CALL static_getImplementationName();
+    static rtl::OUString static_getImplementationName();
 
-    static cpo::uno::Sequence<rtl::OUString> SAL_CALL static_getSupportedServiceNames()
+    static cpo::uno::Sequence<rtl::OUString> static_getSupportedServiceNames()
     {
         return cpo::uno::Sequence<rtl::OUString>();
     }
 
 private:
-    explicit Dispatch(css::uno::Reference<cpo::uno::XComponentContext> const& context)
+    explicit Dispatch(cpo::uno::Reference<cpo::uno::XComponentContext> const& context)
         : context_(context)
     {
         assert(context.is());
@@ -168,35 +168,35 @@ private:
 
     virtual ~Dispatch() {}
 
-    virtual rtl::OUString SAL_CALL getImplementationName() override
+    virtual rtl::OUString getImplementationName() override
     {
         return static_getImplementationName();
     }
 
-    virtual bool SAL_CALL supportsService(rtl::OUString const& ServiceName) override
+    virtual bool supportsService(rtl::OUString const& ServiceName) override
     {
         return cppu::supportsService(this, ServiceName);
     }
 
-    virtual cpo::uno::Sequence<rtl::OUString> SAL_CALL getSupportedServiceNames() override
+    virtual cpo::uno::Sequence<rtl::OUString> getSupportedServiceNames() override
     {
         return static_getSupportedServiceNames();
     }
 
-    virtual void SAL_CALL dispatch(css::util::URL const&,
+    virtual void dispatch(css::util::URL const&,
                                    cpo::uno::Sequence<css::beans::PropertyValue> const&) override;
 
-    virtual void SAL_CALL addStatusListener(css::uno::Reference<css::frame::XStatusListener> const&,
+    virtual void addStatusListener(cpo::uno::Reference<css::frame::XStatusListener> const&,
                                             css::util::URL const&) override
     {
     }
 
-    virtual void SAL_CALL removeStatusListener(
-        css::uno::Reference<css::frame::XStatusListener> const&, css::util::URL const&) override
+    virtual void removeStatusListener(
+        cpo::uno::Reference<css::frame::XStatusListener> const&, css::util::URL const&) override
     {
     }
 
-    css::uno::Reference<cpo::uno::XComponentContext> context_;
+    cpo::uno::Reference<cpo::uno::XComponentContext> context_;
 };
 
 rtl::OUString Dispatch::static_getImplementationName()

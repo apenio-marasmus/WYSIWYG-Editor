@@ -281,6 +281,13 @@ public:
     TilePrioritizer::Priority getTilePriority(const TileDesc& tile) const;
 
     const Util::Rectangle& getVisibleArea() const { return _clientVisibleArea; }
+
+    /// The zoom this client is showing at, as a percentage, or 0 when it has not said.
+    int getClientZoomPercent() const { return _clientZoomPercent; }
+
+    /// True while the client is in editing mode rather than viewing mode, and unset until
+    /// the client has said which.
+    std::optional<bool> getClientEditMode() const { return _clientEditMode; }
     /// Visible area can have negative value as position, but we have tiles only in the positive range
     Util::Rectangle getNormalizedVisibleArea() const;
 
@@ -651,6 +658,13 @@ private:
     int _tileHeightPixel;
     int _tileWidthTwips;
     int _tileHeightTwips;
+
+    /// The zoom the client is showing at, as a percentage, or 0 before it has said.
+    int _clientZoomPercent;
+
+    /// True while the client is in editing mode. The client says which mode it is in when
+    /// its page has loaded and again on each change, so this stays unset until then.
+    std::optional<bool> _clientEditMode;
 
     /// The integer id of the view in the Kit process
     int _kitViewId;

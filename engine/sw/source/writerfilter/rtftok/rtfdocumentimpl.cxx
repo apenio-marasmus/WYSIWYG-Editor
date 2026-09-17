@@ -62,6 +62,7 @@
 #include <unofield.hxx>
 
 using namespace com::sun::star;
+using namespace ::cpo;
 
 namespace
 {
@@ -152,14 +153,14 @@ bool eraseNestedAttribute(RTFSprms& rSprms, Id nParent, Id nId)
     return rAttributes.erase(nId);
 }
 
-RTFSprms& getLastAttributes(RTFSprms& rSprms, Id nId)
+RTFSprms* getLastAttributes(RTFSprms& rSprms, Id nId)
 {
     RTFValue::Pointer_t p = rSprms.find(nId);
     if (p && !p->getSprms().empty())
-        return p->getSprms().back().second->getAttributes();
+        return &p->getSprms().back().second->getAttributes();
 
-    SAL_WARN("writerfilter.rtf", "trying to set property when no type is defined");
-    return rSprms;
+    // Nothing of that kind has started, so the property belongs nowhere and is dropped.
+    return nullptr;
 }
 
 void putBorderProperty(RTFStack& aStates, Id nId, const RTFValue::Pointer_t& pValue)
@@ -188,13 +189,13 @@ void putBorderProperty(RTFStack& aStates, Id nId, const RTFValue::Pointer_t& pVa
     // Attributes of the last border type
     else if (aStates.top().getBorderState() == RTFBorderState::PARAGRAPH)
         pAttributes
-            = &getLastAttributes(aStates.top().getParagraphSprms(), NS_ooxml::LN_CT_PrBase_pBdr);
+            = getLastAttributes(aStates.top().getParagraphSprms(), NS_ooxml::LN_CT_PrBase_pBdr);
     else if (aStates.top().getBorderState() == RTFBorderState::CELL)
-        pAttributes = &getLastAttributes(aStates.top().getTableCellSprms(),
-                                         NS_ooxml::LN_CT_TcPrBase_tcBorders);
+        pAttributes = getLastAttributes(aStates.top().getTableCellSprms(),
+                                        NS_ooxml::LN_CT_TcPrBase_tcBorders);
     else if (aStates.top().getBorderState() == RTFBorderState::PAGE)
-        pAttributes = &getLastAttributes(aStates.top().getSectionSprms(),
-                                         NS_ooxml::LN_EG_SectPrContents_pgBorders);
+        pAttributes = getLastAttributes(aStates.top().getSectionSprms(),
+                                        NS_ooxml::LN_EG_SectPrContents_pgBorders);
     else if (aStates.top().getBorderState() == RTFBorderState::NONE)
     {
         // this is invalid, but Word apparently clears or overrides all paragraph borders now
@@ -1218,11 +1219,8 @@ void RTFDocumentImpl::resolvePict(bool const bInline, uno::Reference<drawing::XS
             NS_ooxml::LN_CT_Anchor_behindDoc,
             new RTFValue((m_aStates.top().getShape().getInBackground()) ? 1 : 0));
         RTFSprms aAnchorSprms;
-        for (const auto& rCharacterAttribute : m_aStates.top().getCharacterAttributes())
-        {
-            if (rCharacterAttribute.first == NS_ooxml::LN_CT_WrapSquare_wrapText)
-                aAnchorWrapAttributes.set(rCharacterAttribute.first, rCharacterAttribute.second);
-        }
+        if (sal_uInt32 nWrapSide = m_aStates.top().getShape().getWrapSide())
+            aAnchorWrapAttributes.set(NS_ooxml::LN_CT_WrapSquare_wrapText, new RTFValue(nWrapSide));
         sal_Int32 nWrap = -1;
         for (auto& rCharacterSprm : m_aStates.top().getCharacterSprms())
         {
@@ -3165,7 +3163,7 @@ RTFError RTFDocumentImpl::beforePopState(RTFParserState& rState)
                 else if (!bTextFrame)
                     // If there is no fill, the Word default is 100% transparency.
                     xPropertySet->setPropertyValue(u"FillTransparence"_ustr,
-                                                   cpo::uno::Any(sal_Int32(100)));
+                                                   cpo::uno::Any(sal_Int16(100)));
 
                 RTFSdrImport::resolveFLine(xPropertySet, rDrawing.getFLine());
 

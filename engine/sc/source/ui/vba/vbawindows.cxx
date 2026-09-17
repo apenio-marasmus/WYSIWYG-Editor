@@ -36,6 +36,7 @@
 #include <ooo/vba/excel/XApplication.hpp>
 
 using namespace ::com::sun::star;
+using namespace ::cpo;
 using namespace ::ooo::vba;
 
 typedef  std::unordered_map< OUString,
@@ -79,7 +80,7 @@ public:
     /// @throws uno::RuntimeException
     explicit WindowComponentEnumImpl( uno::Reference< cpo::uno::XComponentContext > xContext ) :  m_xContext(std::move( xContext ))
     {
-        uno::Reference< frame::XDesktop2 > xDesktop = frame::Desktop::create(m_xContext);
+        uno::Reference< frame::XDesktop > xDesktop = frame::Desktop::create(m_xContext);
         uno::Reference< container::XEnumeration > xComponents = xDesktop->getComponents()->createEnumeration();
         while( xComponents->hasMoreElements() )
         {
@@ -90,12 +91,12 @@ public:
         m_it = m_components.begin();
     }
     // XEnumeration
-    virtual bool SAL_CALL hasMoreElements(  ) override
+    virtual bool hasMoreElements(  ) override
     {
         return m_it != m_components.end();
     }
 
-    virtual cpo::uno::Any SAL_CALL nextElement(  ) override
+    virtual cpo::uno::Any nextElement(  ) override
     {
         if ( !hasMoreElements() )
         {
@@ -110,7 +111,7 @@ class WindowEnumImpl : public  WindowComponentEnumImpl
     cpo::uno::Any m_aApplication;
 public:
     WindowEnumImpl( const uno::Reference< cpo::uno::XComponentContext >& xContext,  cpo::uno::Any  aApplication ): WindowComponentEnumImpl( xContext ), m_aApplication(std::move( aApplication )) {}
-    virtual cpo::uno::Any SAL_CALL nextElement(  ) override
+    virtual cpo::uno::Any nextElement(  ) override
     {
         return ComponentToWindow( WindowComponentEnumImpl::nextElement(), m_xContext, m_aApplication );
     }
@@ -133,8 +134,8 @@ class WindowsAccessImpl : public WindowsAccessImpl_BASE
 public:
     explicit WindowsAccessImpl( uno::Reference< cpo::uno::XComponentContext > xContext ):m_xContext(std::move( xContext ))
     {
-        css::uno::Reference<css::container::XNameAccess> xNameAccess(m_xContext,
-                                                                     css::uno::UNO_QUERY_THROW);
+        cpo::uno::Reference<css::container::XNameAccess> xNameAccess(m_xContext,
+                                                                     cpo::uno::UNO_QUERY_THROW);
         const auto aAppplication = xNameAccess->getByName(u"Application"_ustr);
 
         uno::Reference< container::XEnumeration > xEnum = new WindowComponentEnumImpl( m_xContext );
@@ -177,16 +178,16 @@ public:
     }
 
     //XEnumerationAccess
-    virtual uno::Reference< container::XEnumeration > SAL_CALL createEnumeration(  ) override
+    virtual uno::Reference< container::XEnumeration > createEnumeration(  ) override
     {
         return new WindowComponentEnumImpl( m_xContext, std::vector(m_windows) );
     }
     // XIndexAccess
-    virtual ::sal_Int32 SAL_CALL getCount(  ) override
+    virtual ::sal_Int32 getCount(  ) override
     {
         return m_windows.size();
     }
-    virtual cpo::uno::Any SAL_CALL getByIndex( ::sal_Int32 Index ) override
+    virtual cpo::uno::Any getByIndex( ::sal_Int32 Index ) override
     {
         if ( Index < 0
             || o3tl::make_unsigned( Index ) >= m_windows.size() )
@@ -195,18 +196,18 @@ public:
     }
 
     //XElementAccess
-    virtual cpo::uno::Type SAL_CALL getElementType(  ) override
+    virtual cpo::uno::Type getElementType(  ) override
     {
         return cppu::UnoType<sheet::XSpreadsheetDocument>::get();
     }
 
-    virtual bool SAL_CALL hasElements(  ) override
+    virtual bool hasElements(  ) override
     {
         return ( !m_windows.empty() );
     }
 
     //XNameAccess
-    virtual cpo::uno::Any SAL_CALL getByName( const OUString& aName ) override
+    virtual cpo::uno::Any getByName( const OUString& aName ) override
     {
         NameIndexHash::const_iterator it = namesToIndices.find( aName );
         if ( it == namesToIndices.end() )
@@ -215,12 +216,12 @@ public:
 
     }
 
-    virtual cpo::uno::Sequence< OUString > SAL_CALL getElementNames(  ) override
+    virtual cpo::uno::Sequence< OUString > getElementNames(  ) override
     {
         return comphelper::mapKeysToSequence( namesToIndices );
     }
 
-    virtual bool SAL_CALL hasByName( const OUString& aName ) override
+    virtual bool hasByName( const OUString& aName ) override
     {
         NameIndexHash::const_iterator it = namesToIndices.find( aName );
         return (it != namesToIndices.end());
@@ -230,7 +231,7 @@ public:
 
 }
 
-ScVbaWindows::ScVbaWindows( const uno::Reference< ov::XHelperInterface >& xParent, const css::uno::Reference< cpo::uno::XComponentContext >& xContext ) : ScVbaWindows_BASE( xParent, xContext, uno::Reference< container::XIndexAccess > ( new WindowsAccessImpl( xContext ) ) )
+ScVbaWindows::ScVbaWindows( const uno::Reference< ov::XHelperInterface >& xParent, const cpo::uno::Reference< cpo::uno::XComponentContext >& xContext ) : ScVbaWindows_BASE( xParent, xContext, uno::Reference< container::XIndexAccess > ( new WindowsAccessImpl( xContext ) ) )
 {
 }
 uno::Reference< container::XEnumeration >
@@ -251,7 +252,7 @@ ScVbaWindows::getElementType()
     return cppu::UnoType<excel::XWindows>::get();
 }
 
-void SAL_CALL
+void
 ScVbaWindows::Arrange( ::sal_Int32 /*ArrangeStyle*/, const cpo::uno::Any& /*ActiveWorkbook*/, const cpo::uno::Any& /*SyncHorizontal*/, const cpo::uno::Any& /*SyncVertical*/ )
 {
     //#TODO #FIXME see what can be done for an implementation here

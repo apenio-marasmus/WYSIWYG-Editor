@@ -16,14 +16,14 @@ declare var ThisIsTheQtApp: any;
 declare var ThisIsTheWindowsApp: any;
 
 function isCtrlKey (e: KeyboardEvent) {
-    if ((window as any).ThisIsTheiOSApp || window.L.Browser.mac)
+    if (window.ThisIsTheiOSApp || window.L.Browser.mac)
         return e.metaKey;
     else
         return e.ctrlKey;
 }
 
 function isMacCtrlKey (e: KeyboardEvent) {
-    if ((window as any).ThisIsTheiOSApp || window.L.Browser.mac)
+    if (window.ThisIsTheiOSApp || window.L.Browser.mac)
         return e.ctrlKey;
     else
         return false;
@@ -491,7 +491,6 @@ keyboardShortcuts.definitions.set('default', new Array<ShortcutDescriptor>(
     new ShortcutDescriptor({ docType: 'text', eventType: 'keydown', key: 'F3', unoAction: '.uno:ExpandGlossary' }),
     new ShortcutDescriptor({ docType: 'text', eventType: 'keydown', modifier: Mod.CTRL, key: 'F3' }),
     new ShortcutDescriptor({ docType: 'text', eventType: 'keydown', key: 'F5' }),
-    new ShortcutDescriptor({ docType: 'text', eventType: 'keydown', key: 'F12', unoAction: '.uno:DefaultNumbering', platform: Platform.CODAWINDOWS | Platform.CODAMAC | Platform.CODAQT }),
 
     // Impress.
     new ShortcutDescriptor({ docType: 'presentation', eventType: 'keydown', key: 'F5', dispatchAction: 'presentation' }),

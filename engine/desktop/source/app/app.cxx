@@ -147,7 +147,7 @@
 #include <strings.hxx>
 
 using namespace ::com::sun::star::awt;
-using namespace ::com::sun::star::uno;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace ::com::sun::star::util;
 using namespace ::com::sun::star::lang;
@@ -567,7 +567,7 @@ bool Desktop::QueryExit()
 
     static constexpr OUString SUSPEND_QUICKSTARTVETO = u"SuspendQuickstartVeto"_ustr;
 
-    Reference< XDesktop2 > xDesktop = css::frame::Desktop::create( ::comphelper::getProcessComponentContext() );
+    Reference< XDesktop > xDesktop = css::frame::Desktop::create( ::comphelper::getProcessComponentContext() );
     Reference< XPropertySet > xPropertySet(xDesktop, UNO_QUERY_THROW);
     xPropertySet->setPropertyValue( SUSPEND_QUICKSTARTVETO, Any(true) );
 
@@ -1018,11 +1018,11 @@ private:
 
         Reference< css::loader::XImplementationLoader > xJavaComponentLoader(
             xSMgr->createInstance(u"com.sun.star.comp.stoc.JavaComponentLoader"_ustr),
-            css::uno::UNO_QUERY_THROW);
+            cpo::uno::UNO_QUERY_THROW);
 
         if (xJavaComponentLoader.is())
         {
-            const css::uno::Reference< css::registry::XRegistryKey > xRegistryKey;
+            const cpo::uno::Reference< css::registry::XRegistryKey > xRegistryKey;
             try
             {
                 xJavaComponentLoader->activate(u""_ustr, u""_ustr, u""_ustr, xRegistryKey);
@@ -1189,7 +1189,7 @@ int Desktop::Main()
     SetSplashScreenProgress(40);
     recordTime(startT, "SetSplashScreenProgress(40): time = ");
 
-    Reference<XDesktop2> xDesktop = css::frame::Desktop::create(xContext);
+    Reference<XDesktop> xDesktop = css::frame::Desktop::create(xContext);
 
     // create service for loading SFX (still needed in startup)
     pExecGlobals->xGlobalBroadcaster = Reference < css::document::XDocumentEventListener >
@@ -1522,10 +1522,10 @@ bool Desktop::InitializeConfiguration()
 
 void Desktop::FlushConfiguration()
 {
-    css::uno::Reference< css::util::XFlushable >(
+    cpo::uno::Reference< css::util::XFlushable >(
         css::configuration::theDefaultProvider::get(
             comphelper::getProcessComponentContext()),
-        css::uno::UNO_QUERY_THROW)->flush();
+        cpo::uno::UNO_QUERY_THROW)->flush();
 }
 
 void Desktop::OverrideSystemSettings( AllSettings& rSettings )
@@ -1804,7 +1804,7 @@ void Desktop::OpenClients()
     }
 
     // no default document if a document was loaded by recovery or by command line or if soffice is used as server
-    Reference< XDesktop2 > xDesktop = css::frame::Desktop::create( ::comphelper::getProcessComponentContext() );
+    Reference< XDesktop > xDesktop = css::frame::Desktop::create( ::comphelper::getProcessComponentContext() );
     Reference< XElementAccess > xList( xDesktop->getFrames(), UNO_QUERY_THROW );
     if ( xList->hasElements() )
         return;
@@ -1962,7 +1962,7 @@ void Desktop::HandleAppEvent( const ApplicationEvent& rAppEvent )
             const Reference< cpo::uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
 
             // find active task - the active task is always a visible task
-            Reference< css::frame::XDesktop2 > xDesktop = css::frame::Desktop::create( xContext );
+            Reference< css::frame::XDesktop > xDesktop = css::frame::Desktop::create( xContext );
             Reference< css::frame::XFrame > xTask = xDesktop->getActiveFrame();
             if ( !xTask.is() )
             {
@@ -2088,7 +2088,7 @@ void Desktop::OpenSplashScreen()
         aSplashService = u"com.sun.star.office.PipeSplashScreen"_ustr;
 
     Sequence< Any > aSeq{ Any(true) /* bVisible */, Any(aAppName) };
-    const css::uno::Reference< cpo::uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
+    const cpo::uno::Reference< cpo::uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
     m_rSplashScreen.set(
         xContext->getServiceManager()->createInstanceWithArgumentsAndContext(aSplashService, aSeq, xContext),
         UNO_QUERY);
@@ -2160,7 +2160,7 @@ void Desktop::ShowBackingComponent(Desktop * progress)
         return;
     }
     const Reference< XComponentContext >& xContext = comphelper::getProcessComponentContext();
-    Reference< XDesktop2 > xDesktop = css::frame::Desktop::create(xContext);
+    Reference< XDesktop > xDesktop = css::frame::Desktop::create(xContext);
     if (progress != nullptr)
     {
         progress->SetSplashScreenProgress(60);

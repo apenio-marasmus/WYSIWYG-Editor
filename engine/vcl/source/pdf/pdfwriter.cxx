@@ -29,7 +29,7 @@ PDFWriter::AnyWidget::~AnyWidget()
 {
 }
 
-PDFWriter::PDFWriter( const PDFWriter::PDFWriterContext& rContext, const css::uno::Reference< css::beans::XMaterialHolder >& xEnc )
+PDFWriter::PDFWriter( const PDFWriter::PDFWriterContext& rContext, const cpo::uno::Reference< css::beans::XMaterialHolder >& xEnc )
         :
         xImplementation( VclPtr<PDFWriterImpl>::Create(rContext, xEnc, *this) )
 {
@@ -362,6 +362,11 @@ void PDFWriter::SetLinkDest( sal_Int32 nLinkId, sal_Int32 nDestId )
 void PDFWriter::SetDestStructureElement(sal_Int32 nDestId, sal_Int32 nStructElementId)
 {
     xImplementation->setDestStructureElement(nDestId, nStructElementId);
+}
+
+void PDFWriter::AddStructureRef(sal_Int32 nElementId, sal_Int32 nRefElementId)
+{
+    xImplementation->addStructureRef(nElementId, nRefElementId);
 }
 
 void PDFWriter::SetLinkURL( sal_Int32 nLinkId, const OUString& rURL )

@@ -63,7 +63,7 @@ unsigned __stdcall releaseAsyncProc(void* p)
     return 0;
 }
 
-void releaseAsync(css::uno::Reference<css::datatransfer::XTransferable>& ref)
+void releaseAsync(cpo::uno::Reference<css::datatransfer::XTransferable>& ref)
 {
     if (!ref)
         return;
@@ -76,7 +76,7 @@ void releaseAsync(css::uno::Reference<css::datatransfer::XTransferable>& ref)
 }
 
 /*XEventListener,*/
-CWinClipboard::CWinClipboard(const uno::Reference<cpo::uno::XComponentContext>& rxContext,
+CWinClipboard::CWinClipboard(const cpo::uno::Reference<cpo::uno::XComponentContext>& rxContext,
                              const OUString& aClipboardName)
     : m_xContext(rxContext)
     , m_itsName(aClipboardName)
@@ -123,13 +123,13 @@ CXNotifyingDataObject* CWinClipboard::getOwnClipContent() const
 // and so on, we simply return the original XTransferable instead of our
 // DOTransferable
 
-uno::Reference<datatransfer::XTransferable> CWinClipboard::getContents()
+cpo::uno::Reference<datatransfer::XTransferable> CWinClipboard::getContents()
 {
     std::unique_lock aGuard(m_aMutex);
     return getContents_noLock();
 }
 
-css::uno::Reference<css::datatransfer::XTransferable> CWinClipboard::getContents_noLock()
+cpo::uno::Reference<css::datatransfer::XTransferable> CWinClipboard::getContents_noLock()
 {
     if (m_bDisposed)
         throw lang::DisposedException("object is already disposed",
@@ -146,7 +146,7 @@ css::uno::Reference<css::datatransfer::XTransferable> CWinClipboard::getContents
     if (m_foreignContent.is())
         return m_foreignContent;
 
-    uno::Reference<datatransfer::XTransferable> rClipContent;
+    cpo::uno::Reference<datatransfer::XTransferable> rClipContent;
 
     // get the current format list from clipboard
     if (UINT nFormats; !GetUpdatedClipboardFormats(nullptr, 0, &nFormats)
@@ -189,8 +189,8 @@ sal::systools::COMReference<IDataObject> CWinClipboard::getIDataObject()
 }
 
 void CWinClipboard::setContents(
-    const uno::Reference<datatransfer::XTransferable>& xTransferable,
-    const uno::Reference<datatransfer::clipboard::XClipboardOwner>& xClipboardOwner)
+    const cpo::uno::Reference<datatransfer::XTransferable>& xTransferable,
+    const cpo::uno::Reference<datatransfer::clipboard::XClipboardOwner>& xClipboardOwner)
 {
     std::unique_lock aGuard(m_aMutex);
 
@@ -274,7 +274,7 @@ sal_Int8 CWinClipboard::getRenderingCapabilities()
 // XClipboardNotifier
 
 void CWinClipboard::addClipboardListener(
-    const uno::Reference<datatransfer::clipboard::XClipboardListener>& listener)
+    const cpo::uno::Reference<css::datatransfer::clipboard::XClipboardListener>& listener)
 {
     std::unique_lock aGuard(m_aMutex);
     if (m_bDisposed)
@@ -290,7 +290,7 @@ void CWinClipboard::addClipboardListener(
 }
 
 void CWinClipboard::removeClipboardListener(
-    const uno::Reference<datatransfer::clipboard::XClipboardListener>& listener)
+    const cpo::uno::Reference<css::datatransfer::clipboard::XClipboardListener>& listener)
 {
     std::unique_lock aGuard(m_aMutex);
     if (m_bDisposed)
@@ -325,7 +325,7 @@ void CWinClipboard::handleClipboardContentChanged()
 
     try
     {
-        uno::Reference<datatransfer::XTransferable> rXTransf(getContents_noLock());
+        cpo::uno::Reference<datatransfer::XTransferable> rXTransf(getContents_noLock());
         datatransfer::clipboard::ClipboardEvent aClipbEvent(static_cast<XClipboard*>(this),
                                                             rXTransf);
         maClipboardListeners.notifyEach(
@@ -359,7 +359,7 @@ cpo::uno::Sequence<OUString> CWinClipboard::getSupportedServiceNames()
     return { "com.sun.star.datatransfer.clipboard.SystemClipboard" };
 }
 
-css::uno::Reference<css::datatransfer::clipboard::XClipboard>
+cpo::uno::Reference<css::datatransfer::clipboard::XClipboard>
 WinSalInstance::CreateClipboard(const cpo::uno::Sequence<cpo::uno::Any>& arguments)
 {
     // Tests run in parallel; sharing the real Windows clipboard between them would race. Headless

@@ -43,6 +43,7 @@
 
 
 using namespace ::com::sun::star;
+using namespace ::cpo;
 using namespace ::comphelper;
 
 namespace {
@@ -98,7 +99,7 @@ bool OwnView_Impl::CreateModelFromURL( const OUString& aFileURL )
     if ( !aFileURL.isEmpty() )
     {
         try {
-            uno::Reference < frame::XDesktop2 > xDocumentLoader = frame::Desktop::create(m_xContext);
+            uno::Reference < frame::XDesktop > xDocumentLoader = frame::Desktop::create(m_xContext);
 
             cpo::uno::Sequence< beans::PropertyValue > aArgs( m_aFilterName.isEmpty() ? 4 : 5 );
             auto pArgs = aArgs.getArray();
@@ -171,7 +172,7 @@ bool OwnView_Impl::CreateModel( bool bUseNative )
 
 
 OUString OwnView_Impl::GetFilterNameFromExtentionAndInStream(
-                                                    const css::uno::Reference< cpo::uno::XComponentContext >& xContext,
+                                                    const cpo::uno::Reference< cpo::uno::XComponentContext >& xContext,
                                                     std::u16string_view aNameWithExtention,
                                                     const uno::Reference< io::XInputStream >& xInputStream )
 {

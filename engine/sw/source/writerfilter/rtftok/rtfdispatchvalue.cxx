@@ -1215,8 +1215,7 @@ RTFError RTFDocumentImpl::dispatchValue(RTFKeyword nKeyword, int nParam)
             if (pTight)
                 pTight->getAttributes().set(NS_ooxml::LN_CT_WrapTight_wrapText, pValue);
             else
-                m_aStates.top().getCharacterAttributes().set(NS_ooxml::LN_CT_WrapSquare_wrapText,
-                                                             pValue);
+                m_aStates.top().getShape().setWrapSide(nValue);
         }
         break;
         case RTFKeyword::SHPWR:
@@ -1262,11 +1261,12 @@ RTFError RTFDocumentImpl::dispatchValue(RTFKeyword nKeyword, int nParam)
         case RTFKeyword::COLW:
         case RTFKeyword::COLSR:
         {
-            RTFSprms& rAttributes = getLastAttributes(m_aStates.top().getSectionSprms(),
+            RTFSprms* pAttributes = getLastAttributes(m_aStates.top().getSectionSprms(),
                                                       NS_ooxml::LN_EG_SectPrContents_cols);
-            rAttributes.set((nKeyword == RTFKeyword::COLW ? NS_ooxml::LN_CT_Column_w
-                                                          : NS_ooxml::LN_CT_Column_space),
-                            pIntValue);
+            if (pAttributes)
+                pAttributes->set((nKeyword == RTFKeyword::COLW ? NS_ooxml::LN_CT_Column_w
+                                                               : NS_ooxml::LN_CT_Column_space),
+                                 pIntValue);
         }
         break;
         case RTFKeyword::PAPERH:

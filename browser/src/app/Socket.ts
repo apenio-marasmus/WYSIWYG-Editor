@@ -90,7 +90,7 @@ class Socket {
 
 		if (
 			window.Worker &&
-			(!(window as any).ThisIsAMobileApp || (window as any).mode.isCODesktop())
+			(!window.ThisIsAMobileApp || window.mode.isCODesktop())
 		) {
 			window.app.console.info('Creating TaskWorkers');
 			for (let i = 0; i < 4; ++i) {
@@ -1068,6 +1068,7 @@ class Socket {
 			Util.ensureValue(command.type);
 			// initialize and append text input before doc layer
 			this._map.initTextInput(command.type);
+			app.initExportFormats(command.type);
 
 			// Reinitialize the menubar and top toolbar if browser settings are enabled.
 			// During the initial `initializeBasicUI` call, we don't know if compact mode is enabled.
@@ -2660,12 +2661,14 @@ class Socket {
 			// An answer of an update names the source it was sent for and an
 			// answer of a break names the page it was asked for, so the two
 			// travel on and a reader takes the answers it is waiting for.
+			// A page is named by a part identifier, which is a decimal page index
+			// or a page identifier in braced form, and neither holds a space.
 			const named = textMsg.match(/\bsource=(\S+)/);
-			const page = textMsg.match(/\bpart=(\d+)/);
+			const page = textMsg.match(/\bpart=(\S+)/);
 			this._map.fire('slidelinkerror', {
 				kind: command.errorKind ? command.errorKind : '',
 				source: named ? decodeURIComponent(named[1]) : '',
-				part: page ? parseInt(page[1], 10) : 0,
+				part: page ? page[1] : '',
 			});
 			return true; // caller should exit immediately.
 		} else if (textMsg.startsWith('error:') && !this._map._docLayer) {

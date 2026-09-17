@@ -295,7 +295,7 @@ namespace desktop {
 
     struct DESKTOP_DLLPUBLIC COKitDocumentImpl : public COKitDocument
     {
-        css::uno::Reference<css::lang::XComponent> mxComponent;
+        cpo::uno::Reference<css::lang::XComponent> mxComponent;
         std::map<size_t, std::shared_ptr<CallbackFlushHandler>> mpCallbackFlushHandlers;
         const int mnDocumentId;
         WaitUntilIdle maIdleHelper;
@@ -305,7 +305,7 @@ namespace desktop {
         // touching the possibly-disposed model. See comphelper::COKit.
         OUString maOriginalDocumentUrlKey;
 
-        explicit COKitDocumentImpl(css::uno::Reference<css::lang::XComponent> xComponent,
+        explicit COKitDocumentImpl(cpo::uno::Reference<css::lang::XComponent> xComponent,
                                     int nDocumentId);
         ~COKitDocumentImpl();
 
@@ -365,12 +365,9 @@ namespace desktop {
         std::string getPartInfo(int nPart) override;
         void paintWindowDPI(unsigned nWindowId, unsigned char* pBuffer, const int x, const int y,
                             const int width, const int height, const double dpiscale) override;
-        bool insertCertificate(const unsigned char* pCertificateBinary,
-                               const int nCertificateBinarySize,
-                               const unsigned char* pPrivateKeyBinary,
-                               const int nPrivateKeyBinarySize) override;
-        bool addCertificate(const unsigned char* pCertificateBinary,
-                            const int nCertificateBinarySize) override;
+        bool insertCertificate(std::span<const unsigned char> aCertificateBinary,
+                               std::span<const unsigned char> aPrivateKeyBinary) override;
+        bool addCertificate(std::span<const unsigned char> aCertificateBinary) override;
         int getSignatureState() override;
         std::vector<char> renderShapeSelection() override;
         void postWindowGestureEvent(unsigned nWindowId, const char* pType, int nX, int nY,
@@ -424,7 +421,8 @@ namespace desktop {
         bool insertPagesFromFile(const char* pUrl, const char* pJsonOptions) override;
         std::string getSlideLinks() override;
         int refreshSlideLinks(const char* pSourceName, const char* pUrl,
-                              const char* pLastModifiedTime, std::string* pNotUpdated) override;
+                              const char* pLastModifiedTime, std::string* pNotUpdated,
+                              const char* pPart) override;
         bool breakSlideLink(const char* pPart) override;
         bool exportPages(const char* pParts, const char* pUrl) override;
     };
@@ -456,9 +454,8 @@ namespace desktop {
         void setDocumentPassword(char const* pURL, char const* pPassword) override;
         std::string getVersionInfo() override;
         bool runMacro(const char* pURL) override;
-        bool signDocument(const char* pUrl, const unsigned char* pCertificateBinary,
-                          const int nCertificateBinarySize, const unsigned char* pPrivateKeyBinary,
-                          const int nPrivateKeyBinarySize) override;
+        bool signDocument(const char* pUrl, std::span<const unsigned char> aCertificateBinary,
+                          std::span<const unsigned char> aPrivateKeyBinary) override;
         void runLoop(COKitPollCallback pPollCallback, COKitWakeCallback pWakeCallback,
                      void* pData) override;
         void sendDialogEvent(unsigned long long int nKitWindowId, const char* pArguments) override;
@@ -492,6 +489,7 @@ namespace desktop {
         void
         registerRevealInFileManagerCallback(COKitRevealInFileManagerCallback pCallback) override;
         void installClipboardProvider(const COKitClipboardProvider* pProvider) override;
+        void installFilePickerProvider(const COKitFilePickerProvider* pProvider) override;
         bool getGlobalClipboard(const char **pMimeTypes,
                                 std::vector<std::string>& rOutMimeTypes,
                                 std::vector<std::vector<char>>& rOutStreams) override;

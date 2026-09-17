@@ -109,6 +109,7 @@
 
 using ::editeng::SvxBorderLine;
 using namespace ::com::sun::star;
+using namespace ::cpo;
 
 namespace WritingMode2 = ::com::sun::star::text::WritingMode2;
 using ::cpo::uno::Sequence;
@@ -4363,19 +4364,6 @@ void ScDocument::CompileXML()
     TrackFormulas();
 
     SetAutoCalc( bOldAutoCalc );
-}
-
-bool ScDocument::CompileErrorCells(FormulaError nErrCode)
-{
-    bool bCompiled = false;
-    sc::CompileFormulaContext aCxt(*this);
-    for (const auto& pTab : maTabs)
-    {
-        if (pTab && pTab->CompileErrorCells(aCxt, nErrCode))
-            bCompiled = true;
-    }
-
-    return bCompiled;
 }
 
 void ScDocument::CalcAfterLoad( bool bStartListening )

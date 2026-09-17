@@ -25,6 +25,8 @@ namespace cool {
 		// Slide size in twips. The background primitive fills this rectangle.
 		private _slideWidth = 0;
 		private _slideHeight = 0;
+		private _scratch = new VectorScratchCanvases();
+		private _gradients = new VectorGradientPrimitiveRenderer(this._scratch);
 
 		constructor(bitmapLookup?: BitmapLookup, fontLoaded?: FontLoadedLookup) {
 			this._bitmapLookup = bitmapLookup;
@@ -88,6 +90,24 @@ namespace cool {
 					break;
 				case PointArrayPrimitive.type:
 					this._renderPointArray(context, primitive as PointArrayPrimitive);
+					break;
+				case FillGradientPrimitive.type:
+					this._gradients.renderFillGradient(
+						context,
+						primitive as FillGradientPrimitive,
+					);
+					break;
+				case PolyPolygonGradientPrimitive.type:
+					this._gradients.renderPolyPolygonGradient(
+						context,
+						primitive as PolyPolygonGradientPrimitive,
+					);
+					break;
+				case PolyPolygonAlphaGradientPrimitive.type:
+					this._gradients.renderPolyPolygonAlphaGradient(
+						context,
+						primitive as PolyPolygonAlphaGradientPrimitive,
+					);
 					break;
 				case BitmapPrimitive.type:
 					this._renderBitmap(context, primitive as BitmapPrimitive);
@@ -187,6 +207,33 @@ namespace cool {
 			// a subpath inside another subpath reads as a hole.
 			context.fill(path, 'evenodd');
 			if (needsAlphaBracket) context.restore();
+		}
+
+		/// Draw the dashed gray frame an edit view shows around a placeholder
+		/// that holds no content yet. The transform maps the unit square onto
+		/// the object, so the frame follows a rotated or sheared one. The
+		/// corners are mapped first and stroked in twips, which keeps the
+		/// width and the dashes even.
+		renderPlaceholderFrame(
+			context: CanvasRenderingContext2D,
+			transform: number[],
+		): void {
+			if (transform.length < 6) return;
+
+			context.save();
+			context.strokeStyle = '#808080';
+			context.lineWidth = this._hairlineWidth(context);
+			// Dash lengths in twips: the desktop's 160 and 80 in 1/100 mm.
+			context.setLineDash([91, 45]);
+			const [a, b, c, d, e, f] = transform;
+			const path = new Path2D();
+			path.moveTo(e, f);
+			path.lineTo(a + e, b + f);
+			path.lineTo(a + c + e, b + d + f);
+			path.lineTo(c + e, d + f);
+			path.closePath();
+			context.stroke(path);
+			context.restore();
 		}
 
 		/// Width that draws as one device pixel under the current transform.

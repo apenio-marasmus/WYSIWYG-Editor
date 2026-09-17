@@ -569,7 +569,7 @@ class UIManager extends window.L.Control {
 
 		// The starter screen has no document, canvas or socket yet, so there is
 		// nothing to hand the engine.
-		if ((window as any).starterScreen) {
+		if (window.starterScreen) {
 			this.applyInvert(true);
 			return;
 		}
@@ -713,6 +713,7 @@ class UIManager extends window.L.Control {
 			this.map.navigator = JSDialog.NavigatorPanel(this.map);
 
 			this.map.slideImportPane = new SlideImportPane(this.map);
+			this.map.slideLinkToolbar = new SlideLinkToolbar(this.map);
 
 			this.map.paneExpander = new PaneExpander(this.map);
 			this.map.paneSplitter = new PaneSplitter(this.map);
@@ -727,7 +728,7 @@ class UIManager extends window.L.Control {
 
 		window.setupToolbar(this.map);
 
-		if (!((window as any).mode.isCODesktop())) {
+		if (!(window.mode.isCODesktop())) {
 			this.documentNameInput = window.L.control.documentNameInput();
 			this.map.addControl(this.documentNameInput);
 		}
@@ -810,7 +811,7 @@ class UIManager extends window.L.Control {
 	}
 
 	initializeBackstageView(): void {
-		if (!(window as any).mode.isCODesktop())
+		if (!window.mode.isCODesktop())
 			return;
 
 		if (!this.map.backstageView) {
@@ -872,7 +873,7 @@ class UIManager extends window.L.Control {
 			// makeSpaceForNotebookbar call in onUpdatePermission
 		}
 
-		if ((window as any).mode.isCODesktop()) {
+		if (window.mode.isCODesktop()) {
 			if (!this.map.backstageView) {
 				this.map.backstageView = new window.L.Control.BackstageView(this.map);
 				console.log('UIManager: BackstageView created and attached to map');
@@ -889,8 +890,11 @@ class UIManager extends window.L.Control {
 
 		this.initDarkModeFromSettings();
 
-		if (docType === 'presentation')
+		if (docType === 'presentation') {
 			this.syncPresenterConsoleToggle(this.shouldShowPresenterConsole());
+			this.map.notesPanel = JSDialog.NotesPanel(this.map);
+			JSDialog.MessageRouter.flushPending('notespanel');
+		}
 
 		if (docType === 'spreadsheet') {
 			this.sheetsBar = JSDialog.SheetsBar(this.map, isDesktop || window.mode.isTablet());
@@ -1153,7 +1157,7 @@ class UIManager extends window.L.Control {
 	 */
 	initializeRuler(): void {
 		if ((window.mode.isTablet() || window.mode.isDesktop()) && !app.isReadOnly()) {
-			var defaultShowRuler = (window as any).mode.isCODesktop();
+			var defaultShowRuler = window.mode.isCODesktop();
 			var showRuler = this.getBooleanDocTypePref('ShowRuler', defaultShowRuler);
 			var interactiveRuler = this.map.isEditMode();
 			// Call the static method from the Ruler class
@@ -3145,7 +3149,7 @@ class UIManager extends window.L.Control {
 		};
 
 		if (window.mode.isCODesktop()) {
-			(window as any).postMobileMessage('TEXTCLIPBOARD ' + text);
+			window.postMobileMessage('TEXTCLIPBOARD ' + text);
 			onSuccess();
 		} else if (navigator.clipboard && window.isSecureContext) {
 			navigator.clipboard.writeText(text).then(onSuccess, onFailure);

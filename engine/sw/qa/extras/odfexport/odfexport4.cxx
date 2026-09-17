@@ -39,7 +39,8 @@
 #include <test/commontesttools.hxx>
 
 using namespace css;
-using namespace css::uno;
+using namespace ::cpo;
+using namespace ::cpo::uno;
 
 namespace
 {
@@ -1760,6 +1761,18 @@ CPPUNIT_TEST_FIXTURE(Test, testFlyInDeleteRedline)
     auto pXmlDoc = parseExport(u"content.xml"_ustr);
     assertXPath(pXmlDoc, "//draw:frame", 1);
     CPPUNIT_ASSERT_EQUAL(1, getShapes());
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testParagraphFormatRedline)
+{
+    // The document records changes to the formatting of whole paragraphs.
+    createSwDoc("paragraph-format-redline.docx");
+    saveAndReload(TestFilter::ODT);
+
+    // Those changes were written under a name that ODF does not have, and were lost on reload.
+    auto pXmlDoc = parseExport(u"content.xml"_ustr);
+    assertXPath(pXmlDoc, "//text:changed-region/text:format-change", 5);
+    assertXPath(pXmlDoc, "//text:changed-region/text:UnknownChange", 0);
 }
 
 CPPUNIT_TEST_FIXTURE(Test, testCommentDateUTC)

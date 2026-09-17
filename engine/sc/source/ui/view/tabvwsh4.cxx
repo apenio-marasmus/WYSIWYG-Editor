@@ -98,6 +98,7 @@
 #include <drwlayer.hxx>
 
 using namespace com::sun::star;
+using namespace ::cpo;
 using namespace sfx2::sidebar;
 
 namespace {
@@ -1804,8 +1805,8 @@ public:
     ScViewOptiChangesListener(ScTabViewShell&);
     void stopListening();
 
-    virtual void SAL_CALL changesOccurred(const util::ChangesEvent& Event) override;
-    virtual void SAL_CALL disposing(const lang::EventObject& rEvent) override;
+    virtual void changesOccurred(const util::ChangesEvent& Event) override;
+    virtual void disposing(const lang::EventObject& rEvent) override;
 
 private:
     ScTabViewShell& mrViewShell;
@@ -1822,7 +1823,7 @@ void ScViewOptiChangesListener::stopListening()
 }
 
 // virtual
-void SAL_CALL ScViewOptiChangesListener::changesOccurred(const util::ChangesEvent& rEvent)
+void ScViewOptiChangesListener::changesOccurred(const util::ChangesEvent& rEvent)
 {
     for (const auto& change : rEvent.Changes)
     {
@@ -1848,7 +1849,7 @@ void SAL_CALL ScViewOptiChangesListener::changesOccurred(const util::ChangesEven
 }
 
 // virtual
-void SAL_CALL ScViewOptiChangesListener::disposing(const lang::EventObject& /* rEvent */)
+void ScViewOptiChangesListener::disposing(const lang::EventObject& /* rEvent */)
 {
     m_xViewChangesNotifier.clear();
     m_xColorSchemeChangesNotifier.clear();

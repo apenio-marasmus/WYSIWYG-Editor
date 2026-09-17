@@ -31,8 +31,9 @@
 
 using namespace ::ooo::vba;
 using namespace ::com::sun::star;
+using namespace ::cpo;
 
-void SAL_CALL
+void
 ScVbaFormatConditions::Delete(  )
 {
     try
@@ -55,7 +56,7 @@ ScVbaFormatConditions::Delete(  )
     }
 }
 
-cpo::uno::Type SAL_CALL
+cpo::uno::Type
 ScVbaFormatConditions::getElementType()
 {
     return cppu::UnoType<excel::XFormatCondition>::get();
@@ -91,12 +92,12 @@ class EnumWrapper : public EnumerationHelper_BASE
         sal_Int32 nIndex;
 public:
         EnumWrapper( uno::Reference< container::XIndexAccess > xIndexAccess, uno::Reference<excel::XRange > xRange, uno::Reference<cpo::uno::XComponentContext > xContext, uno::Reference<excel::XStyles > xStyles, uno::Reference< excel::XFormatConditions > xCollection, uno::Reference<beans::XPropertySet > xProps  ) : m_xIndexAccess(std::move( xIndexAccess )), m_xParentRange(std::move( xRange )), m_xContext(std::move( xContext )), m_xStyles(std::move( xStyles )), m_xParentCollection(std::move( xCollection )), m_xProps(std::move( xProps )), nIndex( 0 ) {}
-        virtual bool SAL_CALL hasMoreElements(  ) override
+        virtual bool hasMoreElements(  ) override
         {
                 return ( nIndex < m_xIndexAccess->getCount() );
         }
 
-        virtual cpo::uno::Any SAL_CALL nextElement(  ) override
+        virtual cpo::uno::Any nextElement(  ) override
         {
             try
             {
@@ -120,7 +121,7 @@ public:
                 cpo::uno::Any a(cppu::getCaughtException());
                 throw css::lang::WrappedTargetException(
                     "wrapped Exception " + e.Message,
-                    css::uno::Reference<cpo::uno::XInterface>(), a);
+                    cpo::uno::Reference<cpo::uno::XInterface>(), a);
             }
             throw container::NoSuchElementException();
         }
@@ -128,14 +129,14 @@ public:
 
 }
 
-uno::Reference< excel::XFormatCondition > SAL_CALL
+uno::Reference< excel::XFormatCondition >
 ScVbaFormatConditions::Add( ::sal_Int32 _nType, const cpo::uno::Any& _aOperator, const cpo::uno::Any& _aFormula1, const cpo::uno::Any& _aFormula2 )
 {
     return Add( _nType, _aOperator, _aFormula1, _aFormula2, uno::Reference< excel::XStyle >() );
 }
 
 rtl::Reference< ScVbaFormatCondition >
-ScVbaFormatConditions::Add( ::sal_Int32 _nType, const cpo::uno::Any& _aOperator, const cpo::uno::Any& _aFormula1, const cpo::uno::Any& _aFormula2, const css::uno::Reference< excel::XStyle >& _xStyle  )
+ScVbaFormatConditions::Add( ::sal_Int32 _nType, const cpo::uno::Any& _aOperator, const cpo::uno::Any& _aFormula1, const cpo::uno::Any& _aFormula2, const cpo::uno::Reference< excel::XStyle >& _xStyle  )
 {
     // #TODO
     // #FIXME
@@ -203,7 +204,7 @@ ScVbaFormatConditions::Add( ::sal_Int32 _nType, const cpo::uno::Any& _aOperator,
     return xFormatCondition;
 }
 
-uno::Reference< container::XEnumeration > SAL_CALL
+uno::Reference< container::XEnumeration >
 ScVbaFormatConditions::createEnumeration()
 {
     return new EnumWrapper( m_xIndexAccess, mxRangeParent, mxContext, mxStyles, this, mxParentRangePropertySet  );

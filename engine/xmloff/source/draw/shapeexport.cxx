@@ -133,6 +133,7 @@
 #include <algorithm>
 
 using namespace ::com::sun::star;
+using namespace ::cpo;
 using namespace ::xmloff::EnhancedCustomShapeToken;
 using namespace ::xmloff::token;
 
@@ -202,7 +203,7 @@ XMLShapeExport::~XMLShapeExport()
 {
 }
 
-static css::uno::Reference<css::drawing::XShape> GetPDFShape(const uno::Reference<lang::XComponent>& xReplacementModel)
+static cpo::uno::Reference<css::drawing::XShape> GetPDFShape(const uno::Reference<lang::XComponent>& xReplacementModel)
 {
     uno::Reference<drawing::XDrawPagesSupplier> xDrawPagesSupplier(xReplacementModel, uno::UNO_QUERY);
     if (!xDrawPagesSupplier)
@@ -295,7 +296,7 @@ void XMLShapeExport::collectShapeAutoStyles(const uno::Reference< drawing::XShap
 
     ImplXMLShapeExportInfo& aShapeInfo = aShapeInfoMap[xShape];
 
-    css::uno::Reference<css::lang::XComponent> xPDFModelReplacement = checkForPDFShapeReplacement(xShape);
+    cpo::uno::Reference<css::lang::XComponent> xPDFModelReplacement = checkForPDFShapeReplacement(xShape);
     if (xPDFModelReplacement)
     {
         aShapeInfo.xPDFModelReplacement = std::move(xPDFModelReplacement);
@@ -970,6 +971,12 @@ void XMLShapeExport::exportShape(const uno::Reference< drawing::XShape >& xShape
             break;
         }
 
+        case XmlShapeType::DrawAnnotationShape:
+        {
+            // A comment carries its own element, written beside the shapes of the page.
+            break;
+        }
+
         case XmlShapeType::PresOrgChartShape:
         case XmlShapeType::Unknown:
         case XmlShapeType::NotYetSet:
@@ -1200,6 +1207,7 @@ void XMLShapeExport::ImpCalcShapeType(const uno::Reference< drawing::XShape >& x
 
         else if(o3tl::starts_with(aRest, u"GraphicObject")) { eShapeType = XmlShapeType::DrawGraphicObjectShape; }
         else if(o3tl::starts_with(aRest, u"Group")) { eShapeType = XmlShapeType::DrawGroupShape; }
+        else if(o3tl::starts_with(aRest, u"Annotation")) { eShapeType = XmlShapeType::DrawAnnotationShape; }
         else if(o3tl::starts_with(aRest, u"Text")) { eShapeType = XmlShapeType::DrawTextShape; }
         else if(o3tl::starts_with(aRest, u"OLE2"))
         {
@@ -1489,7 +1497,7 @@ void XMLShapeExport::ExportGraphicDefaults()
     }
 }
 
-void XMLShapeExport::onExport( const css::uno::Reference < css::drawing::XShape >& )
+void XMLShapeExport::onExport( const cpo::uno::Reference < css::drawing::XShape >& )
 {
 }
 
@@ -3910,7 +3918,7 @@ void XMLShapeExport::ImpExport3DShape(
 }
 
 /** helper for chart that adds all attributes of a 3d scene element to the export */
-void XMLShapeExport::export3DSceneAttributes( const css::uno::Reference< css::beans::XPropertySet >& xPropSet )
+void XMLShapeExport::export3DSceneAttributes( const cpo::uno::Reference< css::beans::XPropertySet >& xPropSet )
 {
     OUString aStr;
     OUStringBuffer sStringBuffer;
@@ -4026,7 +4034,7 @@ void XMLShapeExport::export3DSceneAttributes( const css::uno::Reference< css::be
 }
 
 /** helper for chart that exports all lamps from the propertyset */
-void XMLShapeExport::export3DLamps( const css::uno::Reference< css::beans::XPropertySet >& xPropSet )
+void XMLShapeExport::export3DLamps( const cpo::uno::Reference< css::beans::XPropertySet >& xPropSet )
 {
     // write lamps 1..8 as content
     OUString aStr;

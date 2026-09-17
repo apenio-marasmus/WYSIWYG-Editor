@@ -30,6 +30,7 @@
 
 using namespace ::ooo::vba;
 using namespace ::com::sun::star;
+using namespace ::cpo;
 
 ScVbaFont::ScVbaFont(
         const uno::Reference< XHelperInterface >& xParent,
@@ -52,7 +53,7 @@ ScVbaFont::~ScVbaFont()
 {
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getSize()
 {
     if ( GetDataSet() )
@@ -61,7 +62,7 @@ ScVbaFont::getSize()
     return ScVbaFont_BASE::getSize();
 }
 
-void SAL_CALL
+void
 ScVbaFont::setColorIndex( const cpo::uno::Any& _colorindex )
 {
     if(mbFormControl)
@@ -81,7 +82,7 @@ ScVbaFont::setColorIndex( const cpo::uno::Any& _colorindex )
         ScVbaFont_BASE::setColorIndex( _colorindex );
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getColorIndex()
 {
     if(mbFormControl)
@@ -92,7 +93,7 @@ ScVbaFont::getColorIndex()
     return ScVbaFont_BASE::getColorIndex();
 }
 
-void  SAL_CALL
+void
 ScVbaFont::setStandardFontSize( const cpo::uno::Any& /*aValue*/ )
 {
 //XXX #TODO# #FIXME#
@@ -101,7 +102,7 @@ ScVbaFont::setStandardFontSize( const cpo::uno::Any& /*aValue*/ )
         u"setStandardFontSize not supported"_ustr );
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getStandardFontSize()
 {
 //XXX #TODO# #FIXME#
@@ -109,14 +110,14 @@ ScVbaFont::getStandardFontSize()
     // return cpo::uno::Any();
 }
 
-void  SAL_CALL
+void
 ScVbaFont::setStandardFont( const cpo::uno::Any& /*aValue*/ )
 {
 //XXX #TODO# #FIXME#
     throw cpo::uno::RuntimeException(u"setStandardFont not supported"_ustr );
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getStandardFont()
 {
 //XXX #TODO# #FIXME#
@@ -124,7 +125,7 @@ ScVbaFont::getStandardFont()
     // return cpo::uno::Any();
 }
 
-void SAL_CALL
+void
 ScVbaFont::setFontStyle( const cpo::uno::Any& aValue )
 {
     bool bBold = false;
@@ -154,7 +155,7 @@ ScVbaFont::setFontStyle( const cpo::uno::Any& aValue )
     setItalic( cpo::uno::Any( bItalic ) );
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getFontStyle()
 {
     OUStringBuffer aStyles;
@@ -173,7 +174,7 @@ ScVbaFont::getFontStyle()
     return cpo::uno::Any( aStyles.makeStringAndClear() );
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getBold()
 {
     if ( GetDataSet() )
@@ -182,7 +183,7 @@ ScVbaFont::getBold()
     return ScVbaFont_BASE::getBold();
 }
 
-void SAL_CALL
+void
 ScVbaFont::setUnderline( const cpo::uno::Any& aValue )
 {
     if(mbFormControl)
@@ -219,7 +220,7 @@ ScVbaFont::setUnderline( const cpo::uno::Any& aValue )
 
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getUnderline()
 {
     if ( GetDataSet() )
@@ -250,7 +251,7 @@ ScVbaFont::getUnderline()
     return cpo::uno::Any( nValue );
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getStrikethrough()
 {
     if ( GetDataSet() )
@@ -259,7 +260,7 @@ ScVbaFont::getStrikethrough()
     return ScVbaFont_BASE::getStrikethrough();
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getShadow()
 {
     if ( GetDataSet() )
@@ -268,7 +269,7 @@ ScVbaFont::getShadow()
     return ScVbaFont_BASE::getShadow();
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getItalic()
 {
     if ( GetDataSet() )
@@ -278,7 +279,7 @@ ScVbaFont::getItalic()
     return ScVbaFont_BASE::getItalic();
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getName()
 {
     if ( GetDataSet() )
@@ -294,14 +295,14 @@ ScVbaFont::getColor()
     return aAny;
 }
 
-void  SAL_CALL
+void
 ScVbaFont::setOutlineFont( const cpo::uno::Any& aValue )
 {
     if(!mbFormControl)
         mxFont->setPropertyValue(u"CharContoured"_ustr, aValue );
 }
 
-cpo::uno::Any SAL_CALL
+cpo::uno::Any
 ScVbaFont::getOutlineFont()
 {
     if ( GetDataSet() )

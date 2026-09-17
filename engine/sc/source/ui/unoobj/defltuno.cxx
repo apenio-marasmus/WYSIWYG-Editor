@@ -35,6 +35,7 @@
 
 class SvxFontItem;
 using namespace ::com::sun::star;
+using namespace ::cpo;
 
 static std::span<const SfxItemPropertyMapEntry> lcl_GetDocDefaultsMap()
 {
@@ -107,7 +108,7 @@ void ScDocDefaultsObj::ItemsChanged()
 
 // XPropertySet
 
-uno::Reference<beans::XPropertySetInfo> SAL_CALL ScDocDefaultsObj::getPropertySetInfo()
+uno::Reference<beans::XPropertySetInfo> ScDocDefaultsObj::getPropertySetInfo()
 {
     SolarMutexGuard aGuard;
     static uno::Reference<beans::XPropertySetInfo> aRef = new SfxItemPropertySetInfo(
@@ -115,7 +116,7 @@ uno::Reference<beans::XPropertySetInfo> SAL_CALL ScDocDefaultsObj::getPropertySe
     return aRef;
 }
 
-void SAL_CALL ScDocDefaultsObj::setPropertyValue(
+void ScDocDefaultsObj::setPropertyValue(
                         const OUString& aPropertyName, const cpo::uno::Any& aValue )
 {
     SolarMutexGuard aGuard;
@@ -211,7 +212,7 @@ void SAL_CALL ScDocDefaultsObj::setPropertyValue(
     }
 }
 
-cpo::uno::Any SAL_CALL ScDocDefaultsObj::getPropertyValue( const OUString& aPropertyName )
+cpo::uno::Any ScDocDefaultsObj::getPropertyValue( const OUString& aPropertyName )
 {
     //  use pool default if set
 
@@ -267,7 +268,7 @@ SC_IMPL_DUMMY_PROPERTY_LISTENER( ScDocDefaultsObj )
 
 // XPropertyState
 
-beans::PropertyState SAL_CALL ScDocDefaultsObj::getPropertyState( const OUString& aPropertyName )
+beans::PropertyState ScDocDefaultsObj::getPropertyState( const OUString& aPropertyName )
 {
     SolarMutexGuard aGuard;
 
@@ -300,7 +301,7 @@ beans::PropertyState SAL_CALL ScDocDefaultsObj::getPropertyState( const OUString
     return eRet;
 }
 
-cpo::uno::Sequence<beans::PropertyState> SAL_CALL ScDocDefaultsObj::getPropertyStates(
+cpo::uno::Sequence<beans::PropertyState> ScDocDefaultsObj::getPropertyStates(
                             const cpo::uno::Sequence<OUString>& aPropertyNames )
 {
     //  the simple way: call getPropertyState
@@ -312,7 +313,7 @@ cpo::uno::Sequence<beans::PropertyState> SAL_CALL ScDocDefaultsObj::getPropertyS
     return aRet;
 }
 
-void SAL_CALL ScDocDefaultsObj::setPropertyToDefault( const OUString& aPropertyName )
+void ScDocDefaultsObj::setPropertyToDefault( const OUString& aPropertyName )
 {
     SolarMutexGuard aGuard;
 
@@ -332,7 +333,7 @@ void SAL_CALL ScDocDefaultsObj::setPropertyToDefault( const OUString& aPropertyN
     }
 }
 
-cpo::uno::Any SAL_CALL ScDocDefaultsObj::getPropertyDefault( const OUString& aPropertyName )
+cpo::uno::Any ScDocDefaultsObj::getPropertyDefault( const OUString& aPropertyName )
 {
     //  always use static default
 

@@ -47,12 +47,8 @@
 #include <iostream>
 #include <map>
 
-#if defined __EMSCRIPTEN__
-#include <config_emscripten.h>
-#include <initjsunoscripting.hxx>
-#endif
 
-using namespace ::com::sun::star::uno;
+using namespace ::cpo::uno;
 using namespace cpo::uno;
 using namespace ::com::sun::star::lang;
 using namespace ::com::sun::star::ucb;
@@ -107,9 +103,6 @@ void Desktop::InitApplicationServiceManager()
     }
 #endif
     comphelper::setProcessServiceFactory(sm);
-#if defined __EMSCRIPTEN__ && HAVE_EMBIND_UNO
-    initJsUnoScripting();
-#endif
 }
 
 void Desktop::RegisterServices()
@@ -144,7 +137,7 @@ void Desktop::RegisterServices()
     m_bServicesRegistered = true;
 }
 
-typedef std::map< OUString, css::uno::Reference<css::lang::XInitialization> > AcceptorMap;
+typedef std::map< OUString, cpo::uno::Reference<css::lang::XInitialization> > AcceptorMap;
 
 namespace
 {

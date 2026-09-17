@@ -17,7 +17,7 @@
 #   - SLSA provenance v1                   (built from git metadata)
 #
 # Usage:
-#   publish.sh [-k cosign-key-ref] [-m manifest-list-tag] [-n] image-ref...
+#   publish.sh [-k cosign-key-ref] [-m manifest-list-tag] [-n] [-T] image-ref...
 #
 #   -k  cosign key reference: a file path, env://COSIGN_KEY, or a KMS URI
 #       (default: env://COSIGN_KEY; COSIGN_PASSWORD is honoured by cosign).
@@ -27,6 +27,11 @@
 #   -m  additionally assemble the given refs into a multi-arch manifest list
 #       under this tag (docker buildx imagetools create) and push it
 #   -n  no-push: the refs are already pushed, only sign and attest
+#   -T  do not record the signatures in the public transparency log. By
+#       default they are recorded, like the signatures the publishing jobs
+#       make themselves, so that 'cosign verify-attestation' works without
+#       further flags; use this for a private registry, an offline run or a
+#       rehearsal, and verify with --insecure-ignore-tlog=true.
 #
 # Consumers verify with:
 #   cosign verify              --key docker/cosign.pub <ref>
@@ -42,11 +47,13 @@ VEX_FILE="$SCRIPT_DIR/../vex/cool.vex.json"
 KEY="env://COSIGN_KEY"
 MANIFEST_TAG=
 PUSH=yes
-while getopts k:m:nh opt; do
+NO_TLOG=
+while getopts k:m:nTh opt; do
     case "$opt" in
         k) KEY="$OPTARG" ;;
         m) MANIFEST_TAG="$OPTARG" ;;
         n) PUSH= ;;
+        T) NO_TLOG=yes ;;
         *) usage ;;
     esac
 done
@@ -94,10 +101,12 @@ extract_sboms() {
     pinned="$1"
     docker pull -q "$pinned" >/dev/null
     container=$(docker create "$pinned")
-    docker cp -q "$container:/usr/share/sbom/collabora-online.cdx.json" \
+    # no 'docker cp -q': that flag only exists from Docker 25, and the
+    # builders run older versions
+    docker cp "$container:/usr/share/sbom/collabora-online.cdx.json" \
         "$WORKDIR/sbom.cdx.json"
-    docker cp -q "$container:/usr/share/sbom/collabora-online-image-sbom.spdx.json" \
-        "$WORKDIR/sbom.spdx.json" || true
+    docker cp "$container:/usr/share/sbom/collabora-online-image-sbom.spdx.json" \
+        "$WORKDIR/sbom.spdx.json" 2>/dev/null || true
     docker rm -f "$container" >/dev/null
 }
 
@@ -106,7 +115,10 @@ extract_sboms() {
 # without the OCI referrers API can serve. cosign >= 3 defaults to the new
 # sigstore bundle format and an implicit signing config, so both have to be
 # switched off there; cosign 2.x has neither flag and behaves this way anyway.
-COSIGN_FLAGS="--yes --tlog-upload=false"
+COSIGN_FLAGS="--yes"
+if [ -n "$NO_TLOG" ]; then
+    COSIGN_FLAGS="$COSIGN_FLAGS --tlog-upload=false"
+fi
 if cosign sign --help 2>&1 | grep -q use-signing-config; then
     COSIGN_FLAGS="$COSIGN_FLAGS --use-signing-config=false --new-bundle-format=false"
 fi
@@ -143,6 +155,19 @@ publish_digest() {
             "$WORKDIR/scan.sarif"
         trivy sbom --format json --output "$WORKDIR/scan.json" \
             "$WORKDIR/sbom.cdx.json"
+        # grype additionally matches the CPEs of the statically linked C
+        # libraries, which trivy does not look at; without it the VEX is
+        # refreshed from half the findings
+        if command -v grype >/dev/null; then
+            echo "  scan (grype, for the VEX)"
+            grype -q "sbom:$WORKDIR/sbom.cdx.json" -o json \
+                > "$WORKDIR/scan-grype.json"
+            python3 "$SCRIPT_DIR/generate-vex.py" --vex "$VEX_FILE" \
+                --scan "$WORKDIR/scan-grype.json"
+        else
+            echo "  grype not found: the VEX refresh will miss CPE-only" \
+                 "findings (the statically linked C libraries)" >&2
+        fi
         python3 "$SCRIPT_DIR/generate-vex.py" --vex "$VEX_FILE" \
             --scan "$WORKDIR/scan.json"
     else
@@ -155,15 +180,37 @@ publish_digest() {
 }
 
 # Every per-platform manifest digest of a ref (or the ref's own digest).
-ref_digests() {
-    docker buildx imagetools inspect --format '{{json .}}' "$1" | python3 -c '
+# Digest of each platform manifest behind a reference (or of the reference
+# itself when it is not an index). Several sources are tried because the
+# shape of what they print differs between versions, and buildx is a plugin
+# the builder may not have; publish_ref below fails if none of them answers,
+# rather than silently signing nothing.
+digests_from_json() {
+    python3 -c '
 import json, sys
 data = json.load(sys.stdin)
-manifest = data.get("manifest", {})
-entries = [m["digest"] for m in manifest.get("manifests", [])
+if isinstance(data, dict) and "manifest" in data:   # buildx imagetools
+    data = data["manifest"]
+if isinstance(data, list):                          # docker manifest -v, index
+    data = {"manifests": [{"digest": e["Descriptor"]["digest"],
+                           "platform": e["Descriptor"].get("platform", {})}
+                          for e in data]}
+elif "Descriptor" in data:                          # docker manifest -v, single
+    data = {"digest": data["Descriptor"]["digest"]}
+entries = [m["digest"] for m in data.get("manifests", [])
            if m.get("platform", {}).get("os") not in (None, "unknown")]
-print("\n".join(entries if entries else [manifest.get("digest", "")]))
-'
+if not entries and data.get("digest"):
+    entries = [data["digest"]]
+print("\n".join(entries))
+' 2>/dev/null
+}
+
+ref_digests() {
+    docker buildx imagetools inspect --format '{{json .}}' "$1" 2>/dev/null \
+        | digests_from_json && return 0
+    docker buildx imagetools inspect --format '{{json .Manifest}}' "$1" \
+        2>/dev/null | digests_from_json && return 0
+    docker manifest inspect -v "$1" 2>/dev/null | digests_from_json
 }
 
 for ref in "$@"; do
@@ -180,12 +227,26 @@ fi
 
 for ref in "$@"; do
     repository=${ref%%@*}; repository=${repository%:*}
+    found=
     for digest in $(ref_digests "$ref"); do
         [ -n "$digest" ] || continue
+        found=yes
         publish_digest "$repository" "$digest"
     done
+    if [ -z "$found" ]; then
+        echo "publish.sh: cannot resolve a digest for $ref - is it pushed?" \
+             "Nothing was signed or attested." >&2
+        exit 1
+    fi
 done
 
-echo "done. verify with:"
-echo "  cosign verify --key docker/cosign.pub <ref>"
-echo "  cosign verify-attestation --key docker/cosign.pub --type cyclonedx <ref>"
+# Signatures and attestations are attached to the per-platform digests, which
+# is what ZenDiS does too and the only thing that makes sense: the SBOM of an
+# arm64 image is not the SBOM of the amd64 one. A multi-arch tag points at the
+# index, whose digest carries neither, so verification names a platform.
+echo "done. verify a per-platform reference, not a multi-arch tag:"
+for ref in "$@"; do
+    echo "  cosign verify --key docker/cosign.pub${NO_TLOG:+ --insecure-ignore-tlog=true} $ref"
+    echo "  cosign verify-attestation --key docker/cosign.pub${NO_TLOG:+ --insecure-ignore-tlog=true} --type cyclonedx $ref"
+    break
+done

@@ -160,6 +160,7 @@ interface MapInterface extends Evented {
 	menubar: Menubar;
 	userList: UserList;
 	sidebar: Sidebar;
+	notesPanel: NotesPanel;
 	getViewColor(viewId: number): number;
 
 	// TODO fix types:
@@ -181,6 +182,7 @@ interface MapInterface extends Evented {
 	navigator: NavigatorPanel;
 	slideImportPane: SlideImportPane;
 	slideLinks: SlideLinks;
+	slideLinkToolbar: SlideLinkToolbar;
 	paneExpander: PaneExpander;
 	paneSplitter: PaneSplitter;
 	setPart(
@@ -224,6 +226,8 @@ interface MapInterface extends Evented {
 	zoomIn(delta: number, options?: any, animate?: boolean): MapInterface;
 	zoomOut(delta: number, options?: any, animate?: boolean): MapInterface;
 	cancelSearch(): void;
+	isSearching(): boolean;
+	_onGotFocus(): void;
 	goToPage(page: string | number): void;
 	serverAuditDialog?: ServerAuditDialog;
 	_lockAccessibilityOn: boolean;

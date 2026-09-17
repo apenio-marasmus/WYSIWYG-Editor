@@ -131,6 +131,7 @@ ClientSession::ClientSession(const std::shared_ptr<ProtocolHandlerInterface>& ws
     , _tileHeightPixel(0)
     , _tileWidthTwips(0)
     , _tileHeightTwips(0)
+    , _clientZoomPercent(0)
     , _kitViewId(-1)
     , _canonicalViewId(CanonicalViewId::None)
     , _state(SessionState::DETACHED)
@@ -1223,6 +1224,14 @@ bool ClientSession::_handleInput(const char *buffer, int length)
         _tileHeightPixel = tilePixelHeight;
         _tileWidthTwips = tileTwipWidth;
         _tileHeightTwips = tileTwipHeight;
+
+        int zoomPercent;
+        if (tokens.size() > 6 && getTokenInteger(tokens[6], "zoompercent", zoomPercent) &&
+            zoomPercent > 0)
+        {
+            _clientZoomPercent = zoomPercent;
+        }
+
         return forwardToChild(std::string(buffer, length), docBroker);
     }
     else if (tokens.equals(0, "tileprocessed"))
@@ -1315,8 +1324,12 @@ bool ClientSession::_handleInput(const char *buffer, int length)
             return false;
 
         std::string value;
-        if (tokens.size() > 1 && getTokenString(tokens[1], "value", value) && value == "true" &&
-            !isLockedByPassword())
+        const bool haveValue = tokens.size() > 1 && getTokenString(tokens[1], "value", value);
+
+        if (haveValue)
+            _clientEditMode = value != "true";
+
+        if (haveValue && value == "true" && !isLockedByPassword())
         {
             // Write the modifications right away, while the view may still save; the kit's
             // read-only command filters do not dispatch .uno:Save for a read-only view
@@ -1531,9 +1544,9 @@ bool ClientSession::_handleInput(const char *buffer, int length)
         // the server staged in the jail.
         const bool readsLinks = tokens.size() == 2 && tokens.equals(1, "list");
         const bool breaksLink = tokens.size() == 3 && tokens.equals(1, "break");
-        // An update may carry an optional time= token besides source= and file=.
+        // An update may carry optional time= and part= tokens besides source= and file=.
         const bool updatesLinks =
-            (tokens.size() == 4 || tokens.size() == 5) && tokens.equals(1, "update");
+            tokens.size() >= 4 && tokens.size() <= 6 && tokens.equals(1, "update");
         if (!readsLinks && !breaksLink && !updatesLinks)
         {
             LOG_ERR("Bad syntax for: " << firstLine);
@@ -4366,6 +4379,9 @@ void ClientSession::dumpState(std::ostream& os)
        << "\n\t\tvisibleAreaPart: " << _visibleAreaPart
        << "\n\t\ttile size Pixel: " << _tileWidthPixel << 'x' << _tileHeightPixel
        << "\n\t\ttile size Twips: " << _tileWidthTwips << 'x' << _tileHeightTwips
+       << "\n\t\tclientZoomPercent: " << _clientZoomPercent
+       << "\n\t\tclientEditMode: "
+       << (_clientEditMode ? (*_clientEditMode ? "editing" : "viewing") : "unknown")
        << "\n\t\tkit ViewId: " << _kitViewId
        << "\n\t\tour URL (un-trusted): " << _serverURL.getSubURLForEndpoint("")
        << "\n\t\tisTextDocument: " << _isTextDocument

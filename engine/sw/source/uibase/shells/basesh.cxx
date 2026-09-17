@@ -125,6 +125,8 @@
 #include <translatehelper.hxx>
 #include <rootfrm.hxx>
 
+using namespace ::cpo;
+
 FlyMode SwBaseShell::s_eFrameMode = FLY_DRAG_END;
 
 // These variables keep the state of Gallery (slot SID_GALLERY_BG_BRUSH)
@@ -163,7 +165,7 @@ namespace
 }
 
 using namespace ::com::sun::star;
-using namespace ::com::sun::star::uno;
+using namespace ::cpo::uno;
 using namespace ::com::sun::star::frame;
 
 SFX_IMPL_SUPERCLASS_INTERFACE(SwBaseShell, SfxShell)
@@ -397,6 +399,19 @@ void SwBaseShell::ExecClpbrd(SfxRequest &rReq)
                     const SfxBoolItem* pIgnoreComments = rReq.GetArg<SfxBoolItem>(FN_PARAM_2);
                     if (pIgnoreComments)
                         bIgnoreComments = pIgnoreComments->GetValue();
+
+                    // See if we should do a merged paste.
+                    bool bMerged = false;
+                    const SfxBoolItem* pMerged = rReq.GetArg<SfxBoolItem>(FN_PARAM_4);
+                    if (pMerged)
+                        bMerged = pMerged->GetValue();
+                    SwDoc* pDoc = rSh.GetDoc();
+                    if (bMerged)
+                    {
+                        pDoc->SetInMergedPaste(true);
+                    }
+                    comphelper::ScopeGuard g(
+                        [pDoc, bMerged] { if (bMerged) pDoc->SetInMergedPaste(false); });
 
                     SwTransferable::Paste(rSh, aDataHelper, nAnchorType, bIgnoreComments, ePasteTable);
 

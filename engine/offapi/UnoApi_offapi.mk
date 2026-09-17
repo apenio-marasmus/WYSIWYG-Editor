@@ -2436,7 +2436,6 @@ $(eval $(call gb_UnoApi_add_idlfiles,offapi,com/sun/star/frame,\
 	XController2 \
 	XControllerBorder \
 	XDesktop \
-	XDesktop2 \
 	XDispatch \
 	XDispatchHelper \
 	XDispatchInformationProvider \
@@ -2458,7 +2457,6 @@ $(eval $(call gb_UnoApi_add_idlfiles,offapi,com/sun/star/frame,\
 	XInfobarProvider \
 	XInterceptorInfo \
 	XLayoutManager \
-	XLayoutManager2 \
 	XLayoutManagerEventBroadcaster \
 	XLayoutManagerListener \
 	XLoadEventListener \
@@ -4001,7 +3999,6 @@ $(eval $(call gb_UnoApi_add_idlfiles,offapi,com/sun/star/xforms,\
 	XFormsSupplier \
 	XFormsUIHelper1 \
 	XModel \
-	XModel2 \
 	XSubmission \
 ))
 $(eval $(call gb_UnoApi_add_idlfiles,offapi,com/sun/star/xml,\

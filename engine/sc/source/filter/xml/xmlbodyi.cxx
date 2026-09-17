@@ -56,6 +56,7 @@
 #include <memory>
 
 using namespace com::sun::star;
+using namespace ::cpo;
 using namespace xmloff::token;
 
 ScXMLBodyContext::ScXMLBodyContext( ScXMLImport& rImport,
@@ -124,7 +125,7 @@ ScXMLPersonsContext::ScXMLPersonsContext(ScXMLImport& rImport)
 {
 }
 
-uno::Reference<xml::sax::XFastContextHandler> SAL_CALL
+uno::Reference<xml::sax::XFastContextHandler>
 ScXMLPersonsContext::createFastChildContext(sal_Int32 nElement,
     const uno::Reference<xml::sax::XFastAttributeList>& xAttrList)
 {
@@ -155,7 +156,7 @@ ScXMLPersonsContext::createFastChildContext(sal_Int32 nElement,
     return nullptr;
 }
 
-uno::Reference< xml::sax::XFastContextHandler > SAL_CALL
+uno::Reference< xml::sax::XFastContextHandler >
         ScXMLBodyContext::createFastChildContext( sal_Int32 nElement,
         const uno::Reference< xml::sax::XFastAttributeList > & xAttrList )
 {
@@ -237,7 +238,7 @@ uno::Reference< xml::sax::XFastContextHandler > SAL_CALL
     return pContext;
 }
 
-void SAL_CALL ScXMLBodyContext::characters(const OUString &)
+void ScXMLBodyContext::characters(const OUString &)
 {
     ScSheetSaveData* pSheetData = GetScImport().GetScModel()->GetSheetSaveData();
     if ( pSheetData && pSheetData->HasStartPos() )
@@ -249,7 +250,7 @@ void SAL_CALL ScXMLBodyContext::characters(const OUString &)
     // otherwise ignore
 }
 
-void SAL_CALL ScXMLBodyContext::endFastElement(sal_Int32 nElement)
+void ScXMLBodyContext::endFastElement(sal_Int32 nElement)
 {
     ScSheetSaveData* pSheetData = GetScImport().GetScModel()->GetSheetSaveData();
     if ( pSheetData && pSheetData->HasStartPos() )
