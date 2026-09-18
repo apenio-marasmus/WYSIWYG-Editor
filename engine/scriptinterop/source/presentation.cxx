@@ -9,7 +9,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-#include <cmath>
 #include <vector>
 
 #include <com/sun/star/awt/FontSlant.hpp>
@@ -17,6 +16,7 @@
 #include <com/sun/star/awt/FontWeight.hpp>
 #include <com/sun/star/awt/Point.hpp>
 #include <com/sun/star/awt/Size.hpp>
+#include <com/sun/star/beans/Optional.hpp>
 #include <com/sun/star/beans/XPropertySet.hpp>
 #include <com/sun/star/container/XIndexAccess.hpp>
 #include <com/sun/star/drawing/FillStyle.hpp>
@@ -40,7 +40,6 @@
 #include <cpo/uno/Any.hxx>
 #include <cpo/uno/Sequence.hxx>
 #include <cppuhelper/implbase.hxx>
-#include <o3tl/string_view.hxx>
 #include <rtl/ustring.hxx>
 #include <sal/config.h>
 #include <sal/types.h>
@@ -53,39 +52,16 @@
 #include <scriptinterop/XTextRange.hpp>
 #include <scriptinterop/XTextStyle.hpp>
 
+#include "conversions.hxx"
 #include "presentation.hxx"
+
+using scriptinterop::detail::extentToHundredthMm;
+using scriptinterop::detail::hundredthMmToPoints;
+using scriptinterop::detail::parseHexColor;
+using scriptinterop::detail::pointsToHundredthMm;
 
 namespace
 {
-// The API works in points; the UNO drawing layer works in 1/100 mm.  A value that is not a
-// finite number, or that falls outside the drawing layer's integer range after the conversion,
-// is an error.  The comparison is written so that a NaN input fails it too.
-sal_Int32 pointsToHundredthMm(double points)
-{
-    auto const hundredthMm = std::round(points * 2540.0 / 72.0);
-    if (!(hundredthMm >= SAL_MIN_INT32 && hundredthMm <= SAL_MAX_INT32))
-    {
-        throw cpo::uno::RuntimeException(
-            u"expected a length in points that fits the page coordinate range, got "_ustr
-            + OUString::number(points));
-    }
-    return static_cast<sal_Int32>(hundredthMm);
-}
-
-// A shape width or height in points.  The value must not be negative; the comparison is written
-// so that a NaN input fails it too.
-sal_Int32 extentToHundredthMm(double points)
-{
-    if (!(points >= 0))
-    {
-        throw cpo::uno::RuntimeException(u"expected a non-negative size in points, got "_ustr
-                                         + OUString::number(points));
-    }
-    return pointsToHundredthMm(points);
-}
-
-double hundredthMmToPoints(sal_Int32 hundredthMm) { return hundredthMm * 72.0 / 2540.0; }
-
 // Formatting is applied through a cursor, so it lands on the text runs themselves and survives
 // saving.  With a range the cursor spans just that range; without one it spans the whole text.
 cpo::uno::Reference<css::beans::XPropertySet>
@@ -104,29 +80,6 @@ cursorProperties(cpo::uno::Reference<css::text::XText> const& text,
         cursor->gotoEnd(true);
     }
     return cpo::uno::Reference<css::beans::XPropertySet>(cursor, cpo::uno::UNO_QUERY_THROW);
-}
-
-sal_Int32 parseHexColor(OUString const& hexColor)
-{
-    bool valid = hexColor.getLength() == 7 && hexColor[0] == '#';
-    if (valid)
-    {
-        for (sal_Int32 i = 1; i != 7; ++i)
-        {
-            auto const c = hexColor[i];
-            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
-            {
-                valid = false;
-                break;
-            }
-        }
-    }
-    if (!valid)
-    {
-        throw cpo::uno::RuntimeException(u"expected a color in \"#rrggbb\" form, got "_ustr
-                                         + hexColor);
-    }
-    return static_cast<sal_Int32>(o3tl::toUInt32(hexColor.subView(1), 16));
 }
 
 // A page counts as one of the presentation's slides when the model's slide container holds it.
@@ -241,9 +194,10 @@ public:
         return range_->getuno();
     }
 
-    cpo::uno::Reference<scriptinterop::XTextRange> SAL_CALL getRange() override
+    css::beans::Optional<cpo::uno::Reference<scriptinterop::XTextRange>> SAL_CALL getRange()
+        override
     {
-        return range_;
+        return {range_.is(), range_};
     }
 
 private:
@@ -372,15 +326,15 @@ public:
         return this;
     }
 
-    cpo::uno::Reference<scriptinterop::XTextStyle> SAL_CALL getTextStyle() override
+    css::beans::Optional<cpo::uno::Reference<scriptinterop::XTextStyle>> SAL_CALL getTextStyle()
+        override
     {
         // Character formatting lives on the text runs, so an empty range holds none to style.
         if (asString().isEmpty())
         {
-            throw cpo::uno::RuntimeException(
-                u"getTextStyle: the range is empty and has no characters to style"_ustr);
+            return {false, {}};
         }
-        return new TextStyleImpl(text_, range_);
+        return {true, new TextStyleImpl(text_, range_)};
     }
 
 private:
@@ -414,9 +368,13 @@ public:
 
     double SAL_CALL getTop() override { return hundredthMmToPoints(shape_->getPosition().Y); }
 
-    double SAL_CALL getWidth() override { return hundredthMmToPoints(shape_->getSize().Width); }
+    css::beans::Optional<double> SAL_CALL getWidth() override {
+        return {true, hundredthMmToPoints(shape_->getSize().Width)};
+    }
 
-    double SAL_CALL getHeight() override { return hundredthMmToPoints(shape_->getSize().Height); }
+    css::beans::Optional<double> SAL_CALL getHeight() override {
+        return {true, hundredthMmToPoints(shape_->getSize().Height)};
+    }
 
     cpo::uno::Reference<scriptinterop::XShape> SAL_CALL setLeft(double points) override
     {
@@ -616,7 +574,8 @@ public:
         return controller;
     }
 
-    cpo::uno::Reference<scriptinterop::XPage> SAL_CALL getCurrentPage() override
+    css::beans::Optional<cpo::uno::Reference<scriptinterop::XPage>> SAL_CALL getCurrentPage()
+        override
     {
         cpo::uno::Reference<css::drawing::XDrawView> const view(model_->getCurrentController(),
                                                                 cpo::uno::UNO_QUERY);
@@ -625,9 +584,9 @@ public:
         auto const page = view.is() ? view->getCurrentPage() : nullptr;
         if (!page.is())
         {
-            return nullptr;
+            return {false, {}};
         }
-        return new PageImpl(model_, page);
+        return {true, new PageImpl(model_, page)};
     }
 
 private:
@@ -674,9 +633,10 @@ public:
 
     double SAL_CALL getPageHeight() override { return pageSizePoints(u"Height"_ustr); }
 
-    cpo::uno::Reference<scriptinterop::XSlideSelection> SAL_CALL getSelection() override
+    css::beans::Optional<cpo::uno::Reference<scriptinterop::XSlideSelection>> SAL_CALL
+    getSelection() override
     {
-        return new SlideSelectionImpl(model_);
+        return {true, new SlideSelectionImpl(model_)};
     }
 
 private:

@@ -2142,6 +2142,9 @@ lcl_ApplyCellProperties(
             {
                 static const std::initializer_list<std::u16string_view> vDenylist = {
                     u"LeftMargin",
+                    // states whether the row hides the mark that ends a cell, which is read
+                    // off the row while it is built and is nothing a cell itself holds
+                    u"CellHideMark",
                     u"ParaTopBorder",
                     u"ParaTopBorderDistance",
                     u"ParaTopBorderComplexColor",
@@ -2281,7 +2284,11 @@ SwXText::convertToSwTable(
             {
                 static constexpr auto vDenylist = frozen::make_unordered_set<std::u16string_view>({
                     u"BottomBorder",
+                    u"CellInteropGrabBag",
                     u"CharAutoKerning",
+                    u"CharColor",
+                    u"CharComplexColor",
+                    u"CharFontFamily",
                     u"CharFontName",
                     u"CharFontNameAsian",
                     u"CharFontNameComplex",
@@ -2297,6 +2304,8 @@ SwXText::convertToSwTable(
                     u"ParaAdjust",
                     u"ParaBottomMargin",
                     u"ParaIsHyphenation",
+                    u"ParaKeepTogether",
+                    u"ParaLastLineAdjust",
                     u"ParaLineSpacing",
                     u"ParaOrphans",
                     u"ParaTopMargin",

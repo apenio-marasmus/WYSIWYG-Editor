@@ -14,16 +14,11 @@ if (!globalThis.cool) {
     console.assert = console.assert || (cond => { if (!cond) throw new Error('failed: ' + cond); });
 }
 
-//TODO: GAS appears to return null when text properties are not set explicitly:
-function checkEqual(actual, expected) {
-    return actual === expected || (!globalThis.cool && actual === null);
-}
-
 function documentTest() {
     const body = DocumentApp.getActiveDocument().getBody();
     console.assert(body.getType() === DocumentApp.ElementType.BODY_SECTION);
     console.assert(body.getText().length > 0);
-    console.assert(body.getNumChildren() === 5);
+    console.assert(body.getNumChildren() === 6);
 
     // Paragraph 0 is a bold "Bold", italic "Italic" and plain "Plain" concatenated:
     const p0 = body.getChild(0);
@@ -37,8 +32,8 @@ function documentTest() {
     console.assert(p0.getChild(0).getText() === 'BoldItalicPlain');
     console.assert(p0.getChild(0).getParent().getType() === DocumentApp.ElementType.PARAGRAPH);
     console.assert(p0.getHeading() === DocumentApp.ParagraphHeading.NORMAL);
-    console.assert(checkEqual(p0.getAlignment(), DocumentApp.HorizontalAlignment.LEFT));
-    console.assert(checkEqual(p0.getIndentStart(), 0));
+    console.assert(p0.getAlignment() === null);
+    console.assert(p0.getIndentStart() === null);
     console.assert(p0.getPreviousSibling() === null);
     console.assert(p0.getNextSibling().getType() === DocumentApp.ElementType.PARAGRAPH);
     console.assert(p0.getNextSibling().getText() === 'UnderStrikeSuperPlain');
@@ -47,13 +42,13 @@ function documentTest() {
     console.assert(t0.getText() === 'BoldItalicPlain');
     console.assert(t0.getParent().getType() === DocumentApp.ElementType.BODY_SECTION);
     console.assert(t0.isBold(0) === true);
-    console.assert(checkEqual(t0.isBold(4), false));
-    console.assert(checkEqual(t0.isItalic(0), false));
+    console.assert(t0.isBold(4) === null);
+    console.assert(t0.isItalic(0) === null);
     console.assert(t0.isItalic(4) === true);
-    console.assert(checkEqual(t0.isUnderline(0), false));
-    console.assert(checkEqual(t0.isStrikethrough(0), false));
-    console.assert(checkEqual(t0.getTextAlignment(0), DocumentApp.TextAlignment.NORMAL));
-    console.assert(checkEqual(t0.getLinkUrl(0), ''));
+    console.assert(t0.isUnderline(0) === null);
+    console.assert(t0.isStrikethrough(0) === null);
+    console.assert(t0.getTextAlignment(0) === null);
+    console.assert(t0.getLinkUrl(0) === null);
     console.assert(t0.getFontFamily(0).length > 0);
     const idx = t0.getTextAttributeIndices();
     console.assert(idx.length >= 1);
@@ -63,16 +58,16 @@ function documentTest() {
     const t1 = body.getChild(1).editAsText();
     console.assert(t1.getText() === 'UnderStrikeSuperPlain');
     console.assert(t1.isUnderline(0) === true);
-    console.assert(checkEqual(t1.isUnderline(5), false));
+    console.assert(t1.isUnderline(5) === null);
     console.assert(t1.isStrikethrough(5) === true);
-    console.assert(checkEqual(t1.isStrikethrough(11), false));
+    console.assert(t1.isStrikethrough(11) === null);
     console.assert(t1.getTextAlignment(11) === DocumentApp.TextAlignment.SUPERSCRIPT);
-    console.assert(checkEqual(t1.getTextAlignment(16), DocumentApp.TextAlignment.NORMAL));
+    console.assert(t1.getTextAlignment(16) === null);
 
     // Paragraph 2 concatenates a plain "Third" run and a hyperlinked "Link" run:
     const t2 = body.getChild(2).editAsText();
     console.assert(t2.getText() === 'ThirdLink');
-    console.assert(checkEqual(t2.getLinkUrl(0), ''));
+    console.assert(t2.getLinkUrl(0) === null);
     console.assert(t2.getLinkUrl(5) === 'https://example.com');
 
     // Child 3 is a 2x2 table with cells A1, B1, A2, B2:
@@ -136,7 +131,7 @@ function documentTest() {
     const appended = body.appendParagraph('Appended');
     console.assert(appended.getType() === DocumentApp.ElementType.PARAGRAPH);
     console.assert(appended.getText() === 'Appended');
-    console.assert(body.getNumChildren() === 6);
+    console.assert(body.getNumChildren() === 7);
 
     // Exercise the setBold overload group:
     appended.editAsText().setBold(true).setBold(0, 3, false);
@@ -157,30 +152,30 @@ function documentTest() {
     console.assert(listItem.getNestingLevel() === 0);
     console.assert(listItem.getGlyphType() === DocumentApp.GlyphType.NUMBER);
     console.assert(typeof listItem.getListId() === 'string');
-    console.assert(body.getNumChildren() === 7);
+    console.assert(body.getNumChildren() === 8);
 
     // clear empties the paragraph text without removing the paragraph from the body:
     const cleared = body.appendParagraph('Doomed');
-    console.assert(body.getNumChildren() === 8);
+    console.assert(body.getNumChildren() === 9);
     console.assert(cleared.getText() === 'Doomed');
     cleared.clear();
     console.assert(cleared.getText() === '');
-    console.assert(body.getNumChildren() === 8);
+    console.assert(body.getNumChildren() === 9);
 
     // GAS refuses to remove the section's last paragraph, so append a guard first, then remove
     // cleared (which is no longer the last):
     body.appendParagraph('Guard');
-    console.assert(body.getNumChildren() === 9);
+    console.assert(body.getNumChildren() === 10);
     cleared.removeFromParent();
-    console.assert(body.getNumChildren() === 8);
+    console.assert(body.getNumChildren() === 9);
 
     // Removing a whole added paragraph via its Text view works too, again with a guard so what
     // we remove is not the last paragraph:
     const viaText = body.appendParagraph('AlsoDoomed');
     body.appendParagraph('Guard');
-    console.assert(body.getNumChildren() === 10);
+    console.assert(body.getNumChildren() === 11);
     viaText.editAsText().removeFromParent();
-    console.assert(body.getNumChildren() === 9);
+    console.assert(body.getNumChildren() === 10);
 
     // A table cell's clear empties the cell's text:
     const tab = body.getChild(3);
@@ -195,4 +190,36 @@ function documentTest() {
     console.assert(tab.getNumChildren() === 2);
     tab.getChild(0).removeFromParent();
     console.assert(tab.getNumChildren() === 1);
+
+    // Paragraph 5 anchors a 100x60-pixel inline image at child index 1 (child index 0 is the
+    // whole-paragraph Text):
+    const image = body.getChild(5).getChild(1).asInlineImage();
+    console.assert(image !== null);
+    console.assert(image.getWidth() === 100);
+    console.assert(image.getHeight() === 60);
+    console.assert(image.getAltTitle() === null);
+    console.assert(image.getAltDescription() === null);
+
+    // Insert a 20x10 red PNG at the cursor, then verify the setters chain and round-trip:
+    const pngHex
+        = '89504e470d0a1a0a0000000d49484452000000140000000a08020000003b37e9b100'
+        + '00001549444154789c63f8cfc04036225fe7a8e611a319003144c73974da8b110000'
+        + '000049454e44ae426082';
+    const pngBytes = [];
+    for (let i = 0; i < pngHex.length; i += 2) {
+        pngBytes.push(parseInt(pngHex.substr(i, 2), 16));
+    }
+    const blob = Utilities.newBlob(pngBytes, 'image/png');
+    // appendImage places the image at the end of the body, unlike cursor.insertInlineImage
+    // which needs a visible cursor and returns null when there is none:
+    const inserted = body.appendImage(blob);
+    console.assert(inserted !== null);
+    console.assert(inserted.getType() === DocumentApp.ElementType.INLINE_IMAGE);
+    // GAS stores image geometry in points at 72 DPI, so pixel values that are multiples of 4
+    // round-trip exactly through the 96/72 conversion:
+    inserted.setAltTitle('title').setAltDescription('desc').setWidth(80).setHeight(40);
+    console.assert(inserted.getAltTitle() === 'title');
+    console.assert(inserted.getAltDescription() === 'desc');
+    console.assert(inserted.getWidth() === 80);
+    console.assert(inserted.getHeight() === 40);
 }

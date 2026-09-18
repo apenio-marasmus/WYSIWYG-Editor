@@ -20,6 +20,8 @@ interface XCursor: XBase {
 
     long getSurroundingTextOffset();
 
+    com::sun::star::beans::Optional<XInlineImage> insertInlineImage([in] XBlob blob);
+
     void insertText([in] string text);
 };
 

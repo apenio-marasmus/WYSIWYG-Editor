@@ -31,6 +31,19 @@ interface XRange : XBase
 
     XRange offset([in] long rowOffset, [in] long columnOffset, [in] long numRows,
                  [in] long numColumns);
+
+    XRange setBackgroundColor([in] string hexColor);
+
+    XRange setFontWeight([in] string fontWeight);
+
+    XRange setFontStyle([in] string fontStyle);
+
+    XRange setFontColor([in] string hexColor);
+
+    XRange setBorder([in] boolean top, [in] boolean left, [in] boolean bottom,
+                     [in] boolean right, [in] string hexColor);
+
+    XRange setNumberFormat([in] string format);
 };
 
 };

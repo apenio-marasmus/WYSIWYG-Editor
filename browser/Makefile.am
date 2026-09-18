@@ -682,6 +682,7 @@ COOL_JS_LST =\
 	src/control/jsdialog/Widget.IconView.ts \
 	src/control/jsdialog/Widget.NotebookbarIconView.ts \
 	src/control/jsdialog/Widget.MenuButton.ts \
+	src/control/jsdialog/Widget.LineWidthCustom.ts \
 	src/control/jsdialog/Widget.Listbox.ts \
 	src/control/jsdialog/Widget.MobileBorderSelector.js \
 	src/control/jsdialog/Widget.MobileTabControl.js \
@@ -1422,6 +1423,13 @@ install-demo-extensions:
 					name=$$(basename "$$gs") && \
 					scripts="$$scripts$${scripts:+,}\"$$name\""; \
 				done && \
+				if test -z "$$scripts"; then \
+					for js in "$$dir"/*.js; do \
+						test -f "$$js" || continue; \
+						name=$$(basename "$$js") && \
+						scripts="$$scripts$${scripts:+,}\"$$name\""; \
+					done; \
+				fi && \
 				sidebar= && \
 				for html in "$$dir"/*.html; do \
 					test -f "$$html" || continue; \
@@ -1682,6 +1690,7 @@ pot:
 		src/control/jsdialog/Widget.PageMarginEntry.ts \
 		src/control/jsdialog/Widget.PageSizeEntry.ts \
 		src/control/jsdialog/Widget.HTMLContent.ts \
+		src/control/jsdialog/Widget.LineWidthCustom.ts \
 		src/control/jsdialog/Widget.MobileBorderSelector.js \
 		src/control/jsdialog/Widget.NewSlideLayoutEntry.ts \
 		src/control/jsdialog/Widget.NotebookbarIconView.ts \

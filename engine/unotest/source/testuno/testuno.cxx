@@ -14,6 +14,7 @@
 #include <source_location>
 
 #include <com/sun/star/beans/NamedValue.hpp>
+#include <com/sun/star/beans/Optional.hpp>
 #include <com/sun/star/lang/IllegalArgumentException.hpp>
 #include <com/sun/star/lang/XServiceInfo.hpp>
 #include <com/sun/star/task/XJob.hpp>
@@ -1417,6 +1418,36 @@ class Test : public cppu::WeakImplHelper<css::lang::XServiceInfo, css::testuno::
     OUString getOverloadedNoArgs() override { return u"foo"_ustr; }
 
     sal_Int32 getOverloadedOneArg(sal_Int32 value) override { return value; }
+
+    OUString getOverloadedString(OUString const & value) override { return value; }
+
+    sal_Int32 getOverloadedBytes(cpo::uno::Sequence<sal_Int8> const & data) override {
+        return data.getLength();
+    }
+
+    OUString getOverloadedAny(cpo::uno::Any const &) override { return u"any"_ustr; }
+
+    OUString getOverloadedAnyString(cpo::uno::Any const &, OUString const &) override {
+        return u"anystring"_ustr;
+    }
+
+    OUString getOverloadedStringAny(OUString const &, cpo::uno::Any const &) override {
+        return u"stringany"_ustr;
+    }
+
+    css::beans::Optional<OUString> getOptionalString(bool present) override {
+        return {present, present ? u"hello"_ustr : u""_ustr};
+    }
+
+    OUString unwrapOptionalString(css::beans::Optional<OUString> const & value) override {
+        return value.IsPresent ? value.Value : u"absent"_ustr;
+    }
+
+    OUString unwrapOptionalStructString(
+        css::beans::Optional<css::testuno::StructString> const & value) override
+    {
+        return value.IsPresent ? value.Value.m : u"absent"_ustr;
+    }
 
     void SAL_CALL throwRuntimeException() override
     {

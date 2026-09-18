@@ -11,16 +11,26 @@
 
 #include <sal/config.h>
 
+#include <com/sun/star/awt/FontSlant.hpp>
+#include <com/sun/star/awt/FontWeight.hpp>
+#include <com/sun/star/beans/XPropertySet.hpp>
 #include <com/sun/star/container/XIndexAccess.hpp>
 #include <com/sun/star/container/XNameAccess.hpp>
 #include <com/sun/star/frame/Desktop.hpp>
 #include <com/sun/star/frame/XModel.hpp>
+#include <com/sun/star/lang/Locale.hpp>
+#include <com/sun/star/sheet/XNamedRanges.hpp>
 #include <com/sun/star/sheet/XSpreadsheetDocument.hpp>
-#include <com/sun/star/sheet/XSpreadsheetView.hpp>
 #include <com/sun/star/sheet/XSpreadsheets.hpp>
+#include <com/sun/star/sheet/XSpreadsheetView.hpp>
 #include <com/sun/star/sheet/XViewFreezable.hpp>
+#include <com/sun/star/table/CellAddress.hpp>
+#include <com/sun/star/table/TableBorder2.hpp>
 #include <com/sun/star/table/XCellRange.hpp>
 #include <com/sun/star/table/XColumnRowRange.hpp>
+#include <cpo/uno/Reference.hxx>
+#include <com/sun/star/util/XNumberFormats.hpp>
+#include <com/sun/star/util/XNumberFormatsSupplier.hpp>
 #include <com/sun/star/view/XSelectionSupplier.hpp>
 #include <comphelper/processfactory.hxx>
 #include <cool.hpp>
@@ -351,6 +361,7 @@ CPPUNIT_TEST_FIXTURE(Test, testInputValidation)
     CPPUNIT_ASSERT_THROW(xSheet->getRangeAt(0, 1, 1, 1), cpo::uno::RuntimeException);
     CPPUNIT_ASSERT_THROW(xSheet->getRangeAtCell(1, 0), cpo::uno::RuntimeException);
     CPPUNIT_ASSERT_THROW(xSheet->getRangeAtRows(1, 1, 0), cpo::uno::RuntimeException);
+    CPPUNIT_ASSERT_THROW(xSheet->autoResizeColumn(0), cpo::uno::RuntimeException);
     CPPUNIT_ASSERT_THROW(xSheet->deleteRow(0), cpo::uno::RuntimeException);
     xSheet->getRange(u"A1"_ustr)->setValue(cpo::uno::Any(9.0));
     // A rejected delete leaves the sheet unchanged.
@@ -358,6 +369,353 @@ CPPUNIT_TEST_FIXTURE(Test, testInputValidation)
     double d = 0;
     CPPUNIT_ASSERT(xSheet->getRange(u"A1"_ustr)->getValue() >>= d);
     CPPUNIT_ASSERT_EQUAL(9.0, d);
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testGetSheetByName)
+{
+    auto const xSpreadsheet = loadSpreadsheet();
+    CPPUNIT_ASSERT_EQUAL(u"Sheet1"_ustr, xSpreadsheet->getSheetByName(u"Sheet1"_ustr)->getName());
+    // A name no sheet carries is not an error; the lookup reports nothing.
+    CPPUNIT_ASSERT(!xSpreadsheet->getSheetByName(u"NoSuchSheet"_ustr).is());
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testInsertSheet)
+{
+    auto const xSpreadsheet = loadSpreadsheet();
+    auto const xNewSheet = xSpreadsheet->insertSheet(u"Extra"_ustr);
+    CPPUNIT_ASSERT_EQUAL(u"Extra"_ustr, xNewSheet->getName());
+    CPPUNIT_ASSERT_EQUAL(u"Extra"_ustr, xSpreadsheet->getSheetByName(u"Extra"_ustr)->getName());
+    // A duplicate sheet name is rejected.
+    CPPUNIT_ASSERT_THROW(xSpreadsheet->insertSheet(u"Extra"_ustr), cpo::uno::RuntimeException);
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testGetRangeByNameAndOffset)
+{
+    auto const xSpreadsheet = loadSpreadsheet();
+    cpo::uno::Reference<css::sheet::XSpreadsheetDocument> const xDoc(mxComponent,
+                                                                     cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XSpreadsheets> const xSheets(xDoc->getSheets());
+    xSheets->insertNewByName(u"Data"_ustr, 1);
+    cpo::uno::Reference<css::container::XNameAccess> const xSheetsByName(xSheets,
+                                                                         cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::table::XCellRange> xDataSheet;
+    xSheetsByName->getByName(u"Data"_ustr) >>= xDataSheet;
+    xDataSheet->getCellByPosition(0, 0)->setValue(1.0);
+    xDataSheet->getCellByPosition(0, 1)->setValue(2.0);
+    cpo::uno::Reference<css::beans::XPropertySet> const xDocProps(mxComponent,
+                                                                   cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XNamedRanges> xNamedRanges;
+    xDocProps->getPropertyValue(u"NamedRanges"_ustr) >>= xNamedRanges;
+    xNamedRanges->addNewByName(u"FirstPlayer"_ustr, u"$Data.$A$1"_ustr,
+                               css::table::CellAddress(0, 0, 0), 0);
+    // The active sheet when the named range is resolved is not the sheet the range lives on.
+    cpo::uno::Reference<css::frame::XModel> const xModel(mxComponent, cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XSpreadsheetView> const xView(xModel->getCurrentController(),
+                                                                  cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XSpreadsheet> xSheet1;
+    xSheetsByName->getByName(u"Sheet1"_ustr) >>= xSheet1;
+    xView->setActiveSheet(xSheet1);
+
+    auto const xRange = xSpreadsheet->getRangeByName(u"FirstPlayer"_ustr);
+    double d = 0;
+    CPPUNIT_ASSERT(xRange->getValue() >>= d);
+    CPPUNIT_ASSERT_EQUAL(1.0, d);
+    // offset() must resolve the range's own sheet (Data), not whichever sheet is active.
+    auto const xBelow = xRange->offset(1, 0, 1, 1);
+    CPPUNIT_ASSERT(xBelow->getValue() >>= d);
+    CPPUNIT_ASSERT_EQUAL(2.0, d);
+
+    // A name that nothing in the document holds is not an error; the lookup reports nothing.
+    CPPUNIT_ASSERT(!xSpreadsheet->getRangeByName(u"NoSuchRange"_ustr).is());
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testGetRangeByNameFindsASheetScopedName)
+{
+    auto const xSpreadsheet = loadSpreadsheet();
+    cpo::uno::Reference<css::sheet::XSpreadsheetDocument> const xDoc(mxComponent,
+                                                                     cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XSpreadsheets> const xSheets(xDoc->getSheets());
+    xSheets->insertNewByName(u"Rates"_ustr, 1);
+    cpo::uno::Reference<css::container::XNameAccess> const xSheetsByName(xSheets,
+                                                                         cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XSpreadsheet> xRates;
+    xSheetsByName->getByName(u"Rates"_ustr) >>= xRates;
+    cpo::uno::Reference<css::table::XCellRange> const xRatesCells(xRates,
+                                                                   cpo::uno::UNO_QUERY_THROW);
+    xRatesCells->getCellByPosition(0, 0)->setValue(7.0);
+    // The name lives on the Rates sheet's own list, not on the document's.
+    cpo::uno::Reference<css::beans::XPropertySet> const xSheetProps(xRates,
+                                                                     cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XNamedRanges> xSheetRanges;
+    xSheetProps->getPropertyValue(u"NamedRanges"_ustr) >>= xSheetRanges;
+    xSheetRanges->addNewByName(u"TaxRates"_ustr, u"$Rates.$A$1"_ustr,
+                               css::table::CellAddress(1, 0, 0), 0);
+
+    double d = 0;
+    CPPUNIT_ASSERT(xSpreadsheet->getRangeByName(u"TaxRates"_ustr)->getValue() >>= d);
+    CPPUNIT_ASSERT_EQUAL(7.0, d);
+    // Naming the sheet in front of it reaches the same range.
+    CPPUNIT_ASSERT(xSpreadsheet->getRangeByName(u"Rates!TaxRates"_ustr)->getValue() >>= d);
+    CPPUNIT_ASSERT_EQUAL(7.0, d);
+    // A sheet that holds no such name, and a sheet that is not there at all, both report nothing.
+    CPPUNIT_ASSERT(!xSpreadsheet->getRangeByName(u"Sheet1!TaxRates"_ustr).is());
+    CPPUNIT_ASSERT(!xSpreadsheet->getRangeByName(u"NoSuchSheet!TaxRates"_ustr).is());
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testInsertSheetWithDefaultName)
+{
+    auto const xSpreadsheet = loadSpreadsheet();
+    // The document opens with Sheet1, so the next free name is Sheet2.
+    auto const xFirst = xSpreadsheet->insertSheetWithDefaultName();
+    CPPUNIT_ASSERT_EQUAL(u"Sheet2"_ustr, xFirst->getName());
+    auto const xSecond = xSpreadsheet->insertSheetWithDefaultName();
+    CPPUNIT_ASSERT_EQUAL(u"Sheet3"_ustr, xSecond->getName());
+    // A name already taken is stepped over rather than collided with.
+    xSpreadsheet->insertSheet(u"Sheet4"_ustr);
+    auto const xThird = xSpreadsheet->insertSheetWithDefaultName();
+    CPPUNIT_ASSERT_EQUAL(u"Sheet5"_ustr, xThird->getName());
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testGetRangeByNameRejectsNonRangeExpression)
+{
+    auto const xSpreadsheet = loadSpreadsheet();
+    cpo::uno::Reference<css::beans::XPropertySet> const xDocProps(mxComponent,
+                                                                   cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XNamedRanges> xNamedRanges;
+    xDocProps->getPropertyValue(u"NamedRanges"_ustr) >>= xNamedRanges;
+    // A named range can also hold a formula that does not resolve to a plain cell range.
+    xNamedRanges->addNewByName(u"NotARange"_ustr, u"1+1"_ustr, css::table::CellAddress(0, 0, 0), 0);
+    CPPUNIT_ASSERT_THROW(xSpreadsheet->getRangeByName(u"NotARange"_ustr),
+                         cpo::uno::RuntimeException);
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testSetBackgroundColor)
+{
+    auto const xSheet = loadSpreadsheet()->getActiveSheet();
+    auto const xRange = xSheet->getRange(u"A1"_ustr);
+    xRange->setBackgroundColor(u"#2a6099"_ustr);
+    cpo::uno::Reference<css::beans::XPropertySet> const xProps(xRange->getuno(),
+                                                               cpo::uno::UNO_QUERY_THROW);
+    sal_Int32 nColor = 0;
+    xProps->getPropertyValue(u"CellBackColor"_ustr) >>= nColor;
+    CPPUNIT_ASSERT_EQUAL(sal_Int32(0x2a6099), nColor);
+    // A malformed color string is rejected.
+    CPPUNIT_ASSERT_THROW(xRange->setBackgroundColor(u"blue"_ustr), cpo::uno::RuntimeException);
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testSetColumnWidth)
+{
+    auto const xSheet = loadSpreadsheet()->getActiveSheet();
+    xSheet->setColumnWidth(1, 96);
+    cpo::uno::Reference<css::table::XColumnRowRange> const xColumnRowRange(
+        xSheet->getuno(), cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::beans::XPropertySet> const xColumnProps(
+        xColumnRowRange->getColumns()->getByIndex(0), cpo::uno::UNO_QUERY_THROW);
+    sal_Int32 nWidth = 0;
+    xColumnProps->getPropertyValue(u"Width"_ustr) >>= nWidth;
+    // 96 pixels is one inch, which is exactly 2540 in 1/100 mm; the round trip through twips
+    // loses a little.
+    CPPUNIT_ASSERT_DOUBLES_EQUAL(2540.0, static_cast<double>(nWidth), 5.0);
+    CPPUNIT_ASSERT_THROW(xSheet->setColumnWidth(1, -1), cpo::uno::RuntimeException);
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testClear)
+{
+    auto const xSheet = loadSpreadsheet()->getActiveSheet();
+    // A cell untouched by the test stands in for what "no color set" looks like, so the
+    // assertion does not depend on knowing the engine's exact sentinel value for it.
+    cpo::uno::Reference<css::beans::XPropertySet> const xUntouchedProps(
+        xSheet->getRange(u"B1"_ustr)->getuno(), cpo::uno::UNO_QUERY_THROW);
+    sal_Int32 nDefaultColor = 0;
+    bool const bDefaultHasColor
+        = (xUntouchedProps->getPropertyValue(u"CellBackColor"_ustr) >>= nDefaultColor);
+
+    auto const xRange = xSheet->getRange(u"A1"_ustr);
+    xRange->setValue(cpo::uno::Any(1.0));
+    xRange->setBackgroundColor(u"#ff0000"_ustr);
+    xSheet->clear();
+
+    CPPUNIT_ASSERT(!xRange->getValue().hasValue());
+    cpo::uno::Reference<css::beans::XPropertySet> const xProps(xRange->getuno(),
+                                                               cpo::uno::UNO_QUERY_THROW);
+    sal_Int32 nColor = 0;
+    bool const bHasColor = (xProps->getPropertyValue(u"CellBackColor"_ustr) >>= nColor);
+    CPPUNIT_ASSERT_EQUAL(bDefaultHasColor, bHasColor);
+    if (bDefaultHasColor)
+    {
+        CPPUNIT_ASSERT_EQUAL(nDefaultColor, nColor);
+    }
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testWritesOnNonActiveSheet)
+{
+    auto const xSpreadsheet = loadSpreadsheet();
+    xSpreadsheet->insertSheet(u"Other"_ustr);
+    // "Other" is not the active sheet for the rest of the test.
+    cpo::uno::Reference<css::frame::XModel> const xModel(mxComponent, cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XSpreadsheetView> const xView(xModel->getCurrentController(),
+                                                                  cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XSpreadsheetDocument> const xDoc(mxComponent,
+                                                                     cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::container::XNameAccess> const xSheetsByName(xDoc->getSheets(),
+                                                                         cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::sheet::XSpreadsheet> xSheet1;
+    xSheetsByName->getByName(u"Sheet1"_ustr) >>= xSheet1;
+    xView->setActiveSheet(xSheet1);
+
+    auto const xOther = xSpreadsheet->getSheetByName(u"Other"_ustr);
+    xOther->getRangeAt(1, 1, 1, 1)->setValue(cpo::uno::Any(5.0));
+    xOther->getRangeAt(1, 1, 1, 1)->setBackgroundColor(u"#ff0000"_ustr);
+    xOther->setColumnWidth(2, 96);
+
+    // Re-fetch by name, the way a second script invocation would, rather than reusing the same
+    // wrapper - this rules out anything cached on the wrapper instead of committed to the model.
+    auto const xOtherAgain = xSpreadsheet->getSheetByName(u"Other"_ustr);
+    double d = 0;
+    CPPUNIT_ASSERT(xOtherAgain->getRangeAt(1, 1, 1, 1)->getValue() >>= d);
+    CPPUNIT_ASSERT_EQUAL(5.0, d);
+    cpo::uno::Reference<css::beans::XPropertySet> const xProps(
+        xOtherAgain->getRangeAt(1, 1, 1, 1)->getuno(), cpo::uno::UNO_QUERY_THROW);
+    sal_Int32 nColor = 0;
+    xProps->getPropertyValue(u"CellBackColor"_ustr) >>= nColor;
+    CPPUNIT_ASSERT_EQUAL(sal_Int32(0xff0000), nColor);
+
+    xOtherAgain->clear();
+    CPPUNIT_ASSERT(!xOther->getRangeAt(1, 1, 1, 1)->getValue().hasValue());
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testSetFontWeight)
+{
+    auto const xSheet = loadSpreadsheet()->getActiveSheet();
+    auto const xRange = xSheet->getRange(u"A1"_ustr);
+    xRange->setFontWeight(u"bold"_ustr);
+    cpo::uno::Reference<css::beans::XPropertySet> const xProps(xRange->getuno(),
+                                                               cpo::uno::UNO_QUERY_THROW);
+    float fWeight = 0;
+    xProps->getPropertyValue(u"CharWeight"_ustr) >>= fWeight;
+    CPPUNIT_ASSERT_EQUAL(css::awt::FontWeight::BOLD, fWeight);
+    xRange->setFontWeight(u"normal"_ustr);
+    xProps->getPropertyValue(u"CharWeight"_ustr) >>= fWeight;
+    CPPUNIT_ASSERT_EQUAL(css::awt::FontWeight::NORMAL, fWeight);
+    // Any other weight is refused, and the range keeps the weight it had.
+    CPPUNIT_ASSERT_THROW(xRange->setFontWeight(u"bolder"_ustr), cpo::uno::RuntimeException);
+    xProps->getPropertyValue(u"CharWeight"_ustr) >>= fWeight;
+    CPPUNIT_ASSERT_EQUAL(css::awt::FontWeight::NORMAL, fWeight);
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testSetFontStyle)
+{
+    auto const xSheet = loadSpreadsheet()->getActiveSheet();
+    auto const xRange = xSheet->getRange(u"A1"_ustr);
+    xRange->setFontStyle(u"italic"_ustr);
+    cpo::uno::Reference<css::beans::XPropertySet> const xProps(xRange->getuno(),
+                                                               cpo::uno::UNO_QUERY_THROW);
+    css::awt::FontSlant eSlant = css::awt::FontSlant_NONE;
+    xProps->getPropertyValue(u"CharPosture"_ustr) >>= eSlant;
+    CPPUNIT_ASSERT_EQUAL(css::awt::FontSlant_ITALIC, eSlant);
+    xRange->setFontStyle(u"normal"_ustr);
+    xProps->getPropertyValue(u"CharPosture"_ustr) >>= eSlant;
+    CPPUNIT_ASSERT_EQUAL(css::awt::FontSlant_NONE, eSlant);
+    CPPUNIT_ASSERT_THROW(xRange->setFontStyle(u"oblique"_ustr), cpo::uno::RuntimeException);
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testSetFontColor)
+{
+    auto const xSheet = loadSpreadsheet()->getActiveSheet();
+    auto const xRange = xSheet->getRange(u"A1"_ustr);
+    xRange->setFontColor(u"#2a6099"_ustr);
+    cpo::uno::Reference<css::beans::XPropertySet> const xProps(xRange->getuno(),
+                                                               cpo::uno::UNO_QUERY_THROW);
+    sal_Int32 nColor = 0;
+    xProps->getPropertyValue(u"CharColor"_ustr) >>= nColor;
+    CPPUNIT_ASSERT_EQUAL(sal_Int32(0x2a6099), nColor);
+    CPPUNIT_ASSERT_THROW(xRange->setFontColor(u"blue"_ustr), cpo::uno::RuntimeException);
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testSetBorder)
+{
+    auto const xSheet = loadSpreadsheet()->getActiveSheet();
+    auto const xRange = xSheet->getRange(u"A1"_ustr);
+    xRange->setBorder(true, true, false, false, u"#000000"_ustr);
+    cpo::uno::Reference<css::beans::XPropertySet> const xProps(xRange->getuno(),
+                                                               cpo::uno::UNO_QUERY_THROW);
+    css::table::TableBorder2 aBorder;
+    xProps->getPropertyValue(u"TableBorder2"_ustr) >>= aBorder;
+    // Only the requested edges get an actual line; the others are left without one.
+    CPPUNIT_ASSERT(aBorder.TopLine.LineWidth > 0);
+    CPPUNIT_ASSERT(aBorder.LeftLine.LineWidth > 0);
+    CPPUNIT_ASSERT_EQUAL(sal_uInt32(0), aBorder.BottomLine.LineWidth);
+    CPPUNIT_ASSERT_EQUAL(sal_uInt32(0), aBorder.RightLine.LineWidth);
+    CPPUNIT_ASSERT_EQUAL(sal_Int32(0x000000), aBorder.TopLine.Color);
+    CPPUNIT_ASSERT_EQUAL(sal_Int32(0x000000), aBorder.LeftLine.Color);
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testSetNumberFormat)
+{
+    auto const xSheet = loadSpreadsheet()->getActiveSheet();
+    auto const xRange = xSheet->getRange(u"A1"_ustr);
+    xRange->setNumberFormat(u"0.00%"_ustr);
+    cpo::uno::Reference<css::beans::XPropertySet> const xProps(xRange->getuno(),
+                                                               cpo::uno::UNO_QUERY_THROW);
+    sal_Int32 nKey = 0;
+    xProps->getPropertyValue(u"NumberFormat"_ustr) >>= nKey;
+    // The same format string resolves to the same key, rather than creating a duplicate entry.
+    cpo::uno::Reference<css::frame::XModel> const xModel(mxComponent, cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::util::XNumberFormatsSupplier> const xSupplier(
+        xModel, cpo::uno::UNO_QUERY_THROW);
+    auto const xFormats = xSupplier->getNumberFormats();
+    css::lang::Locale const aLocale;
+    CPPUNIT_ASSERT_EQUAL(nKey, xFormats->queryKey(u"0.00%"_ustr, aLocale, false));
+    // An unknown bracketed keyword is not a valid format code.
+    CPPUNIT_ASSERT_THROW(xRange->setNumberFormat(u"[QQQ]0.00"_ustr), cpo::uno::RuntimeException);
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testGetLastRowAndColumn)
+{
+    auto const xSheet = loadSpreadsheet()->getActiveSheet();
+    xSheet->getRange(u"B2"_ustr)->setValue(cpo::uno::Any(1.0));
+    xSheet->getRange(u"D5"_ustr)->setValue(cpo::uno::Any(2.0));
+    CPPUNIT_ASSERT_EQUAL(sal_Int32(5), xSheet->getLastRow());
+    CPPUNIT_ASSERT_EQUAL(sal_Int32(4), xSheet->getLastColumn());
+}
+
+CPPUNIT_TEST_FIXTURE(Test, testAutoResizeColumnsAndRows)
+{
+    auto const xSheet = loadSpreadsheet()->getActiveSheet();
+    xSheet->setColumnWidth(1, 200);
+    xSheet->getRange(u"A1"_ustr)->setValue(cpo::uno::Any(u"hi"_ustr));
+    cpo::uno::Reference<css::table::XColumnRowRange> const xColumnRowRange(
+        xSheet->getuno(), cpo::uno::UNO_QUERY_THROW);
+    cpo::uno::Reference<css::beans::XPropertySet> const xColumnProps(
+        xColumnRowRange->getColumns()->getByIndex(0), cpo::uno::UNO_QUERY_THROW);
+    sal_Int32 nWidthBefore = 0;
+    xColumnProps->getPropertyValue(u"Width"_ustr) >>= nWidthBefore;
+    xSheet->autoResizeColumns(1, 1);
+    sal_Int32 nWidthAfter = 0;
+    xColumnProps->getPropertyValue(u"Width"_ustr) >>= nWidthAfter;
+    // The artificially wide column shrinks back down to fit its short content.
+    CPPUNIT_ASSERT(nWidthAfter < nWidthBefore);
+
+    // The singular form takes a column on its own and resizes just that one.
+    xSheet->setColumnWidth(2, 200);
+    xSheet->getRange(u"B1"_ustr)->setValue(cpo::uno::Any(u"hi"_ustr));
+    cpo::uno::Reference<css::beans::XPropertySet> const xSecondColumnProps(
+        xColumnRowRange->getColumns()->getByIndex(1), cpo::uno::UNO_QUERY_THROW);
+    sal_Int32 nSecondBefore = 0;
+    xSecondColumnProps->getPropertyValue(u"Width"_ustr) >>= nSecondBefore;
+    xSheet->autoResizeColumn(2);
+    sal_Int32 nSecondAfter = 0;
+    xSecondColumnProps->getPropertyValue(u"Width"_ustr) >>= nSecondAfter;
+    CPPUNIT_ASSERT(nSecondAfter < nSecondBefore);
+
+    cpo::uno::Reference<css::beans::XPropertySet> const xRowProps(
+        xColumnRowRange->getRows()->getByIndex(0), cpo::uno::UNO_QUERY_THROW);
+    xSheet->autoResizeRows(1, 1);
+    sal_Int32 nHeightAfter = 0;
+    xRowProps->getPropertyValue(u"Height"_ustr) >>= nHeightAfter;
+    CPPUNIT_ASSERT(nHeightAfter > 0);
+
+    CPPUNIT_ASSERT_THROW(xSheet->autoResizeColumns(0, 1), cpo::uno::RuntimeException);
 }
 }
 
