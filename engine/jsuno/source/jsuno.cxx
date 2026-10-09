@@ -1034,9 +1034,8 @@ JSValue enumeratorToString(JSContext* ctx, JSValueConst this_val, int, JSValueCo
     return callFromJs(ctx, [ctx, this_val] {
         auto const data = static_cast<EnumeratorData const*>(
             JS_GetOpaque(this_val, getRuntimeData(ctx)->enumeratorClassId));
-        OUString const s(data->type.getTypeName() + "." + data->name);
-        return JS_NewStringUTF16(ctx, reinterpret_cast<std::uint16_t const*>(s.getStr()),
-                                 s.getLength());
+        return JS_NewStringUTF16(ctx, reinterpret_cast<std::uint16_t const*>(data->name.getStr()),
+                                 data->name.getLength());
     });
 }
 
@@ -3473,6 +3472,7 @@ OUString jsuno::execute(OUString const& script, OUString const & source, int lin
     }
     {
         static JSCFunctionListEntry const functions[] = {
+            JS_CFUNC_DEF("toJSON", 0, enumeratorToString),
             JS_CFUNC_DEF("toString", 0, enumeratorToString),
         };
         ValueRef proto(ctx, JS_NewObject(ctx));

@@ -124,6 +124,7 @@
 #include <svx/unoapi.hxx>
 #include <svx/svdopage.hxx>
 #include <svx/svdtext.hxx>
+#include <svx/svdhdl.hxx>
 #include <svtools/colorcfg.hxx>
 #include <basegfx/polygon/b2dpolygontools.hxx>
 #include <drawinglayer/primitive2d/PolygonHairlinePrimitive2D.hxx>
@@ -2772,14 +2773,17 @@ bool SdXImpressDocument::takeVectorPageDirty(const SdrPage& rPage)
 
 bool SdXImpressDocument::recordVectorPageContent(const SdrPage& rPage,
                                                  const VectorObjectContent& rContent,
-                                                 const OString& rMasterPartId)
+                                                 const OString& rMasterPartId,
+                                                 const std::vector<sal_Int32>& rMasterHiddenLayers)
 {
     VectorPartState& rState = maVectorParts[vectorPartKeyOf(rPage)];
     const bool bMoved = rState.moPageContent
                         && (!(*rState.moPageContent == rContent)
-                            || rState.maPageMasterPartId != rMasterPartId);
+                            || rState.maPageMasterPartId != rMasterPartId
+                            || rState.maPageMasterHiddenLayers != rMasterHiddenLayers);
     rState.moPageContent = rContent;
     rState.maPageMasterPartId = rMasterPartId;
+    rState.maPageMasterHiddenLayers = rMasterHiddenLayers;
     if (bMoved)
     {
         ++rState.mnVersion;
@@ -2990,6 +2994,10 @@ public:
 
     bool isDelta() const { return mnSinceVersion >= 0; }
 
+    /// True when the delta is pushed rather than pulled. A push with nothing changed writes no
+    /// document. A pull always writes the header.
+    void setPush(bool bPush) { mbPush = bPush; }
+
     /// The page the request names, or nullptr when the document holds no such page or the mode
     /// is one this writer does not serve. Resolved once, and later calls return the same page.
     SdPage* resolvePage()
@@ -3007,9 +3015,9 @@ public:
         SdPage* pPage = resolvePage();
         if (!pPage)
         {
-            // A delta with nothing to say writes nothing, and a page that is not there has
-            // nothing to say. A full request gets the header, so the client can drop it.
-            if (!isDelta())
+            // A push writes nothing for a page that is not there. A pull gets the header
+            // alone.
+            if (!isDelta() || !mbPush)
                 writeMissingPage(rWriter);
             return;
         }
@@ -3023,10 +3031,10 @@ public:
         resolvePageContent(pPage);
         resolveTextEditEntry(pPage);
 
-        // A trigger only says that something may have changed. Once the comparison has had its
-        // say there is often nothing left to tell the client, and then the response carries
-        // nothing at all rather than a header with empty arrays under it.
-        if (isDelta() && !hasContentToSend(pPage))
+        // A trigger only says that something may have changed. When the comparison finds
+        // nothing changed, a push writes nothing at all and a pull is answered with the header
+        // alone.
+        if (isDelta() && mbPush && !hasContentToSend(pPage))
             return;
 
         writeHeader(rWriter, pPage);
@@ -3175,11 +3183,20 @@ private:
             rWriter.putSimpleValue(0.0);
         }
 
-        if (!maPageMasterPartId.isEmpty())
-            rWriter.put("masterPartId", maPageMasterPartId);
-
         const drawinglayer::primitive2d::Primitive2DContainer& rContent
             = pageContent(pPage).maPrimitives;
+        if (!maPageMasterPartId.isEmpty())
+        {
+            rWriter.put("masterPartId", maPageMasterPartId);
+            // The master layers this page hides. The document keeps them as the set of master
+            // layers the page shows.
+            if (!maPageMasterHiddenLayers.empty())
+            {
+                auto aLayerArray = rWriter.startArray("masterHiddenLayers");
+                for (const sal_Int32 nLayer : maPageMasterHiddenLayers)
+                    rWriter.putSimpleValue(nLayer);
+            }
+        }
         auto aPrimArray = rWriter.startArray("primitives");
         if (!rContent.empty())
             maProcessor->decomposeAndWrite(rContent);
@@ -3197,6 +3214,7 @@ private:
             {
                 pageOwnPrimitives(pPage, aContent.maPrimitives);
                 maPageMasterPartId = vectorPartKeyOf(*pMasterPage);
+                maPageMasterHiddenLayers = hiddenMasterLayersOf(pPage);
             }
             else
                 pageContentPrimitives(pPage, aContent.maPrimitives);
@@ -3243,7 +3261,27 @@ private:
         if (!bDirty && isDelta())
             return;
         const SdXImpressDocument::VectorObjectContent& rContent = pageContent(pPage);
-        mpModel->recordVectorPageContent(*pPage, rContent, maPageMasterPartId);
+        mpModel->recordVectorPageContent(*pPage, rContent, maPageMasterPartId,
+                                         maPageMasterHiddenLayers);
+    }
+
+    /// The ids of the master layers the page does not show. Turning the master background or
+    /// the master objects off for a page removes their layer from the set the page shows.
+    std::vector<sal_Int32> hiddenMasterLayersOf(const SdPage* pPage) const
+    {
+        std::vector<sal_Int32> aHidden;
+        if (!pPage->TRG_HasMasterPage())
+            return aHidden;
+        const SdrLayerIDSet& rVisible = pPage->TRG_GetMasterPageVisibleLayers();
+        const SdrLayerAdmin& rLayerAdmin = mpDocument->GetLayerAdmin();
+        for (sal_uInt16 nLayerPosition = 0; nLayerPosition < rLayerAdmin.GetLayerCount();
+             ++nLayerPosition)
+        {
+            const SdrLayerID nId = rLayerAdmin.GetLayer(nLayerPosition)->GetID();
+            if (!rVisible.IsSet(nId))
+                aHidden.push_back(sal_Int32(nId.get()));
+        }
+        return aHidden;
     }
 
     /// True when the object is drawn behind the page the part stands for rather than being an
@@ -3285,8 +3323,13 @@ private:
         // PageFill: always produces a solid fill for the slide background
         pPage->GetViewContact().GetViewContact(2).getViewIndependentPrimitive2DContainer(rContent);
 
-        // MasterPageDescriptor: adds a background fill if the master page defines one.
-        if (pPage->TRG_HasMasterPage())
+        // MasterPageDescriptor: adds a background fill if the master page defines one. The
+        // master background is drawn only while the page shows the background layer of its
+        // master, which "Display Master Background" toggles.
+        const SdrLayerID nBackgroundLayer
+            = pPage->getSdrModelFromSdrPage().GetLayerAdmin().GetLayerID(sUNO_LayerName_background);
+        if (pPage->TRG_HasMasterPage()
+            && pPage->TRG_GetMasterPageVisibleLayers().IsSet(nBackgroundLayer))
             pPage->GetViewContact().GetViewContact(3).getViewIndependentPrimitive2DContainer(
                 rContent);
     }
@@ -3305,10 +3348,13 @@ private:
         if (!pMasterPage)
             return;
 
+        // A page shows the master objects on the layers it keeps of its master, which
+        // "Display Master Objects" toggles.
+        const SdrLayerIDSet& rVisible = pPage->TRG_GetMasterPageVisibleLayers();
         for (size_t i = 0; i < pMasterPage->GetObjCount(); ++i)
         {
             SdrObject* pObject = pMasterPage->GetObj(i);
-            if (!pObject || isHiddenBehindSlide(*pObject)
+            if (!pObject || isHiddenBehindSlide(*pObject) || !rVisible.IsSet(pObject->GetLayer())
                 || !slideShowsPlaceholder(*pPage, pMasterPage->GetPresObjKind(pObject)))
                 continue;
 
@@ -3544,6 +3590,8 @@ private:
             // master, so it brings none of them here.
             aContent.maAids
                 = sd::createPlaceholderDecoration(rObject, isBehindThePage(rObject));
+
+            aContent.maHandles = shapingHandlesOf(rObject);
 
             decomposeForComparison(aContent);
         }
@@ -3795,6 +3843,47 @@ private:
         }
     }
 
+    /** The handles that shape an object, in twips: the corner radius of a rectangle and the
+        points a custom shape is shaped by.
+
+        A reader works the rest out from what it draws - the points of a polygon and the weights
+        of a curve are in the geometry it already has - while these two say nothing about the
+        drawing and cannot be found in it. Each handle is named by what it means, the kind with
+        the polygon and the point it belongs to, so that a reader can say which handle it moves
+        without counting the handles it was never sent.
+     */
+    static std::vector<SdXImpressDocument::VectorObjectContent::Handle>
+    shapingHandlesOf(const SdrObject& rObject)
+    {
+        SdrHdlList aHandleList(nullptr);
+        rObject.AddToHdlList(aHandleList);
+
+        std::vector<SdXImpressDocument::VectorObjectContent::Handle> aHandles;
+        for (size_t nHandle = 0; nHandle < aHandleList.GetHdlCount(); ++nHandle)
+        {
+            const SdrHdl* pHandle = aHandleList.GetHdl(nHandle);
+            if (!pHandle)
+                continue;
+
+            const SdrHdlKind eKind = pHandle->GetKind();
+            if (eKind != SdrHdlKind::Circle && eKind != SdrHdlKind::CustomShape1)
+                continue;
+
+            const Point aPosition(pHandle->GetPos());
+            SdXImpressDocument::VectorObjectContent::Handle aOne;
+            aOne.mnKind = static_cast<sal_Int32>(eKind);
+            aOne.mnPolygon = pHandle->GetPolyNum();
+            aOne.mnPoint = pHandle->GetPointNum();
+            aOne.mbBehindThePoint = pHandle->IsPlusHdl();
+            aOne.maPosition = Point(
+                basegfx::fround<tools::Long>(aPosition.X() * constTwipConversionFactor),
+                basegfx::fround<tools::Long>(aPosition.Y() * constTwipConversionFactor));
+            aHandles.push_back(aOne);
+        }
+
+        return aHandles;
+    }
+
     /// The range as an upright box in twips, empty for an empty range.
     static tools::Rectangle rangeInTwips(const basegfx::B2DRange& rRange)
     {
@@ -3928,6 +4017,23 @@ private:
             auto aAidArray = rWriter.startArray("aids");
             maProcessor->decomposeAndWrite(rContent.maAids);
         }
+        if (!rContent.maHandles.empty())
+        {
+            auto aHandleArray = rWriter.startArray("handles");
+            for (const auto& rHandle : rContent.maHandles)
+            {
+                auto aHandleNode = rWriter.startStruct();
+                rWriter.put("kind", rHandle.mnKind);
+                if (rHandle.mnPolygon)
+                    rWriter.put("polygon", sal_Int64(rHandle.mnPolygon));
+                if (rHandle.mnPoint)
+                    rWriter.put("point", sal_Int64(rHandle.mnPoint));
+                if (rHandle.mbBehindThePoint)
+                    rWriter.put("behindThePoint", true);
+                rWriter.put("x", sal_Int64(rHandle.maPosition.X()));
+                rWriter.put("y", sal_Int64(rHandle.maPosition.Y()));
+            }
+        }
     }
 
     SdDrawDocument* mpDocument;
@@ -3935,6 +4041,7 @@ private:
     OString maPartId;
     sal_Int32 mnMode;
     sal_Int64 mnSinceVersion = -1;
+    bool mbPush = false;
     bool mbResolved = false;
     SdPage* mpPage = nullptr;
     drawinglayer::geometry::ViewInformation2D maViewInformation;
@@ -3943,9 +4050,11 @@ private:
     std::unordered_map<sal_Int32, SdXImpressDocument::VectorObjectContent> maTextEditContent;
     /// The content built for an object in this write, by object id.
     std::unordered_map<sal_uInt64, SdXImpressDocument::VectorObjectContent> maResolvedContent;
-    /// The page entry's content and the master part it names, built once per write.
+    /// The page entry's content, the master part it names and the layers of that master it
+    /// leaves out, built once per write.
     std::optional<SdXImpressDocument::VectorObjectContent> moPageContent;
     OString maPageMasterPartId;
+    std::vector<sal_Int32> maPageMasterHiddenLayers;
     /// The painted objects of the part and the views of the document, collected once per write.
     std::optional<std::vector<SdrObject*>> moPartObjects;
     std::optional<std::vector<EditingView>> moViews;
@@ -4226,6 +4335,12 @@ void SdXImpressDocument::getCommandValues(::tools::JsonWriter& rJsonWriter,
         if (aSinceIterator != aMap.end())
             nSinceVersion = aSinceIterator->second.toInt64();
 
+        // The epoch names the version space the client's version counts in. A version from
+        // another epoch says nothing about this model, so the client is served the page whole.
+        auto aEpochIterator = aMap.find(u"epoch"_ustr);
+        if (aEpochIterator != aMap.end() && aEpochIterator->second.toInt32() != getVectorEpoch())
+            nSinceVersion = -1;
+
         writeVectorPrimitives(rJsonWriter, aPartId, nMode, nSinceVersion, /*bPush*/ false);
     }
 }
@@ -4257,6 +4372,11 @@ void SdXImpressDocument::writeVectorPrimitives(::tools::JsonWriter& rJsonWriter,
     VectorContentWriter aContentWriter(mpDoc, this, rPartId, nMode);
     SdPage* pPage = aContentWriter.resolvePage();
 
+    // A version above the part's own comes from content this model never served, so the page
+    // is sent whole.
+    if (pPage && nSinceVersion > sal_Int64(getVectorPartVersion(*pPage)))
+        nSinceVersion = -1;
+
     // A push steps from the version the part was last pushed at, then advances that mark. One
     // delta is written for the part and every client that holds the part reads that same one. A
     // page the document does not hold has no mark to move.
@@ -4268,6 +4388,7 @@ void SdXImpressDocument::writeVectorPrimitives(::tools::JsonWriter& rJsonWriter,
     }
 
     aContentWriter.setSinceVersion(nSinceVersion);
+    aContentWriter.setPush(bPush);
     aContentWriter.write(rJsonWriter);
 
     if (!pPage)

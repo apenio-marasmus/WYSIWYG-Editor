@@ -63,6 +63,16 @@ class ShapeHandlesSection extends CanvasSectionObject {
 	documentObject: boolean = true;
 	showSection: boolean = false;
 
+	/// How wide and how high a handle is drawn, in core pixels.
+	public static handleSize(): number {
+		return 12 * app.dpiScale;
+	}
+
+	/// What every handle of the selection is, in the order they are drawn.
+	public handleInfos(): any[] {
+		return this.sectionProperties.handles.map((handle: any) => handle.info);
+	}
+
 	constructor (info: any) {
 		super(app.CSections.ShapeHandlesSection.name);
 
@@ -70,8 +80,8 @@ class ShapeHandlesSection extends CanvasSectionObject {
 		this.sectionProperties.handles = [];
 		this.sectionProperties.subSections = [];
 		this.sectionProperties.activeHandleIndex = null;
-		this.sectionProperties.handleWidth = 12 * app.dpiScale;
-		this.sectionProperties.handleHeight = 12 * app.dpiScale;
+		this.sectionProperties.handleWidth = ShapeHandlesSection.handleSize();
+		this.sectionProperties.handleHeight = ShapeHandlesSection.handleSize();
 		this.sectionProperties.anchorWidth = 20 * app.dpiScale;
 		this.sectionProperties.anchorHeight = 20 * app.dpiScale;
 		this.sectionProperties.rotationHandleWidth = 15 * app.dpiScale;
@@ -808,7 +818,7 @@ class ShapeHandlesSection extends CanvasSectionObject {
 				newSubSection = this.checkRotationSubSection(this.sectionProperties.handles[i]);
 			else if (this.sectionProperties.handles[i].info.kind === 'DiagramHandle')
 				newSubSection = this.checkDiagramSubSection(this.sectionProperties.handles[i]);
-			else if (this.sectionProperties.handles[i].info.kind === '22')
+			else if (['11', '22'].includes(this.sectionProperties.handles[i].info.kind))
 				newSubSection = this.checkCustomSubSection(this.sectionProperties.handles[i]);
 			else if (this.sectionProperties.handles[i].info.kind === '9')
 				newSubSection = this.checkPolySubSection(this.sectionProperties.handles[i]);
@@ -895,22 +905,36 @@ class ShapeHandlesSection extends CanvasSectionObject {
 		shapedragpreview message. At most one request is in flight, newer
 		positions replace the queued one until the answer arrives.
 	*/
-	public requestShapeDragPreview(handleId: any, point: cool.SimplePoint) {
+	public requestShapeDragPreview(handleInfo: any, point: cool.SimplePoint) {
 		const requestTime = this.sectionProperties.shapeDragPreviewRequestTime;
 		if (requestTime !== null && Date.now() - requestTime < 250) {
-			this.sectionProperties.queuedShapeDragPreview = { handleId: handleId, point: point };
+			this.sectionProperties.queuedShapeDragPreview = {
+				handleInfo: handleInfo,
+				point: point,
+			};
 			return;
 		}
 
-		this.sendShapeDragPreviewRequest(handleId, point);
+		this.sendShapeDragPreviewRequest(handleInfo, point);
 	}
 
-	private sendShapeDragPreviewRequest(handleId: any, point: cool.SimplePoint) {
+	/*
+		How a handle is named to the engine: by what it is, where the client worked the handles out
+		for itself, and otherwise by the place the engine gave it in its own list.
+	*/
+	public static handleParameters(handleInfo: any): any {
+		if (handleInfo?.name)
+			return { HandleName: { type: 'string', value: String(handleInfo.name) } };
+
+		return { HandleNum: { type: 'long', value: handleInfo?.id } };
+	}
+
+	private sendShapeDragPreviewRequest(handleInfo: any, point: cool.SimplePoint) {
 		this.sectionProperties.shapeDragPreviewRequestTime = Date.now();
 		this.sectionProperties.queuedShapeDragPreview = null;
 
 		const parameters = {
-			HandleNum: { type: 'long', value: handleId },
+			...ShapeHandlesSection.handleParameters(handleInfo),
 			NewPosX: { type: 'long', value: Math.round(point.x) },
 			NewPosY: { type: 'long', value: Math.round(point.y) },
 			Preview: { type: 'boolean', value: true }
@@ -948,7 +972,24 @@ class ShapeHandlesSection extends CanvasSectionObject {
 		this.containerObject.requestReDraw();
 
 		const queued = this.sectionProperties.queuedShapeDragPreview;
-		if (queued) this.sendShapeDragPreviewRequest(queued.handleId, queued.point);
+		if (queued) this.sendShapeDragPreviewRequest(queued.handleInfo, queued.point);
+	}
+
+	/*
+		The drag is off, so what was shown of it goes: the copy of the shape that followed the
+		mouse, the outline the engine answered with, and the lines it was snapping to. The shape
+		itself never moved, the engine breaks its own drag on the same key.
+	*/
+	onDragCancel(): void {
+		this.sectionProperties.lastDragDistance = [0, 0];
+		this.sectionProperties.closestX = null;
+		this.sectionProperties.closestY = null;
+		this.sectionProperties.centerSnapX = null;
+		this.sectionProperties.centerSnapY = null;
+		this.sectionProperties.draggedCenter = null;
+
+		this.hideSVG();
+		this.clearShapeDragPreview();
 	}
 
 	public clearShapeDragPreview() {
@@ -1011,13 +1052,10 @@ class ShapeHandlesSection extends CanvasSectionObject {
 		let snapOffset = 0;
 		let centerSnap = null;
 		let centerToCenter = false;
-		if (GraphicSelection.extraInfo.ObjectRectangles) {
-			const ordNum = GraphicSelection.extraInfo.OrdNum;
-			const rectangles = GraphicSelection.extraInfo.ObjectRectangles;
+		{
+			const rectangles = GraphicSelection.snapRectangles();
 
 			for (let i = 0; i < rectangles.length; i++) {
-				if (rectangles[i][4] === ordNum) continue; // Don't compare it with itself.
-
 				// Candidate snap ordinates of the other object: left edge, center, right edge.
 				const targets = [
 					rectangles[i][0],
@@ -1063,13 +1101,10 @@ class ShapeHandlesSection extends CanvasSectionObject {
 		let snapOffset = 0;
 		let centerSnap = null;
 		let centerToCenter = false;
-		if (GraphicSelection.extraInfo.ObjectRectangles) {
-			const ordNum = GraphicSelection.extraInfo.OrdNum;
-			const rectangles = GraphicSelection.extraInfo.ObjectRectangles;
+		{
+			const rectangles = GraphicSelection.snapRectangles();
 
 			for (let i = 0; i < rectangles.length; i++) {
-				if (rectangles[i][4] === ordNum) continue; // Don't compare it with itself.
-
 				// Candidate snap ordinates of the other object: top edge, center, bottom edge.
 				const targets = [
 					rectangles[i][1],

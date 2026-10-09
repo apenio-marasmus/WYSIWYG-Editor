@@ -520,6 +520,30 @@ class CanvasSectionContainer {
 		return this.draggingSomething;
 	}
 
+	/*
+		Ends a drag that is under way without waiting for the button to come up, as Escape does.
+		The section that started it is told, so what it shows of the drag goes with it.
+	*/
+	public cancelDragging (): void {
+		if (!this.draggingSomething)
+			return;
+
+		const section = this.getSectionWithName(this.sectionOnMouseDown);
+		this.clearMousePositions();
+
+		if (section) {
+			// A drag reaches the sections bound to the one it started on, and each of them may be
+			// showing something of it, so each of them is told that it is off.
+			section.onDragCancel();
+			for (let i = 0; i < section.boundsList.length; i++) {
+				if (section.boundsList[i] !== section)
+					section.boundsList[i].onDragCancel();
+			}
+		}
+
+		this.requestReDraw();
+	}
+
 	// Capture/release can throw if the pointer is gone or was never captured;
 	// we ignore that and carry on.
 	public capturePointerForDrag(): void {
@@ -1347,6 +1371,25 @@ class CanvasSectionContainer {
 				this.sectionOnMouseDown = section.name;
 				this.propagateOnMouseDown(section, this.convertPositionToSectionLocale(section, this.positionOnMouseDown), e);
 			}
+
+			/*
+				Pressing a button on something that cannot take the keyboard focus leaves the focus
+				on the document body, and the handler that sends keys to the document listens
+				inside the document container, so a key pressed before the button comes up goes
+				nowhere. Escape during a drag is the case that shows it.
+
+				The browser moves the focus as what it does after this handler, so the state to
+				look at is the one right afterwards. Take the focus back where it has fallen out of
+				the document, and leave it where it sits somewhere on purpose, in a dialog or a
+				sidebar.
+			*/
+			app.timerRegistry.setTimeout(
+				'focusafterpress',
+				() => {
+					if (document.activeElement === document.body) app.map.focus();
+				},
+				0,
+			);
 		}
 	}
 

@@ -147,6 +147,38 @@ public:
         /// placeholder. They are written apart from the primitives.
         drawinglayer::primitive2d::Primitive2DContainer maAids;
 
+        /** One handle of the object that a reader cannot work out from what the object draws:
+            the corner radius of a rectangle and the points a custom shape is shaped by.
+
+            What names the handle is what it means, not where it sits in a list: the kind, and
+            with it the polygon and the point it belongs to, and for the weight of a curve which
+            of the two sides of that point it is. A handle keeps that name however many handles
+            the object has and whatever else is selected, where a place in a list holds only for
+            one object on its own.
+
+            The position is in twips.
+         */
+        struct Handle
+        {
+            sal_Int32 mnKind = 0;
+            sal_uInt32 mnPolygon = 0;
+            sal_uInt32 mnPoint = 0;
+            bool mbBehindThePoint = false;
+            Point maPosition;
+
+            bool operator==(const Handle& rOther) const
+            {
+                return mnKind == rOther.mnKind && mnPolygon == rOther.mnPolygon
+                       && mnPoint == rOther.mnPoint
+                       && mbBehindThePoint == rOther.mbBehindThePoint
+                       && maPosition == rOther.maPosition;
+            }
+        };
+
+        /// The handles above, in the order the object adds them, empty for an object that has
+        /// none of that kind.
+        std::vector<Handle> maHandles;
+
         tools::Rectangle maPaintedBox;
         basegfx::B2DHomMatrix maTransformation;
         /// The name the object carries, empty for an entry that stands for no object.
@@ -174,7 +206,7 @@ public:
                    && moLayer == rOther.moLayer && mbEmptyPlaceholder == rOther.mbEmptyPlaceholder
                    && mbTextEdit == rOther.mbTextEdit && mnParentId == rOther.mnParentId
                    && maAutoColor == rOther.maAutoColor && maDrawn == rOther.maDrawn
-                   && maAids == rOther.maAids;
+                   && maAids == rOther.maAids && maHandles == rOther.maHandles;
         }
     };
 
@@ -243,7 +275,8 @@ public:
     /// part's version up, remembers it as the version the entry last changed at, and returns
     /// true. The first record for a part moves nothing.
     bool recordVectorPageContent(const SdrPage& rPage, const VectorObjectContent& rContent,
-                                 const OString& rMasterPartId);
+                                 const OString& rMasterPartId,
+                                 const std::vector<sal_Int32>& rMasterHiddenLayers);
 
     /// Content state of one vector-rendering part: its current version, the version the last
     /// delta written for it was computed up to, the version at which its master page last
@@ -276,6 +309,8 @@ public:
         /// Nothing before the part was first written.
         std::optional<VectorObjectContent> moPageContent;
         OString maPageMasterPartId;
+        /// The layers of the master the page leaves out, as last written.
+        std::vector<sal_Int32> maPageMasterHiddenLayers;
         std::unordered_map<sal_uInt64, sal_uInt64> maObjectChangeVersions;
         std::unordered_map<sal_uInt64, VectorObjectContent> maObjectContent;
         std::unordered_set<sal_uInt64> maDirtyObjects;

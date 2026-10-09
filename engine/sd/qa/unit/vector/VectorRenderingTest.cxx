@@ -35,6 +35,8 @@
 #include <svx/svdopage.hxx>
 #include <svx/svdpage.hxx>
 #include <svx/svdorect.hxx>
+#include <svx/svdlayer.hxx>
+#include <svx/svdsob.hxx>
 #include <svx/svdview.hxx>
 #include <svx/xfillit0.hxx>
 #include <svx/xflclit.hxx>
@@ -484,6 +486,16 @@ protected:
 
         return *oJson;
     }
+
+    /// A pull that names the version the client holds is answered with the header alone when
+    /// nothing changed since: a delta still at that version, with no object.
+    void assertNothingMoved(const tools::JsonPath& rJson, sal_Int64 nVersion)
+    {
+        assertJsonPath(rJson, "/type", "vectorprimitivesdelta");
+        assertJsonPath(rJson, "/version", nVersion);
+        CPPUNIT_ASSERT(!rJson.has("/order"));
+        CPPUNIT_ASSERT_EQUAL(size_t(0), rJson.getSize("/objects").value_or(SIZE_MAX));
+    }
 };
 
 CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testSingleRectangle)
@@ -704,7 +716,7 @@ CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testMasterEditReachesTheSlideThroughTh
         nSlideBefore,
         getVectorPrimitives(u"testMasterPartVersionSlide").getInt("/version").value_or(-1));
     auto aSlideDelta = getVectorPrimitives(u"testMasterPartVersionSlideDelta", nSlideBefore);
-    CPPUNIT_ASSERT(!aSlideDelta.has("/type"));
+    assertNothingMoved(aSlideDelta, nSlideBefore);
 }
 
 CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testNotesEditRaisesTheNotesVersion)
@@ -930,7 +942,7 @@ CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testTypingMovesThePartVersionAtOnce)
     // A model change follows a pause in the typing, and by then the text has
     // already travelled, so it adds nothing.
     auto aSettled = getVectorPrimitives(u"testTypingSettled", nAfter);
-    CPPUNIT_ASSERT(!aSettled.has("/type"));
+    assertNothingMoved(aSettled, nAfter);
 
     pView->SdrEndTextEdit();
 
@@ -1188,7 +1200,7 @@ CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testPartStateFollowsThePage)
     auto oDelta = requestVectorPrimitives(".uno:VectorPrimitives?partid=" + aPartId
                                           + "&mode=0&since=" + OString::number(nVersion));
     CPPUNIT_ASSERT(oDelta.has_value());
-    CPPUNIT_ASSERT(!oDelta->has("/type"));
+    assertNothingMoved(*oDelta, nVersion);
 
     // The id of the removed slide names no page any more.
     auto oGone
@@ -1298,6 +1310,42 @@ CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testGivingASlideAnotherMasterMovesItsV
     const auto oPage = findEntryOfKind(aDelta, "page"_ostr);
     CPPUNIT_ASSERT(oPage.has_value());
     assertJsonPath(*oPage, "masterPartId", pNewMaster->GetGuid().getString());
+}
+
+CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testSlideNamesTheMasterLayersItHides)
+{
+    // A slide can turn its master's objects off. The document keeps that as the set of master
+    // layers the slide shows, and the page entry names the hidden ones, so a reader drawing the
+    // shared master under the slide skips them.
+    createBlankDoc();
+    SdPage* pSlide = static_cast<SdPage*>(page(1));
+    CPPUNIT_ASSERT(pSlide);
+    CPPUNIT_ASSERT(pSlide->TRG_HasMasterPage());
+    SdrPage& rMasterPage = pSlide->TRG_GetMasterPage();
+    rtl::Reference<SdrRectObj> pRect = new SdrRectObj(
+        rMasterPage.getSdrModelFromSdrPage(), tools::Rectangle(Point(0, 0), Size(4000, 2000)));
+    rMasterPage.NbcInsertObject(pRect.get());
+    const SdrLayerID nObjectsLayer
+        = getSdDocShell()->GetDoc()->GetLayerAdmin().GetLayerID(u"backgroundobjects"_ustr);
+    pRect->NbcSetLayer(nObjectsLayer);
+
+    auto aFull = getVectorPrimitives(u"testMasterLayersFull");
+    CPPUNIT_ASSERT(!aFull.has("/objects/0/masterHiddenLayers"));
+    const sal_Int64 nVersion = aFull.getInt("/version").value_or(-1);
+
+    // Turn the master objects off for this slide, the way the menu entry does.
+    SdrLayerIDSet aVisible = pSlide->TRG_GetMasterPageVisibleLayers();
+    aVisible.Set(nObjectsLayer, false);
+    pSlide->TRG_SetMasterPageVisibleLayers(aVisible);
+    getSdDocShell()->GetDoc()->Broadcast(SdrHint(SdrHintKind::PageOrderChange, pSlide));
+
+    auto aDelta = getVectorPrimitives(u"testMasterLayersDelta", nVersion);
+    assertJsonPath(aDelta, "/type", "vectorprimitivesdelta");
+    const auto oPage = findEntryOfKind(aDelta, "page"_ostr);
+    CPPUNIT_ASSERT(oPage.has_value());
+    CPPUNIT_ASSERT_EQUAL(size_t(1), oPage->getSize("masterHiddenLayers").value_or(0));
+    CPPUNIT_ASSERT_EQUAL(sal_Int64(nObjectsLayer.get()),
+                         oPage->getInt("masterHiddenLayers/0").value_or(-1));
 }
 
 CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testUnservedModeCarriesNoPage)
@@ -1419,11 +1467,14 @@ CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testDeltaSkipsAnObjectThatOnlyBroadcas
 
     pObject->BroadcastObjectChange();
 
-    // With nothing left to say the response is empty rather than a header
-    // over empty arrays, so the push it came from sends no frame at all.
+    // A pull is answered with the header alone. A push with nothing changed writes no document
+    // at all, so it sends no frame.
     auto aDelta = getVectorPrimitives(u"testUnchangedDelta", nVersion);
-    CPPUNIT_ASSERT(!aDelta.has("/type"));
-    CPPUNIT_ASSERT(!aDelta.has("/objects"));
+    assertNothingMoved(aDelta, nVersion);
+
+    auto oPush = pushVectorPrimitivesDelta();
+    CPPUNIT_ASSERT(oPush.has_value());
+    CPPUNIT_ASSERT(!oPush->has("/type"));
 
     // The version did not move either, so the next delta starts from here.
     CPPUNIT_ASSERT_EQUAL(nVersion,
@@ -1729,7 +1780,7 @@ CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testSameBackgroundAgainSendsNothing)
     rProperties.PutItem(XFillColorItem(OUString(), Color(0xc00000)));
 
     auto aDelta = getVectorPrimitives(u"testSameBackgroundDelta", nVersion);
-    CPPUNIT_ASSERT(!aDelta.has("/type"));
+    assertNothingMoved(aDelta, nVersion);
 }
 
 CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testDeltaCarriesChangedBackground)
@@ -1789,6 +1840,48 @@ CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testPushAfterAnotherPullStillCarriesTh
     assertJsonPath(*oDelta, "/type", "vectorprimitivesdelta");
     assertJsonPath(*oDelta, "/from", nFirst);
     CPPUNIT_ASSERT(carriesObject(*oDelta, page(1)->GetObj(0)->GetUniqueID()));
+}
+
+CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testPullAnswersWithWhatTheClientLacks)
+{
+    // A client that says which version it holds is answered with the delta from there: a header
+    // alone when nothing changed, the whole page when its version counts in another epoch or is
+    // one this model never served.
+    createBlankDoc();
+    addRectangle(tools::Rectangle(Point(1000, 1000), Size(3000, 2000)), Color(0x4472c4), COL_BLACK);
+
+    auto aFull = getVectorPrimitives(u"testPullFull");
+    const sal_Int64 nVersion = aFull.getInt("/version").value_or(-1);
+    const sal_Int64 nEpoch = aFull.getInt("/epoch").value_or(-1);
+    const OString aPage = ".uno:VectorPrimitives?partid=" + firstPartId() + "&mode=0";
+
+    // A client that holds the current version.
+    auto oQuiet = requestVectorPrimitives(aPage + "&since=" + OString::number(nVersion)
+                                          + "&epoch=" + OString::number(nEpoch));
+    CPPUNIT_ASSERT(oQuiet.has_value());
+    assertJsonPath(*oQuiet, "/type", "vectorprimitivesdelta");
+    assertJsonPath(*oQuiet, "/from", nVersion);
+    CPPUNIT_ASSERT_EQUAL(size_t(0), oQuiet->getSize("/objects").value_or(SIZE_MAX));
+
+    // A client whose version comes from another epoch.
+    auto oOtherEpoch = requestVectorPrimitives(aPage + "&since=" + OString::number(nVersion)
+                                               + "&epoch=" + OString::number(nEpoch + 1));
+    CPPUNIT_ASSERT(oOtherEpoch.has_value());
+    assertJsonPath(*oOtherEpoch, "/type", "vectorprimitives");
+    CPPUNIT_ASSERT_EQUAL(size_t(2), oOtherEpoch->getSize("/objects").value_or(0));
+
+    // A client whose version is one this model never reached.
+    auto oAhead = requestVectorPrimitives(aPage + "&since=" + OString::number(nVersion + 100));
+    CPPUNIT_ASSERT(oAhead.has_value());
+    assertJsonPath(*oAhead, "/type", "vectorprimitives");
+
+    // A pull for a page that is not there gets the header alone.
+    auto oGone = requestVectorPrimitives(
+        ".uno:VectorPrimitives?partid={6F1D3C9A-2B4E-4F8A-9C1D-0E7B5A3F2D61}&mode=0&since="
+        + OString::number(nVersion));
+    CPPUNIT_ASSERT(oGone.has_value());
+    assertJsonPath(*oGone, "/type", "vectorprimitives");
+    CPPUNIT_ASSERT(!oGone->has("/objects"));
 }
 
 CPPUNIT_TEST_FIXTURE(VectorRenderingTest, testPushCarriesOnlyTheChangesSinceTheFirstServe)

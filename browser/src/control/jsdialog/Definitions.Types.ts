@@ -73,6 +73,25 @@ interface JSBuilderParent {
 		dialogId: WindowId | number,
 		tabControlId: string,
 	) => number | undefined;
+	rememberFillType: (
+		dialogId: WindowId | number,
+		notebookId: string,
+		index: number,
+	) => void;
+	lastFillType: (
+		dialogId: WindowId | number,
+		notebookId: string,
+	) => number | undefined;
+	setFillTypeOpener: (
+		dialogId: WindowId | number,
+		notebookId: string,
+		open: (index: number) => void,
+	) => void;
+	openFillType: (
+		dialogId: WindowId | number,
+		notebookId: string,
+		index: number,
+	) => boolean;
 }
 
 interface JSBuilder {
@@ -479,6 +498,7 @@ interface MenuButtonWidgetJSON extends WidgetJSON {
 	icon?: string; // theme-aware icon file name, e.g. 'lc_recsearch.svg'
 	accessKey?: string;
 	noLabel?: boolean; // suppress text label, show icon only
+	inlineLabel?: boolean; // overrides the builder's inline label setting
 	// which end of the button the content sits at: 'left' or 'right', absent for the middle
 	xalign?: string;
 }
@@ -531,8 +551,6 @@ interface ComboBoxWidget extends WidgetJSON {
 	// entries which are values of the box but are not offered in its list
 	hiddenEntries?: Array<string | number>;
 	entrycompletion?: boolean;
-	// build the box even while it has no entries yet
-	buildWhenEmpty?: boolean;
 }
 
 interface TreeColumnJSON {
@@ -613,6 +631,9 @@ interface IconViewJSON extends WidgetJSON {
 
 interface IconViewListJSON extends WidgetJSON {
 	children: Array<IconViewJSON>;
+	horizontal?: boolean;
+	expanderAccessKey?: string;
+	nameFromIconView?: boolean;
 }
 
 interface IconViewElement extends HTMLElement {

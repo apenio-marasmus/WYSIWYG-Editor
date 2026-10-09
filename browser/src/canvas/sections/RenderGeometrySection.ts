@@ -25,7 +25,7 @@
 	than asked of the engine, and the object under the pointer is outlined along the geometry that
 	answered. The section is there whenever the document is drawn from vector primitives, so both
 	always are. The rectangles per object and the name of what was hit are drawn only while the
-	debug panel's "Render Geometry" tool is on.
+	debug panel's "Vector Overlays" tool is on.
 */
 
 /* global app RenderManager Cursor */
@@ -86,6 +86,9 @@ class RenderGeometrySection extends CanvasSectionObject {
 			RenderGeometrySection._listening = true;
 			RenderManager.onVectorChanged(() => {
 				RenderGeometrySection._lastHit = undefined;
+				// The handles of a selection are worked out from the objects, so they follow
+				// what arrives as well.
+				GraphicSelection.refreshLocalHandles();
 				if (app.sectionContainer) app.sectionContainer.requestReDraw();
 			});
 		}
@@ -307,7 +310,7 @@ class RenderGeometrySection extends CanvasSectionObject {
 		this.outlineHitUnderMouse(data, xDiff, yDiff);
 
 		// The rectangles and the name of the hit are feedback about the geometry the client holds,
-		// so they follow the debug panel's "Render Geometry" tool.
+		// so they follow the debug panel's "Vector Overlays" tool.
 		if (!app.map._debug.renderGeometryOn) return;
 
 		this.context.save();
@@ -377,6 +380,10 @@ class RenderGeometrySection extends CanvasSectionObject {
 			: '';
 		if (!hit) return;
 
+		// An object that is selected is marked out by its handles already, so the outline under
+		// the pointer is kept for the objects that are not selected.
+		if (GraphicSelection.selectedObjectIDs.includes(hit.id)) return;
+
 		const object = data.objects.get(hit.id);
 		if (!object?.transform) return;
 
@@ -431,7 +438,10 @@ class RenderGeometrySection extends CanvasSectionObject {
 		this.context.fillStyle = RenderGeometrySection.colorOfObject(hit.id);
 		this.context.font = '11px sans-serif';
 		this.context.fillText(
-			hit.hit.kind + (flags.length ? ' (' + flags.join(', ') + ')' : ''),
+			hit.hit.kind +
+				' id=' +
+				String(hit.id) +
+				(flags.length ? ' (' + flags.join(', ') + ')' : ''),
 			xDiff + Math.round(object.x * app.twipsToPixels) + 2,
 			yDiff + Math.round(object.y * app.twipsToPixels) - 3,
 		);
@@ -463,9 +473,7 @@ class RenderGeometrySection extends CanvasSectionObject {
 		test gives, so what the pointer says and what the hit test found are one thing.
 	*/
 	public static pointerAt(x: number, y: number): string {
-		const section = app.sectionContainer?.getSectionWithName(
-			app.CSections.RenderGeometry.name,
-		) as RenderGeometrySection;
+		const section = RenderGeometrySection.ofPage();
 
 		if (!section) return 'default';
 
@@ -473,6 +481,69 @@ class RenderGeometrySection extends CanvasSectionObject {
 		if (!hit) return 'default';
 
 		return hit.hit.kind === 'text' ? 'text' : 'move';
+	}
+
+	/// The section holding the objects of the page, while the document is drawn from them.
+	private static ofPage(): RenderGeometrySection | undefined {
+		return app.sectionContainer?.getSectionWithName(
+			app.CSections.RenderGeometry.name,
+		) as RenderGeometrySection;
+	}
+
+	/*
+		The box every object of the page paints into, in twips, by the id of the object. An object
+		on a layer the view hides is left out, as is the page itself, a running text edit and the
+		page's copy of a master placeholder, none of which are objects to reckon with.
+	*/
+	public static objectBoxes(): Map<number, number[]> {
+		const boxes = new Map<number, number[]>();
+		const data = RenderGeometrySection.currentPart();
+		if (!data) return boxes;
+
+		for (const id of data.order) {
+			const object = data.objects.get(id);
+			if (!object || object.kind !== undefined || object.masterContent)
+				continue;
+			if (
+				object.layer !== undefined &&
+				!RenderManager.isLayerVisible(object.layer)
+			)
+				continue;
+			if (object.width === undefined || object.height === undefined) continue;
+
+			boxes.set(id, [
+				object.x ?? 0,
+				object.y ?? 0,
+				object.width,
+				object.height,
+			]);
+		}
+
+		return boxes;
+	}
+
+	/*
+		The group the object sits in, 0 for an object directly on the page, or nothing when the
+		page holds no such object. Two objects belong in one selection when this answers the same
+		for both of them.
+	*/
+	public static parentOf(objectId: number): number | undefined {
+		const object = RenderGeometrySection.objectOf(objectId);
+		return object ? (object.parent ?? 0) : undefined;
+	}
+
+	/// The object of the page with the given id, or nothing when the page holds no such object.
+	public static objectOf(objectId: number): cool.SlideObject | undefined {
+		return RenderGeometrySection.currentPart()?.objects.get(objectId);
+	}
+
+	/*
+		The object of the page under a document position, in twips, by its unique id, or nothing
+		where the point meets no object. The point is asked as it comes, so an answer stands for
+		that position and no other.
+	*/
+	public static objectIdAt(x: number, y: number): number | undefined {
+		return RenderGeometrySection.ofPage()?.hitObjectInDocument(x, y)?.id;
 	}
 
 	/*

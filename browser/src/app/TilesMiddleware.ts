@@ -54,6 +54,14 @@ class RenderManager {
 		RenderManager.makeInstance(docType).initialize();
 	}
 
+	/// Pick the manager again, for when the answer to wantsVector has changed while a document is
+	/// open. A manager of the wrong kind is replaced and the new one initialized.
+	static reinitialize(docType?: string): void {
+		const previous = RenderManager._instance;
+		const instance = RenderManager.makeInstance(docType);
+		if (instance !== previous) instance.initialize();
+	}
+
 	static appendAfterVisualsReady(task: AfterVisualsReadyTask): void {
 		RenderManager.ensureInstance().appendAfterVisualsReady(task);
 	}
@@ -264,10 +272,6 @@ class RenderManager {
 		RenderManager.ensureInstance().renderPlaceholderAids(context, data);
 	}
 
-	static setHiddenLayers(layers: unknown): void {
-		RenderManager.ensureInstance().setHiddenLayers(layers);
-	}
-
 	static isPartDrawable(part: number, mode: number): boolean {
 		return RenderManager.ensureInstance().isPartDrawable(part, mode);
 	}
@@ -292,6 +296,10 @@ class RenderManager {
 
 	static onVectorChanged(callback: () => void): void {
 		RenderManager.ensureInstance().onVectorChanged(callback);
+	}
+
+	static offVectorChanged(callback: () => void): void {
+		RenderManager.ensureInstance().offVectorChanged(callback);
 	}
 
 	static handleVectorPrimitivesResponse(
@@ -322,6 +330,14 @@ class RenderManager {
 
 	static partListChanged(): void {
 		RenderManager.ensureInstance().partListChanged();
+	}
+
+	static revalidateCachedParts(): void {
+		RenderManager.ensureInstance().revalidateCachedParts();
+	}
+
+	static forgetRequestsInFlight(): void {
+		RenderManager.ensureInstance().forgetRequestsInFlight();
 	}
 
 	static clearCachedPart(partId: cool.VectorPartGuid): void {

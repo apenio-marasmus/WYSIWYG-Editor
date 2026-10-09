@@ -60,6 +60,7 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <vector>
 #include <iostream>
 #include <mutex>
 #include <string_view>
@@ -4922,6 +4923,33 @@ void COKitDocumentImpl::registerCallback(COKitCallback pCallback, void* pData)
 
             pair.second->removeViewStates(nView);
         }
+
+        auto* viewShellCallback = pViewShell->getCOKitViewCallback();
+        for (auto* pShell = SfxViewShell::GetFirst(); pShell != nullptr;
+             pShell = SfxViewShell::GetNext(*pShell))
+        {
+            if (pShell->getCOKitViewCallback() == viewShellCallback)
+            {
+                pShell->setCOKitViewCallback(nullptr);
+            }
+        }
+
+        if (mpCallbackFlushHandlers.find(nView) != mpCallbackFlushHandlers.end())
+        {
+            mpCallbackFlushHandlers[nView]->setViewId(-1);
+            mpCallbackFlushHandlers.erase(nView);
+        }
+
+        // With the last such reader gone there is nothing to broadcast for.
+        const bool bAnyDrawsFromModel = std::any_of(
+            mpCallbackFlushHandlers.begin(), mpCallbackFlushHandlers.end(),
+            [](const auto& rEntry) { return rEntry.second && rEntry.second->isVectorRendering(); });
+        if (!bAnyDrawsFromModel)
+        {
+            if (ITiledRenderable* pDoc = getTiledRenderable(this))
+                pDoc->setDrawnFromModel(false);
+        }
+        return;
     }
 
     auto pCallbackFlushHandler = std::make_shared<CallbackFlushHandler>(this, pCallback, pData);
@@ -4982,22 +5010,6 @@ void COKitDocumentImpl::registerCallback(COKitCallback pCallback, void* pData)
                 pCallbackFlushHandler->setPaintedTiles(rHandler.second->getPaintedTiles());
                 break;
             }
-        }
-    }
-    else
-    {
-        pViewShell->setCOKitViewCallback(nullptr);
-        mpCallbackFlushHandlers[nView]->setViewId(-1);
-        mpCallbackFlushHandlers.erase(nView);
-
-        // With the last such reader gone there is nothing to broadcast for.
-        const bool bAnyDrawsFromModel = std::any_of(
-            mpCallbackFlushHandlers.begin(), mpCallbackFlushHandlers.end(),
-            [](const auto& rEntry) { return rEntry.second && rEntry.second->isVectorRendering(); });
-        if (!bAnyDrawsFromModel)
-        {
-            if (ITiledRenderable* pDoc = getTiledRenderable(this))
-                pDoc->setDrawnFromModel(false);
         }
     }
 }
@@ -6450,6 +6462,83 @@ COKitSlideLayer COKitDocumentImpl::renderNextSlideLayer(std::span<unsigned char>
     aLayer.bIsDone = pDoc->renderNextSlideLayer(aBuffer.data(), aLayer.bIsBitmapLayer,
                                                 aLayer.fScale, aLayer.aJsonMessage);
     return aLayer;
+}
+
+void COKitDocumentImpl::selectObjects(const char* pObjectIds)
+{
+    comphelper::ProfileZone aZone("COKitDocumentImpl::selectObjects");
+
+    SolarMutexGuard aGuard;
+    SetLastExceptionMsg();
+
+    SfxViewShell* pViewShell = SfxViewShell::Current();
+    SdrView* pView = pViewShell ? pViewShell->GetDrawView() : nullptr;
+    SdrPageView* pPageView = pView ? pView->GetSdrPageView() : nullptr;
+
+    if (!pPageView)
+    {
+        SetLastExceptionMsg(u"The view shows no page to select objects on"_ustr);
+        return;
+    }
+
+    // The objects to mark are gathered first, so that putting the marks on can report the change
+    // once, at its last step, rather than once per object.
+    const OString aObjectIds(pObjectIds ? pObjectIds : "");
+    const SdrObjList* pLevel = nullptr;
+    std::vector<SdrObject*> aWanted;
+
+    for (sal_Int32 nPosition = 0; nPosition >= 0;)
+    {
+        const OString aId(aObjectIds.getToken(0, ',', nPosition));
+        if (aId.isEmpty())
+            continue;
+
+        const SdrPage* pPage = pPageView->GetPage();
+        SdrObject* pObject = pPage ? pPage->FindObjectByUniqueID(aId.toUInt64()) : nullptr;
+        if (!pObject || !pView->IsObjMarkable(pObject, pPageView))
+        {
+            SAL_WARN("kit", "selectObjects: nothing to mark for the id " << aId);
+            continue;
+        }
+
+        // The objects of one selection sit at one level, so the first object says which level
+        // that is and an object from anywhere else is left out.
+        if (aWanted.empty())
+            pLevel = pObject->getParentSdrObjListFromSdrObject();
+        else if (pObject->getParentSdrObjListFromSdrObject() != pLevel)
+        {
+            SAL_WARN("kit", "selectObjects: the object " << aId << " sits at another level");
+            continue;
+        }
+
+        aWanted.push_back(pObject);
+    }
+
+    const SdrMarkList& rMarkList = pView->GetMarkedObjectList();
+    std::vector<SdrObject*> aMarked;
+    for (size_t nMark = 0; nMark < rMarkList.GetMarkCount(); ++nMark)
+        aMarked.push_back(rMarkList.GetMark(nMark)->GetMarkedSdrObj());
+
+    // The objects asked for are the ones already marked, so the selection stands as it is and
+    // nothing is reported.
+    if (aMarked == aWanted)
+        return;
+
+    if (aWanted.empty())
+    {
+        // Unmarking reports the empty selection itself.
+        pView->UnmarkAllObj(pPageView);
+        return;
+    }
+
+    // The marks that go are taken off without a word, and the last mark that arrives reports what
+    // the selection is now, so one change is one message.
+    for (SdrObject* pMarked : aMarked)
+        pView->MarkObj(pMarked, pPageView, /*bUnmark*/ true, /*bDoNoSetMarkHdl*/ true);
+
+    for (size_t nObject = 0; nObject < aWanted.size(); ++nObject)
+        pView->MarkObj(aWanted[nObject], pPageView, /*bUnmark*/ false,
+                       /*bDoNoSetMarkHdl*/ nObject + 1 < aWanted.size());
 }
 
 void COKitDocumentImpl::setViewOption(const char* pOption, const char* pValue)
@@ -7938,11 +8027,29 @@ std::string COKitDocumentImpl::getCommandValues(const char* pCommand)
         if (auto aModeIterator = aParameters.find(u"mode"_ustr); aModeIterator != aParameters.end())
             nRequestedMode = aModeIterator->second.toInt32();
 
-        if (const SfxViewShell* pViewShell = SfxViewShell::Current())
+        if (SfxViewShell* pViewShell = SfxViewShell::Current())
         {
             auto it = mpCallbackFlushHandlers.find(pViewShell->GetViewShellId().get());
             if (it != mpCallbackFlushHandlers.end() && it->second)
                 it->second->setVectorRendering(nRequestedMode);
+
+            // Such a view draws the page from the objects it holds, which decides among other
+            // things how the handles of a selection of several objects are laid out.
+            pViewShell->setDrawsFromObjects(true);
+
+            /*
+                How long a cursor stays shown and then hidden here, as the desktop of the person
+                using it says. A client that draws something of its own that blinks - the handle
+                the keyboard works on - reads it, so that everything on the page blinks together
+                and at the speed that person set.
+            */
+            const sal_uInt64 nBlinkTime
+                = Application::GetSettings().GetStyleSettings().GetCursorBlinkTime();
+            if (nBlinkTime != STYLE_CURSOR_NOBLINKTIME)
+            {
+                pViewShell->viewCallback(COKitCallbackType::STATE_CHANGED,
+                                         ".uno:CursorBlinkTime=" + OString::number(nBlinkTime));
+            }
         }
     }
 

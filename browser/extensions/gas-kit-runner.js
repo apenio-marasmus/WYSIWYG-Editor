@@ -77,7 +77,7 @@ globalThis.__gasKitRunner = function(
                     return m;
                 },
                 addSubMenu: function() { return m; },
-                addToUi: function() {}
+                addToUi: function() { return null; }
             };
             return m;
         }
@@ -102,14 +102,20 @@ globalThis.__gasKitRunner = function(
             createMenu: menuBuilder,
             showSidebar: function(html) {
                 showSidebarFile = html && html.__gasSourceFile ? html.__gasSourceFile : null;
+                return null;
             },
-            showDialog: function(html) { recordDialog('showDialog', html, undefined); },
+            showDialog: function(html) {
+                recordDialog('showDialog', html, undefined);
+                return null;
+            },
             showModalDialog: function(html, title) {
                 recordDialog('showModalDialog', html, title);
+                return null;
             },
             // The host has modal dialogs only, so a modeless one blocks the document too:
             showModelessDialog: function(html, title) {
                 recordDialog('showModelessDialog', html, title);
+                return null;
             },
             // GAS blocks the script on a modal here.  This one only records the message, which
             // travels back with the call's result, so an add-on that alerts and then keeps
@@ -128,7 +134,7 @@ globalThis.__gasKitRunner = function(
 
         globalThis.DocumentApp = {
             getActiveDocument: function() {
-                return {
+                const document = {
                     getSelection: function() { return activeDoc().getSelection(); },
                     getCursor: function() { return activeDoc().getCursor(); },
                     getBody: function() { return activeDoc().getBody(); },
@@ -137,13 +143,20 @@ globalThis.__gasKitRunner = function(
                         return activeDoc().newPosition(element, offset);
                     },
                     newRange: function() { return activeDoc().newRange(); },
-                    setCursor: function(position) { activeDoc().setCursor(position); },
-                    setSelection: function(sel) { activeDoc().setSelection(sel); },
+                    setCursor: function(position) {
+                        activeDoc().setCursor(position);
+                        return document;
+                    },
+                    setSelection: function(sel) {
+                        activeDoc().setSelection(sel);
+                        return document;
+                    },
                     getName: function() { return 'Untitled'; },
                     getUrl: function() { return ''; },
                     getId: function() { return ''; },
                     getUi: function() { return uiStub; }
                 };
+                return document;
             },
             getUi: function() { return uiStub; },
             // Members scriptinterop's ElementType has round-trip as the same enum object, so a
@@ -266,11 +279,11 @@ globalThis.__gasKitRunner = function(
                 getFrozenRows: function() { return xs.getFrozenRows(); },
                 getFrozenColumns: function() { return xs.getFrozenColumns(); },
                 deleteRow: function(row) { xs.deleteRow(row); return s; },
-                deleteRows: function(row, numRows) { xs.deleteRows(row, numRows); return s; },
+                deleteRows: function(row, numRows) { xs.deleteRows(row, numRows); return null; },
                 deleteColumn: function(column) { xs.deleteColumn(column); return s; },
                 deleteColumns: function(column, numColumns) {
                     xs.deleteColumns(column, numColumns);
-                    return s;
+                    return null;
                 },
                 setColumnWidth: function(column, pixels) {
                     xs.setColumnWidth(column, pixels);
@@ -316,7 +329,7 @@ globalThis.__gasKitRunner = function(
                 getActiveCell: function() {
                     return sheetFacade(xss.getActiveSheet()).getActiveCell();
                 },
-                flush: function() { xss.flush(); },
+                flush: function() { xss.flush(); return null; },
                 // The older menu call, which takes the whole menu at once: an array of
                 // {name, functionName} objects, where a null entry stands for a separator.  The
                 // menu's own name is dropped, because the items are offered under the
@@ -330,12 +343,14 @@ globalThis.__gasKitRunner = function(
                             menuItems.push({ separator: true });
                         }
                     });
+                    return null;
                 },
                 // Not a modal, but the same one-way message, so it takes the alert path:
                 toast: function(message, title) {
                     pendingAlerts.push(
                         { title: title === undefined ? '' : String(title),
                           message: String(message) });
+                    return null;
                 },
                 getUi: function() { return uiStub; }
             };
@@ -354,7 +369,7 @@ globalThis.__gasKitRunner = function(
             getActiveCell: function() {
                 return sheetFacade(activeSpreadsheet().getActiveSheet()).getActiveCell();
             },
-            flush: function() { activeSpreadsheet().flush(); },
+            flush: function() { activeSpreadsheet().flush(); return null; },
             getUi: function() { return uiStub; }
         };
 
@@ -570,7 +585,10 @@ globalThis.__gasKitRunner = function(
         };
 
         globalThis.Logger = {
-            log: function() { console.log.apply(console, arguments); }
+            log: function() {
+                console.log.apply(console, arguments);
+                return globalThis.Logger;
+            }
         };
 
         globalThis.Session = {
@@ -580,21 +598,6 @@ globalThis.__gasKitRunner = function(
             getActiveUserLocale: cool.getActiveUserLocale.bind(cool)
         };
 
-        // A GAS enum value is an object of its own that prints as its name and has the name(),
-        // ordinal() and compareTo() of a Java enum:
-        function gasEnum(names) {
-            const values = {};
-            names.forEach(function(name, ordinal) {
-                values[name] = Object.freeze({
-                    toString: function() { return name; },
-                    toJSON: function() { return name; },
-                    name: function() { return name; },
-                    ordinal: function() { return ordinal; },
-                    compareTo: function(other) { return ordinal - other.ordinal(); }
-                });
-            });
-            return Object.freeze(values);
-        }
         function scriptAppNotSupported(name) {
             return function() {
                 throw new Error(
@@ -602,17 +605,19 @@ globalThis.__gasKitRunner = function(
             };
         }
         globalThis.ScriptApp = {
-            AuthMode: gasEnum(['NONE', 'CUSTOM_FUNCTION', 'LIMITED', 'FULL']),
+            AuthMode: uno.idl.scriptinterop.AuthMode,
             getScriptId: function() { return extensionId; },
             getOAuthToken: scriptAppNotSupported('getOAuthToken'),
             getIdentityToken: scriptAppNotSupported('getIdentityToken'),
             getService: scriptAppNotSupported('getService'),
             getInstallationSource: scriptAppNotSupported('getInstallationSource'),
+            newStateToken: scriptAppNotSupported('newStateToken'),
             newTrigger: scriptAppNotSupported('newTrigger'),
             getProjectTriggers: scriptAppNotSupported('getProjectTriggers'),
             getUserTriggers: scriptAppNotSupported('getUserTriggers'),
             deleteTrigger: scriptAppNotSupported('deleteTrigger'),
             requireAllScopes: scriptAppNotSupported('requireAllScopes'),
+            requireScopes: scriptAppNotSupported('requireScopes'),
             getAuthorizationInfo: scriptAppNotSupported('getAuthorizationInfo'),
             invalidateAuth: scriptAppNotSupported('invalidateAuth')
         };
@@ -643,16 +648,18 @@ globalThis.__gasKitRunner = function(
                     const expiration = ttl === undefined ? 600 : normalizedTtl(ttl);
                     if (v == null) {
                         c.remove(key);
-                        return;
+                        return null;
                     }
                     const value = String(v);
                     if (value.length > 100 * 1024) {
                         throw new Error('Argument too large: value');
                     }
                     clientRuntime.cachePut(scope, key, value, expiration);
+                    return null;
                 },
                 remove: function(k) {
                     clientRuntime.cacheRemove(scope, String(k));
+                    return null;
                 },
                 getAll: function(keys) {
                     const out = {};
@@ -666,11 +673,13 @@ globalThis.__gasKitRunner = function(
                     for (const k of Object.keys(values)) {
                         c.put(k, values[k], ttl);
                     }
+                    return null;
                 },
                 removeAll: function(keys) {
                     for (const k of keys) {
                         c.remove(k);
                     }
+                    return null;
                 }
             };
             return c;

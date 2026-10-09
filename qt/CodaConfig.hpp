@@ -21,6 +21,9 @@ class CodaConfig
     // Disable editing mode when opening CODA with --readonly flag.
     bool _forcedReadOnly = false;
 
+    // Start ready to edit, for the --edit flag.
+    bool _startInEditMode = false;
+
 public:
     static CodaConfig& instance()
     {
@@ -30,6 +33,23 @@ public:
 
     bool isForcedReadOnly() const { return _forcedReadOnly; }
     void setForcedReadOnly(bool value) { _forcedReadOnly = value; }
+
+    // Whether a document that is opened from a file starts ready to edit. It starts read-only
+    // otherwise, with the Edit button waiting to be pressed.
+    bool startsInEditMode() const { return _startInEditMode; }
+    void setStartInEditMode(bool value) { _startInEditMode = value; }
+
+    // Whether a Draw or Impress document is drawn from vector primitives instead of tiles.
+    // CODA_VECTOR asks for that when it holds anything.
+    bool wantsVector() const
+    {
+        static const bool wanted = []
+        {
+            const char* env = std::getenv("CODA_VECTOR");
+            return env && *env;
+        }();
+        return wanted;
+    }
 
     // How many document views may hold a web engine renderer at once. A window keeps
     // the most recently used views and drops the renderers of the others, which stays

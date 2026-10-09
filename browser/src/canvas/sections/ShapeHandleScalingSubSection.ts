@@ -30,6 +30,18 @@ class ShapeHandleScalingSubSection extends ShapeHandleSubSection {
 		app.events.on('TextCursorVisibility', this.onTextCursorVisibility.bind(this));
 	}
 
+	/*
+		Whether this handle is drawn larger in this moment: it is the one the keyboard works on and
+		the blink is at its larger half. The handle stays on the page throughout and changes only
+		its size, so what blinks is which handle is meant, not whether there is one.
+	*/
+	private isTheActiveHandle(): boolean {
+		return (
+			GraphicSelection.activeHandleName === this.sectionProperties.ownInfo?.name &&
+			GraphicSelection.activeHandleVisible
+		);
+	}
+
 	onDraw(frameCount?: number, elapsedTime?: number): void {
 		this.context.save();
 		this.context.setTransform(1, 0, 0, 1, 0, 0);
@@ -42,6 +54,15 @@ class ShapeHandleScalingSubSection extends ShapeHandleSubSection {
 
 		if (this.sectionProperties.cropModeEnabled)
 			this.drawCropHandles();
+		else if (this.isTheActiveHandle()) {
+			// A third again in each direction, around the middle of where it would be.
+			const grow = this.size[0] / 3;
+			this.context.rect(
+				this.documentPosition.vX - grow * multiplier,
+				this.documentPosition.vY - grow,
+				(this.size[0] + 2 * grow) * multiplier,
+				this.size[1] + 2 * grow);
+		}
 		else
 			this.context.rect(this.documentPosition.vX, this.documentPosition.vY, this.size[0] * multiplier, this.size[1]);
 
@@ -216,7 +237,10 @@ class ShapeHandleScalingSubSection extends ShapeHandleSubSection {
 			this.stopPropagating();
 			e.stopPropagation();
 
-			const handleId = this.sectionProperties.ownInfo.id;
+			const ownInfo = this.sectionProperties.ownInfo;
+			// The handles are counted from zero here, where a handle that names itself counts the
+			// kinds from one, so the maths below works on the number either way.
+			const handleId = ownInfo.name ? Number(ownInfo.kind) - 1 : ownInfo.id;
 			const parentHandlerSection = this.sectionProperties.parentHandlerSection;
 
 			const p = point.clone();
@@ -246,7 +270,10 @@ class ShapeHandleScalingSubSection extends ShapeHandleSubSection {
 			}
 
 			const parameters = {
-				HandleNum: { type: 'long', value: committedHandleId },
+				...ShapeHandlesSection.handleParameters(
+					ownInfo.name
+						? { name: String(Number(committedHandleId) + 1) + '.0.0' }
+						: { id: committedHandleId }),
 				NewPosX: { type: 'long', value: newPoint[0] },
 				NewPosY: { type: 'long', value: newPoint[1] }
 			};

@@ -652,6 +652,7 @@ bool ChildSession::_handleInput(const char *buffer, int length)
                tokens.equals(0, "clientvisiblearea") ||
                tokens.equals(0, "outlinestate") ||
                tokens.equals(0, "reportmousepointer") ||
+               tokens.equals(0, "selectobjects") ||
                tokens.equals(0, "downloadas") ||
                tokens.equals(0, "getchildid") ||
                tokens.equals(0, "gettextselection") ||
@@ -716,6 +717,10 @@ bool ChildSession::_handleInput(const char *buffer, int length)
         else if (tokens.equals(0, "reportmousepointer"))
         {
             return reportMousePointer(tokens);
+        }
+        else if (tokens.equals(0, "selectobjects"))
+        {
+            return selectObjects(tokens);
         }
         else if (tokens.equals(0, "downloadas"))
         {
@@ -1534,6 +1539,23 @@ bool ChildSession::sendZstdFrame(std::string_view headerName, const char* data, 
     return sendBinaryFrame(output.data(), output.size());
 }
 
+std::string ChildSession::vectorPartIdOf(const std::string& json)
+{
+    static constexpr std::string_view key = "\"partId\":";
+    const size_t start = json.find(key);
+    if (start == std::string::npos)
+        return std::string();
+    // The writer puts a space after the colon.
+    size_t begin = json.find_first_not_of(' ', start + key.size());
+    if (begin == std::string::npos || json[begin] != '"')
+        return std::string();
+    ++begin;
+    const size_t end = json.find('"', begin);
+    if (end == std::string::npos)
+        return std::string();
+    return json.substr(begin, end - begin);
+}
+
 void ChildSession::sendVectorDelta(const std::vector<char>& frame, const std::string& payload)
 {
     // Without a compressed frame the JSON goes as a command values text frame.
@@ -1593,6 +1615,14 @@ bool ChildSession::getCommandValues(const StringVector& tokens)
         std::string json(getLOKitDocument()->getCommandValues(command.c_str()));
         if (json.empty())
             json = "{}";
+
+        // The part the response serves is one this client holds from here on.
+        if (!isFont)
+        {
+            const std::string partId = vectorPartIdOf(json);
+            if (!partId.empty())
+                _vectorParts.insert(partId);
+        }
         const std::string_view header = isFont
                                             ? std::string_view("zstdvectorrenderingfont:\n")
                                             : std::string_view("zstdvectorprimitives:\n");
@@ -1713,6 +1743,21 @@ bool ChildSession::reportMousePointer(const StringVector& tokens)
 
     // A client that works out the pointer from the geometry it holds is sent none.
     getLOKitDocument()->setViewOption("mousepointer", wanted == "true" ? "on" : "off");
+    return true;
+}
+
+bool ChildSession::selectObjects(const StringVector& tokens)
+{
+    std::string objectIds;
+
+    if (tokens.size() != 2 || !getTokenString(tokens[1], "ids", objectIds))
+    {
+        sendTextFrameAndLogError("error: cmd=selectobjects kind=syntax");
+        return false;
+    }
+
+    getLOKitDocument()->setView(_viewId);
+    getLOKitDocument()->selectObjects(objectIds.c_str());
     return true;
 }
 

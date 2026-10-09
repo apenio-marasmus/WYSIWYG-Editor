@@ -62,6 +62,8 @@ console.assert(
 console.assert(
     uno.type.interface(uno.idl.com.sun.star.testuno.XTest).toString()
     == 'com.sun.star.testuno.XTest');
+console.assert(uno.idl.com.sun.star.testuno.Enum.E_2.toString() == 'E_2');
+console.assert(uno.idl.com.sun.star.testuno.Enum.E_2.toJSON() == 'E_2');
 console.assert(uno.idl.com.sun.star.testuno.Constants.Boolean === true);
 console.assert(uno.idl.com.sun.star.testuno.Constants.Byte === -12);
 console.assert(uno.idl.com.sun.star.testuno.Constants.Short === -1234);

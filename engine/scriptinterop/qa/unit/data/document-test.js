@@ -17,6 +17,8 @@ if (!globalThis.cool) {
 function test() {
     const body = DocumentApp.getActiveDocument().getBody();
     console.assert(body.getType() === DocumentApp.ElementType.BODY_SECTION);
+    console.assert(String(body.getType()) === 'BODY_SECTION');
+    console.assert(JSON.stringify(body.getType()) === '"BODY_SECTION"');
     console.assert(body.getText().length > 0);
     console.assert(body.getNumChildren() === 6);
 
@@ -115,8 +117,9 @@ function test() {
     }
     console.assert(threw);
 
-    // Paragraph 4 anchors a footnote whose only paragraph is "Note", and the reference to it is no
-    // part of the paragraph's text:
+    // Cell B2 and paragraph 4 each anchor a footnote, whose only paragraph is "Cellnote" and
+    // "Note", and the references to them are no part of the text:
+    console.assert(body.getText().indexOf('A2\nB2\nTrailing') !== -1);
     console.assert(body.getChild(4).getText() === 'Trailing');
     let pastFootnote = false;
     try {
@@ -125,14 +128,48 @@ function test() {
         pastFootnote = true;
     }
     console.assert(pastFootnote);
+    const trailingIndices = body.getChild(4).getChild(0).asText().getTextAttributeIndices();
+    console.assert(trailingIndices.length === 1 && trailingIndices[0] === 0);
     const fns = DocumentApp.getActiveDocument().getFootnotes();
-    console.assert(fns.length === 1);
-    console.assert(fns[0].getType() === DocumentApp.ElementType.FOOTNOTE);
-    const noteContents = fns[0].getFootnoteContents();
+    console.assert(fns.length === 2);
+    console.assert(fns[0].getFootnoteContents().getText() === 'Cellnote');
+    console.assert(fns[1].getType() === DocumentApp.ElementType.FOOTNOTE);
+    const noteContents = fns[1].getFootnoteContents();
     console.assert(noteContents.getType() === DocumentApp.ElementType.FOOTNOTE_SECTION);
     console.assert(noteContents.getNumChildren() >= 1);
     console.assert(noteContents.getChild(0).getText() === 'Note');
     console.assert(noteContents.getChildIndex(noteContents.getChild(0)) === 0);
+
+    // As in GAS, an element casts to its own type, a paragraph also to a text that reports the
+    // paragraph's type, and any other cast throws:
+    console.assert(p0.asParagraph().getText() === 'BoldItalicPlain');
+    console.assert(p0.asText().getText() === 'BoldItalicPlain');
+    console.assert(p0.asText().asParagraph().getText() === 'BoldItalicPlain');
+    console.assert(t0.asText().getText() === 'BoldItalicPlain');
+    console.assert(table.asTable().getNumRows() === 2);
+    console.assert(row0.asTableRow().getNumCells() === 2);
+    console.assert(cell00.asTableCell().getText() === 'A1');
+    console.assert(body.asBody().getNumChildren() === body.getNumChildren());
+    console.assert(fns[1].asFootnote().getFootnoteContents().getText() === 'Note');
+    console.assert(noteContents.asFootnoteSection().getText() === 'Note');
+    for (const [element, cast, message] of [
+        [p0, 'asTable', "PARAGRAPH can't be cast to TABLE."],
+        [table, 'asParagraph', "TABLE can't be cast to PARAGRAPH."],
+        [p0, 'asInlineImage', "PARAGRAPH can't be cast to INLINE_IMAGE."],
+        [fns[1], 'asText', "FOOTNOTE can't be cast to TEXT."],
+    ]) {
+        let caught = null;
+        try {
+            element[cast]();
+        } catch (e) {
+            caught = e.message;
+        }
+        if (globalThis.cool) {
+            console.assert(caught.startsWith(message)); //TODO
+        } else {
+            console.assert(caught === message);
+        }
+    }
 
     // No user selection on a freshly opened document, so getSelection returns null:
     console.assert(DocumentApp.getActiveDocument().getSelection() === null);
@@ -144,8 +181,7 @@ function test() {
         .addElement(body.getChild(0))
         .addElement(body.getChild(1).editAsText(), 0, 2)
         .build();
-    doc.setSelection(range);
-    const ranges = doc.getSelection().getRangeElements();
+    const ranges = doc.setSelection(range).getSelection().getRangeElements();
     console.assert(ranges.length === 2);
     console.assert(ranges[0].isPartial() === false);
     console.assert(ranges[0].getStartOffset() === -1);
@@ -203,8 +239,7 @@ function test() {
     const cleared = body.appendParagraph('Doomed');
     console.assert(body.getNumChildren() === 9);
     console.assert(cleared.getText() === 'Doomed');
-    cleared.clear();
-    console.assert(cleared.getText() === '');
+    console.assert(cleared.clear().getText() === '');
     console.assert(body.getNumChildren() === 9);
 
     // GAS refuses to remove the section's last paragraph, so append a guard first, then remove
@@ -228,12 +263,12 @@ function test() {
     const cell = tab.getChild(0).getChild(0);
     console.assert(cell.getType() === DocumentApp.ElementType.TABLE_CELL);
     console.assert(cell.getText().length > 0);
-    cell.clear();
-    console.assert(cell.getText() === '');
+    console.assert(cell.clear().getText() === '');
 
     // Removing a table row shrinks the surrounding table:
     console.assert(tab.getNumChildren() === 2);
-    tab.getChild(0).removeFromParent();
+    console.assert(
+        tab.getChild(0).removeFromParent().getType() === DocumentApp.ElementType.TABLE_ROW);
     console.assert(tab.getNumChildren() === 1);
 
     // Paragraph 5 anchors a 100x60-pixel inline image at child index 1 (child index 0 is the
@@ -333,8 +368,7 @@ function test() {
     // made from (GAS reports every getCursor after the first one that is not null in a script
     // execution against that first cursor's element, with an offset that is not relative to that
     // element, so this is the only getCursor here that is not null):
-    doc.setCursor(doc.newPosition(para5, 1));
-    const cursor = doc.getCursor();
+    const cursor = doc.setCursor(doc.newPosition(para5, 1)).getCursor();
     console.assert(cursor.getElement().getType() === DocumentApp.ElementType.PARAGRAPH);
     console.assert(cursor.getElement().getText() === 'Before');
     console.assert(cursor.getOffset() === 1);
@@ -342,8 +376,8 @@ function test() {
     console.assert(cursor.getSurroundingTextOffset() === 6);
 
     // An inline image can be selected on its own, as one whole range element:
-    doc.setSelection(doc.newRange().addElement(image).build());
-    const imageRanges = doc.getSelection().getRangeElements();
+    const imageRanges = doc.setSelection(doc.newRange().addElement(image).build()).getSelection()
+        .getRangeElements();
     console.assert(imageRanges.length === 1);
     console.assert(imageRanges[0].isPartial() === false);
     console.assert(imageRanges[0].getStartOffset() === -1);
@@ -358,6 +392,5 @@ function test() {
     console.assert(doc.getCursor() === null);
     // Setting the cursor ends the selection of the image (the cursor itself is not read again here,
     // see above):
-    doc.setCursor(doc.newPosition(para5, 1));
-    console.assert(doc.getSelection() === null);
+    console.assert(doc.setCursor(doc.newPosition(para5, 1)).getSelection() === null);
 }

@@ -682,6 +682,19 @@ bool SdrMarkView::ImpIsFrameHandles() const
         }
     }
 
+    /*
+        A client that draws the document from the objects it holds shows one frame around a
+        selection of several objects, so that a drag on a handle scales every object in it and
+        there is one set of handles to draw. A single object keeps its own handles, which is where
+        the interaction points of a shape sit.
+    */
+    if (!bFrmHdl && nMarkCount > 1)
+    {
+        const SfxViewShell* pViewShell = GetSfxViewShell();
+        if (pViewShell && pViewShell->drawsFromObjects())
+            bFrmHdl = true;
+    }
+
     // no FrameHdl for crop
     if(bFrmHdl && SdrDragMode::Crop == meDragMode)
     {
@@ -1020,15 +1033,30 @@ void SdrMarkView::SetMarkHandlesForKit(tools::Rectangle const & rRect, const Sfx
 
             OString handleArrayStr;
 
+            // The first marked object, by the unique id it keeps for as long as it lives. It
+            // used to be the address of the object, which says nothing a reader can act on and
+            // is given to another object once this one is gone.
             aExtraInfo.append("{\"id\":\""
-                + OString::number(reinterpret_cast<sal_IntPtr>(pO))
+                + OString::number(pO->GetUniqueID())
                 + "\",\"type\":"
                 + OString::number(static_cast<sal_Int32>(pO->GetObjIdentifier()))
                 + ",\"typeString\":\"");
             aExtraInfo.append(SdrObjKindToString(pO->GetObjIdentifier()));
             aExtraInfo.append("\",\"OrdNum\":" + OString::number(pO->GetOrdNum()));
 
-            aExtraInfo.append(", \"isMathObject\": " + OString::boolean(lcl_isStarMath(pO)));
+            // Every marked object, by the unique id it keeps for as long as it lives. The order is
+            // the order they were marked in, and one entry stands for one object, so a reader can
+            // tell which objects the selection is about and whether that set moved.
+            aExtraInfo.append(",\"uniqueIds\":[");
+            for (size_t nMark = 0; nMark < rMarkList.GetMarkCount(); ++nMark)
+            {
+                if (nMark > 0)
+                    aExtraInfo.append(",");
+
+                const SdrObject* pMarked = rMarkList.GetMark(nMark)->GetMarkedSdrObj();
+                aExtraInfo.append(OString::number(pMarked ? pMarked->GetUniqueID() : 0));
+            }
+            aExtraInfo.append("], \"isMathObject\": " + OString::boolean(lcl_isStarMath(pO)));
             aExtraInfo.append(", \"isDiagram\": " + OString::boolean(pO->isDiagram()));
 
             if (mpMarkedObj && !pOtherShell)
@@ -2410,10 +2438,20 @@ bool SdrMarkView::MarkNextObj(bool bPrev)
         return false;
     }
 
-    if (nChgMarkNum!=SAL_MAX_SIZE)
+    /*
+        What is walked to is marked on its own, whatever was marked before. The search set off
+        from the topmost of the marked objects going forward and from the lowest going back, so
+        the object it arrived at carries on from the end of the selection it started with.
+    */
+    if (nMarkCount > 1)
+    {
+        GetMarkedObjectListWriteAccess().Clear();
+    }
+    else if (nChgMarkNum!=SAL_MAX_SIZE)
     {
         GetMarkedObjectListWriteAccess().DeleteMark(nChgMarkNum);
     }
+
     MarkObj(pMarkObj,pPageView); // also calls MarkListHasChanged(), AdjustMarkHdl()
     return true;
 }

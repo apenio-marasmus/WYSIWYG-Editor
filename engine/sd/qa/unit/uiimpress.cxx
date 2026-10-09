@@ -44,6 +44,7 @@
 #include <editeng/eeitem.hxx>
 #include <editeng/flditem.hxx>
 #include <editeng/outliner.hxx>
+#include <sfx2/cokitfilepicker.hxx>
 #include <sfx2/dispatch.hxx>
 #include <sfx2/request.hxx>
 #include <sfx2/viewfrm.hxx>
@@ -57,6 +58,7 @@
 #include <svx/svdorect.hxx>
 #include <svx/svdhdl.hxx>
 #include <svx/svddrgmt.hxx>
+#include <svx/svdomedia.hxx>
 #include <svx/svdotable.hxx>
 #include <svx/xlineit0.hxx>
 #include <svx/xfillit0.hxx>
@@ -6315,6 +6317,151 @@ CPPUNIT_TEST_FIXTURE(SdUiImpressTest, testReflectionCommands)
     auto pSize = dynamic_cast<const SfxUInt16Item*>(aResult.getItem());
     CPPUNIT_ASSERT(pSize);
     CPPUNIT_ASSERT_EQUAL(sal_uInt16(70), pSize->GetValue());
+}
+
+namespace
+{
+SdrMediaObj* findMediaObject(const uno::Reference<lang::XComponent>& xComponent)
+{
+    auto pImpressDocument = dynamic_cast<SdXImpressDocument*>(xComponent.get());
+    CPPUNIT_ASSERT(pImpressDocument);
+    SdPage* pPage = pImpressDocument->GetDoc()->GetSdPage(0, PageKind::Standard);
+    for (const rtl::Reference<SdrObject>& pObj : *pPage)
+        if (auto pMediaObj = dynamic_cast<SdrMediaObj*>(pObj.get()))
+            return pMediaObj;
+    return nullptr;
+}
+}
+
+CPPUNIT_TEST_FIXTURE(SdUiImpressTest, testInsertMediaWithoutSize)
+{
+    // A media file dispatched without a size goes in at the default size, even when no media
+    // player can open the file to measure it.
+    createSdImpressDoc();
+    dispatchCommand(mxComponent, u".uno:InsertAVMedia"_ustr,
+                    { comphelper::makePropertyValue(u"URL"_ustr, createFileURL(u"silence.wav")) });
+
+    CPPUNIT_ASSERT(findMediaObject(mxComponent));
+}
+
+CPPUNIT_TEST_FIXTURE(SdUiImpressTest, testInsertMediaFromAppFilePicker)
+{
+    // Media picked with the file picker of a COKit app is embedded in the document, so the
+    // slideshow has an extracted copy to play.
+    createSdImpressDoc();
+    // The picked file arrives as a command for the active frame.
+    mxDesktop->setActiveFrame(uno::Reference<frame::XModel>(mxComponent, uno::UNO_QUERY_THROW)
+                                  ->getCurrentController()
+                                  ->getFrame());
+
+    static OString aPickedUrl;
+    aPickedUrl = createFileURL(u"silence.wav").toUtf8();
+    COKitFilePickerProvider aProvider{};
+    aProvider.pick = [](const char*, const COKitFilePickerFilter*, size_t,
+                        void (*pfnPicked)(void*, const char*), void* pContext)
+    { pfnPicked(pContext, aPickedUrl.getStr()); };
+
+    comphelper::COKit::setActive(true);
+    sfx2::COKitFilePicker::installProvider(&aProvider);
+    comphelper::ScopeGuard aKitGuard(
+        []
+        {
+            sfx2::COKitFilePicker::installProvider(nullptr);
+            comphelper::COKit::setActive(false);
+        });
+
+    dispatchCommand(mxComponent, u".uno:InsertAVMedia"_ustr, {});
+    Scheduler::ProcessEventsToIdle();
+
+    SdrMediaObj* pMediaObj = findMediaObject(mxComponent);
+    CPPUNIT_ASSERT(pMediaObj);
+    CPPUNIT_ASSERT(pMediaObj->getURL().startsWith("vnd.sun.star.Package:"));
+    CPPUNIT_ASSERT(!pMediaObj->getTempURL().isEmpty());
+}
+
+namespace
+{
+double aspectRatio(const Size& rSize) { return rSize.Width() / double(rSize.Height()); }
+}
+
+CPPUNIT_TEST_FIXTURE(SdUiImpressTest, testInsertVideoKeepsItsShape)
+{
+    // With no media player to measure the video, its shape comes from the file headers.
+    createSdImpressDoc();
+    dispatchCommand(mxComponent, u".uno:InsertAVMedia"_ustr,
+                    { comphelper::makePropertyValue(u"URL"_ustr,
+                                                    createFileURL(u"video-320x240.webm")) });
+
+    SdrMediaObj* pMediaObj = findMediaObject(mxComponent);
+    CPPUNIT_ASSERT(pMediaObj);
+    CPPUNIT_ASSERT_DOUBLES_EQUAL(4.0 / 3.0, aspectRatio(pMediaObj->GetLogicRect().GetSize()), 0.01);
+}
+
+CPPUNIT_TEST_FIXTURE(SdUiImpressTest, testInsertLargeVideoFitsTheSlide)
+{
+    // A full HD video is wider than the slide at its pixel size.
+    createSdImpressDoc();
+    dispatchCommand(mxComponent, u".uno:InsertAVMedia"_ustr,
+                    { comphelper::makePropertyValue(u"URL"_ustr,
+                                                    createFileURL(u"video-1920x1080.mp4")) });
+
+    SdrMediaObj* pMediaObj = findMediaObject(mxComponent);
+    CPPUNIT_ASSERT(pMediaObj);
+    const Size aSize = pMediaObj->GetLogicRect().GetSize();
+    const Size aPageSize = pMediaObj->getSdrPageFromSdrObject()->GetSize();
+    CPPUNIT_ASSERT_LESSEQUAL(aPageSize.Width(), aSize.Width());
+    CPPUNIT_ASSERT_LESSEQUAL(aPageSize.Height(), aSize.Height());
+    CPPUNIT_ASSERT_DOUBLES_EQUAL(16.0 / 9.0, aspectRatio(aSize), 0.01);
+}
+
+CPPUNIT_TEST_FIXTURE(SdUiImpressTest, testInsertRotatedVideoIsPortrait)
+{
+    // The file stores 640x360 frames with a quarter turn, as phones record upright video.
+    createSdImpressDoc();
+    dispatchCommand(mxComponent, u".uno:InsertAVMedia"_ustr,
+                    { comphelper::makePropertyValue(u"URL"_ustr,
+                                                    createFileURL(u"video-640x360-rotated.mp4")) });
+
+    SdrMediaObj* pMediaObj = findMediaObject(mxComponent);
+    CPPUNIT_ASSERT(pMediaObj);
+    CPPUNIT_ASSERT_DOUBLES_EQUAL(9.0 / 16.0, aspectRatio(pMediaObj->GetLogicRect().GetSize()),
+                                 0.01);
+}
+
+CPPUNIT_TEST_FIXTURE(SdUiImpressTest, testInsertVideoTakesItsDisplayShape)
+{
+    // The file stores 320x240 frames and asks for them to be shown at an aspect ratio of 16:9.
+    createSdImpressDoc();
+    dispatchCommand(mxComponent, u".uno:InsertAVMedia"_ustr,
+                    { comphelper::makePropertyValue(u"URL"_ustr,
+                                                    createFileURL(u"video-320x240-wide.webm")) });
+
+    SdrMediaObj* pMediaObj = findMediaObject(mxComponent);
+    CPPUNIT_ASSERT(pMediaObj);
+    CPPUNIT_ASSERT_DOUBLES_EQUAL(16.0 / 9.0, aspectRatio(pMediaObj->GetLogicRect().GetSize()),
+                                 0.01);
+}
+
+CPPUNIT_TEST_FIXTURE(SdUiImpressTest, testInsertLargeVideoFitsInsideTheMargins)
+{
+    // A Draw page has margins, and a full HD video is wider than the space between them.
+    createSdDrawDoc();
+    dispatchCommand(mxComponent, u".uno:InsertAVMedia"_ustr,
+                    { comphelper::makePropertyValue(u"URL"_ustr,
+                                                    createFileURL(u"video-1920x1080.mp4")) });
+
+    SdrMediaObj* pMediaObj = findMediaObject(mxComponent);
+    CPPUNIT_ASSERT(pMediaObj);
+    const SdrPage* pPage = pMediaObj->getSdrPageFromSdrObject();
+    CPPUNIT_ASSERT(pPage->GetLeftBorder() + pPage->GetRightBorder() > 0);
+    const Size aSize = pMediaObj->GetLogicRect().GetSize();
+    CPPUNIT_ASSERT_LESSEQUAL(
+        pPage->GetSize().Width() - pPage->GetLeftBorder() - pPage->GetRightBorder(),
+        aSize.Width());
+    CPPUNIT_ASSERT_LESSEQUAL(
+        pPage->GetSize().Height() - pPage->GetUpperBorder() - pPage->GetLowerBorder(),
+        aSize.Height());
+    CPPUNIT_ASSERT_DOUBLES_EQUAL(16.0 / 9.0, aspectRatio(aSize), 0.01);
 }
 
 CPPUNIT_PLUGIN_IMPLEMENT();

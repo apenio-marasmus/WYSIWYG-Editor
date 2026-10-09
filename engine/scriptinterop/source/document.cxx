@@ -14,6 +14,7 @@
 #include <cmath>
 #include <optional>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <com/sun/star/awt/FontSlant.hpp>
@@ -107,36 +108,166 @@ template<typename T>
 css::beans::Optional<cpo::uno::Reference<T>> maybe(cpo::uno::Reference<T> const & ref)
 { return {ref.is(), ref}; }
 
-// The text of a range, which is its string without the numbers of the footnote references in it,
-// as GAS leaves those out:
-OUString textOf(cpo::uno::Reference<css::text::XTextRange> const & range)
+// The length of the line end at offset in string, which is zero at the end of string:
+sal_Int32 lineEndAt(OUString const & string, sal_Int32 offset) {
+    if (offset == string.getLength()) {
+        return 0;
+    }
+    if (string.match(u"\r\n", offset)) {
+        return 2;
+    }
+    if (string.match(u"\n", offset)) {
+        return 1;
+    }
+    throw cpo::uno::RuntimeException(
+        "textOf: expected a line end at offset " + OUString::number(offset));
+}
+
+// The offset and the length of the number of each footnote reference in string, which is the
+// string of range, in increasing order:
+std::vector<std::pair<sal_Int32, sal_Int32>> footnoteNumbers(
+    cpo::uno::Reference<css::text::XTextRange> const & range, OUString const & string)
 {
-    OUString text = range->getString();
+    std::vector<std::pair<sal_Int32, sal_Int32>> numbers;
     auto const host = range->getText();
-    std::vector<cpo::uno::Reference<css::text::XTextRange>> footnotes;
-    cpo::uno::Reference<css::container::XEnumerationAccess> const paragraphs(
-        host->createTextCursorByRange(range), cpo::uno::UNO_QUERY_THROW);
-    for (auto const en = paragraphs->createEnumeration(); en->hasMoreElements();) {
-        cpo::uno::Reference<css::container::XEnumerationAccess> const portions(
-            en->nextElement(), cpo::uno::UNO_QUERY);
-        if (!portions.is()) {
+    // A table's text starts after the line end that follows the paragraph or table before it, and
+    // a table's text is the strings of its cells, each followed by a line end except the last one:
+    cpo::uno::Reference<css::text::XTextRange> previousParagraph;
+    sal_Int32 afterPreviousTable = 0;
+    // A text cursor cannot start in a table, as at the start of a table cell that begins with a
+    // nested table, so the whole of a text enumerates its elements itself:
+    cpo::uno::Reference<css::container::XEnumerationAccess> elements;
+    if (cpo::uno::Reference<css::text::XText>(range, cpo::uno::UNO_QUERY).is()) {
+        elements.set(range, cpo::uno::UNO_QUERY_THROW);
+    } else {
+        elements.set(host->createTextCursorByRange(range), cpo::uno::UNO_QUERY_THROW);
+    }
+    for (auto const en = elements->createEnumeration(); en->hasMoreElements();) {
+        auto const element = en->nextElement();
+        cpo::uno::Reference<css::text::XTextTable> const table(element, cpo::uno::UNO_QUERY);
+        if (table.is()) {
+            sal_Int32 offset = afterPreviousTable;
+            if (previousParagraph.is()) {
+                auto const before = host->createTextCursorByRange(range->getStart());
+                before->gotoRange(previousParagraph->getEnd(), true);
+                offset = before->getString().getLength();
+                offset += lineEndAt(string, offset);
+            }
+            cpo::uno::Reference<css::table::XCellRange> const cells(
+                table, cpo::uno::UNO_QUERY_THROW);
+            auto const rowCount = table->getRows()->getCount();
+            bool first = true;
+            for (sal_Int32 row = 0; row != rowCount; ++row) {
+                for (sal_Int32 column = 0;; ++column) {
+                    cpo::uno::Reference<css::text::XText> cell;
+                    try {
+                        cell.set(cells->getCellByPosition(column, row), cpo::uno::UNO_QUERY_THROW);
+                    } catch (css::lang::IndexOutOfBoundsException const &) {
+                        break;
+                    }
+                    if (!first) {
+                        offset += lineEndAt(string, offset);
+                    }
+                    first = false;
+                    auto const cellString = cell->getString();
+                    if (!string.match(cellString, offset)) {
+                        throw cpo::uno::RuntimeException(
+                            "textOf: expected the text of a table cell at offset "
+                            + OUString::number(offset));
+                    }
+                    for (auto const & number: footnoteNumbers(cell, cellString)) {
+                        numbers.emplace_back(offset + number.first, number.second);
+                    }
+                    offset += cellString.getLength();
+                }
+            }
+            afterPreviousTable = offset + lineEndAt(string, offset);
+            previousParagraph.clear();
             continue;
         }
+        cpo::uno::Reference<css::container::XEnumerationAccess> const portions(
+            element, cpo::uno::UNO_QUERY_THROW);
         for (auto const pen = portions->createEnumeration(); pen->hasMoreElements();) {
             cpo::uno::Reference<css::beans::XPropertySet> const portion(
                 pen->nextElement(), cpo::uno::UNO_QUERY_THROW);
             OUString type;
             portion->getPropertyValue(u"TextPortionType"_ustr) >>= type;
             if (type == u"Footnote") {
-                footnotes.emplace_back(portion, cpo::uno::UNO_QUERY_THROW);
+                cpo::uno::Reference<css::text::XTextRange> const footnote(
+                    portion, cpo::uno::UNO_QUERY_THROW);
+                auto const before = host->createTextCursorByRange(range->getStart());
+                before->gotoRange(footnote->getStart(), true);
+                // The string of an empty selection right at a footnote reference is the number of
+                // that footnote:
+                numbers.emplace_back(
+                    before->isCollapsed() ? 0 : before->getString().getLength(),
+                    footnote->getString().getLength());
             }
         }
+        previousParagraph.set(element, cpo::uno::UNO_QUERY_THROW);
     }
-    for (auto i = footnotes.rbegin(); i != footnotes.rend(); ++i) {
-        auto const before = host->createTextCursorByRange(range->getStart());
-        before->gotoRange((*i)->getStart(), true);
-        text = text.replaceAt(
-            before->getString().getLength(), (*i)->getString().getLength(), u"");
+    return numbers;
+}
+
+// The text of a range, which is its string without the numbers of the footnote references in it,
+// as GAS leaves those out:
+OUString textOf(cpo::uno::Reference<css::text::XTextRange> const & range)
+{
+    // Writer's string of a whole text, as of a table cell, lacks most of a table that the text
+    // starts with, so a whole text joins the texts of its paragraphs and table cells with line
+    // ends:
+    if (cpo::uno::Reference<css::text::XText> const whole{range, cpo::uno::UNO_QUERY}) {
+        OUStringBuffer buf;
+        bool first = true;
+        auto const append = [&buf, &first](OUString const & part) {
+            if (!first) {
+                buf.append('\n');
+            }
+            first = false;
+            buf.append(part);
+        };
+        cpo::uno::Reference<css::container::XEnumerationAccess> const elements(
+            whole, cpo::uno::UNO_QUERY_THROW);
+        for (auto const en = elements->createEnumeration(); en->hasMoreElements();) {
+            auto const element = en->nextElement();
+            if (cpo::uno::Reference<css::text::XTextTable> const table{
+                    element, cpo::uno::UNO_QUERY})
+            {
+                cpo::uno::Reference<css::table::XCellRange> const cells(
+                    table, cpo::uno::UNO_QUERY_THROW);
+                auto const rowCount = table->getRows()->getCount();
+                for (sal_Int32 row = 0; row != rowCount; ++row) {
+                    for (sal_Int32 column = 0;; ++column) {
+                        cpo::uno::Reference<css::text::XTextRange> cell;
+                        try {
+                            cell.set(
+                                cells->getCellByPosition(column, row), cpo::uno::UNO_QUERY_THROW);
+                        } catch (css::lang::IndexOutOfBoundsException const &) {
+                            break;
+                        }
+                        append(textOf(cell));
+                    }
+                }
+            } else {
+                append(textOf(cpo::uno::Reference<css::text::XTextRange>(
+                    element, cpo::uno::UNO_QUERY_THROW)));
+            }
+        }
+        return buf.makeStringAndClear();
+    }
+    // A text portion contains a footnote reference only when it is one:
+    if (cpo::uno::Reference<css::lang::XServiceInfo> const info{range, cpo::uno::UNO_QUERY};
+        info.is() && info->supportsService(u"com.sun.star.text.TextPortion"_ustr))
+    {
+        OUString type;
+        cpo::uno::Reference<css::beans::XPropertySet>(range, cpo::uno::UNO_QUERY_THROW)
+            ->getPropertyValue(u"TextPortionType"_ustr) >>= type;
+        return type == u"Footnote" ? OUString() : range->getString();
+    }
+    OUString text = range->getString();
+    auto const numbers = footnoteNumbers(range, text);
+    for (auto i = numbers.rbegin(); i != numbers.rend(); ++i) {
+        text = text.replaceAt(i->first, i->second, u"");
     }
     return text;
 }
@@ -440,14 +571,101 @@ private:
     cpo::uno::Reference<css::text::XTextContent> image_;
 };
 
+OUString elementTypeName(scriptinterop::ElementType type) {
+    switch (type) {
+    case scriptinterop::ElementType_PARAGRAPH:
+        return u"PARAGRAPH"_ustr;
+    case scriptinterop::ElementType_LIST_ITEM:
+        return u"LIST_ITEM"_ustr;
+    case scriptinterop::ElementType_TABLE:
+        return u"TABLE"_ustr;
+    case scriptinterop::ElementType_TABLE_ROW:
+        return u"TABLE_ROW"_ustr;
+    case scriptinterop::ElementType_TABLE_CELL:
+        return u"TABLE_CELL"_ustr;
+    case scriptinterop::ElementType_INLINE_IMAGE:
+        return u"INLINE_IMAGE"_ustr;
+    case scriptinterop::ElementType_PAGE_BREAK:
+        return u"PAGE_BREAK"_ustr;
+    case scriptinterop::ElementType_HORIZONTAL_RULE:
+        return u"HORIZONTAL_RULE"_ustr;
+    case scriptinterop::ElementType_BODY_SECTION:
+        return u"BODY_SECTION"_ustr;
+    case scriptinterop::ElementType_FOOTNOTE:
+        return u"FOOTNOTE"_ustr;
+    case scriptinterop::ElementType_FOOTNOTE_SECTION:
+        return u"FOOTNOTE_SECTION"_ustr;
+    case scriptinterop::ElementType_TEXT:
+        return u"TEXT"_ustr;
+    default:
+        throw cpo::uno::RuntimeException(
+            "unknown element type " + OUString::number(static_cast<sal_Int32>(type)));
+    }
+}
+
+// As in GAS, an element can be cast to the interface of its own type only:
 template<typename T> class ElementImpl: public cppu::WeakImplHelper<T> {
 public:
+    cpo::uno::Reference<scriptinterop::XBody> asBody() override {
+        return cast<scriptinterop::XBody>(scriptinterop::ElementType_BODY_SECTION);
+    }
+
+    cpo::uno::Reference<scriptinterop::XFootnote> asFootnote() override {
+        return cast<scriptinterop::XFootnote>(scriptinterop::ElementType_FOOTNOTE);
+    }
+
+    cpo::uno::Reference<scriptinterop::XContainerElement> asFootnoteSection() override {
+        return cast<scriptinterop::XContainerElement>(scriptinterop::ElementType_FOOTNOTE_SECTION);
+    }
+
     cpo::uno::Reference<scriptinterop::XInlineImage> asInlineImage() override {
-        if (this->getType() != scriptinterop::ElementType_INLINE_IMAGE) {
-            return {};
+        return cast<scriptinterop::XInlineImage>(scriptinterop::ElementType_INLINE_IMAGE);
+    }
+
+    cpo::uno::Reference<scriptinterop::XParagraph> asListItem() override {
+        return cast<scriptinterop::XParagraph>(scriptinterop::ElementType_LIST_ITEM);
+    }
+
+    cpo::uno::Reference<scriptinterop::XParagraph> asParagraph() override {
+        return cast<scriptinterop::XParagraph>(scriptinterop::ElementType_PARAGRAPH);
+    }
+
+    cpo::uno::Reference<scriptinterop::XTable> asTable() override {
+        return cast<scriptinterop::XTable>(scriptinterop::ElementType_TABLE);
+    }
+
+    cpo::uno::Reference<scriptinterop::XTableCell> asTableCell() override {
+        return cast<scriptinterop::XTableCell>(scriptinterop::ElementType_TABLE_CELL);
+    }
+
+    cpo::uno::Reference<scriptinterop::XTableRow> asTableRow() override {
+        return cast<scriptinterop::XTableRow>(scriptinterop::ElementType_TABLE_ROW);
+    }
+
+    // GAS also gives the other containers a text view, which this does not have yet:
+    cpo::uno::Reference<scriptinterop::XText> asText() override {
+        switch (this->getType()) {
+        case scriptinterop::ElementType_BODY_SECTION:
+        case scriptinterop::ElementType_FOOTNOTE_SECTION:
+        case scriptinterop::ElementType_TABLE:
+        case scriptinterop::ElementType_TABLE_CELL:
+        case scriptinterop::ElementType_TABLE_ROW:
+            throw cpo::uno::RuntimeException(
+                "asText is not yet implemented for " + elementTypeName(this->getType())); // TODO
+        default:
+            return cast<scriptinterop::XText>(scriptinterop::ElementType_TEXT);
         }
-        return cpo::uno::Reference<scriptinterop::XInlineImage>(
-            static_cast<T *>(this), cpo::uno::UNO_QUERY_THROW);
+    }
+
+private:
+    template<typename U> cpo::uno::Reference<U> cast(scriptinterop::ElementType type) {
+        auto const own = this->getType();
+        cpo::uno::Reference<U> const element(static_cast<T *>(this), cpo::uno::UNO_QUERY);
+        if (own != type || !element.is()) {
+            throw cpo::uno::RuntimeException(
+                elementTypeName(own) + " can't be cast to " + elementTypeName(type) + ".");
+        }
+        return element;
     }
 };
 
@@ -474,6 +692,12 @@ public:
     }
 
     cpo::uno::Reference<cpo::uno::XInterface> getuno() override { return content_; }
+
+    cpo::uno::Reference<scriptinterop::XParagraph> asListItem() override;
+
+    cpo::uno::Reference<scriptinterop::XParagraph> asParagraph() override;
+
+    cpo::uno::Reference<scriptinterop::XText> asText() override { return this; }
 
     cpo::uno::Reference<scriptinterop::XText> appendText(OUString const & text) override {
         auto const whole = wholeRange();
@@ -555,8 +779,12 @@ public:
         v.reserve(runs_.empty() ? 1 : runs_.size());
         sal_Int32 off = 0;
         for (auto const & r: runs_) {
-            v.push_back(off);
-            off += textOf(r).getLength();
+            // A footnote reference is a run without text:
+            auto const length = textOf(r).getLength();
+            if (length != 0) {
+                v.push_back(off);
+                off += length;
+            }
         }
         if (v.empty()) {
             v.push_back(0);
@@ -624,7 +852,10 @@ public:
         return {true, underline != css::awt::FontUnderline::NONE};
     }
 
-    void removeFromParent() override { removeParagraph(content_); }
+    cpo::uno::Reference<scriptinterop::XElement> removeFromParent() override {
+        removeParagraph(content_);
+        return this;
+    }
 
     cpo::uno::Reference<scriptinterop::XText> setBold(bool value) override {
         setBoldOn(wholeRange(), value);
@@ -934,7 +1165,10 @@ public:
         return hundredthMmToPixels(hundredthMm);
     }
 
-    void removeFromParent() override { removeContent(content_); }
+    cpo::uno::Reference<scriptinterop::XElement> removeFromParent() override {
+        removeContent(content_);
+        return this;
+    }
 
     cpo::uno::Reference<scriptinterop::XInlineImage> setAltDescription(OUString const & description)
         override
@@ -996,9 +1230,10 @@ public:
         return new TextImpl(parent_, content_, getType());
     }
 
-    void clear() override {
+    cpo::uno::Reference<scriptinterop::XContainerElement> clear() override {
         cpo::uno::Reference<css::text::XTextRange>(content_, cpo::uno::UNO_QUERY_THROW)
             ->setString(OUString());
+        return this;
     }
 
     // TODO: return a detached deep copy, not this; mutations on the "copy" write back to the live
@@ -1256,7 +1491,10 @@ public:
         return {true, mode != css::text::WritingMode2::RL_TB};
     }
 
-    void removeFromParent() override { removeParagraph(content_); }
+    cpo::uno::Reference<scriptinterop::XElement> removeFromParent() override {
+        removeParagraph(content_);
+        return this;
+    }
 
 private:
     std::optional<cpo::uno::Any> getParaProp(OUString const & name) {
@@ -1331,6 +1569,21 @@ private:
     cpo::uno::Reference<css::text::XTextContent> content_;
 };
 
+// A paragraph's text view casts back to the paragraph, as it reports the paragraph's type:
+cpo::uno::Reference<scriptinterop::XParagraph> TextImpl::asListItem() {
+    if (reportedType_ != scriptinterop::ElementType_LIST_ITEM) {
+        return ElementImpl::asListItem();
+    }
+    return new ParagraphImpl(parent_, content_);
+}
+
+cpo::uno::Reference<scriptinterop::XParagraph> TextImpl::asParagraph() {
+    if (reportedType_ != scriptinterop::ElementType_PARAGRAPH) {
+        return ElementImpl::asParagraph();
+    }
+    return new ParagraphImpl(parent_, content_);
+}
+
 class TableCellImpl: public ElementImpl<scriptinterop::XTableCell> {
 public:
     explicit TableCellImpl(
@@ -1340,11 +1593,12 @@ public:
 
     cpo::uno::Reference<cpo::uno::XInterface> getuno() override { return text_; }
 
-    void clear() override {
+    cpo::uno::Reference<scriptinterop::XContainerElement> clear() override {
         if (!text_.is()) {
             throw cpo::uno::RuntimeException(u"clear: the table cell has no text"_ustr);
         }
         text_->setString(OUString());
+        return this;
     }
 
     // TODO: return a detached deep copy, not this; mutations on the "copy" write back to the live
@@ -1405,7 +1659,7 @@ public:
         return textOf(text_);
     }
 
-    void removeFromParent() override {
+    cpo::uno::Reference<scriptinterop::XElement> removeFromParent() override {
         throw cpo::uno::RuntimeException(
             u"a table cell cannot be removed on its own; remove its row instead"_ustr);
     }
@@ -1434,7 +1688,7 @@ public:
         return row;
     }
 
-    void clear() override {
+    cpo::uno::Reference<scriptinterop::XContainerElement> clear() override {
         throw cpo::uno::RuntimeException(u"TableRow.clear is not yet implemented"_ustr); // TODO
     }
 
@@ -1526,7 +1780,7 @@ public:
         return buf.makeStringAndClear();
     }
 
-    void removeFromParent() override {
+    cpo::uno::Reference<scriptinterop::XElement> removeFromParent() override {
         if (!table_.is()) {
             throw cpo::uno::RuntimeException(
                 u"removeFromParent: the row is not part of a table"_ustr);
@@ -1537,6 +1791,7 @@ public:
                 u"removeFromParent: the row is not attached to its table"_ustr);
         }
         rows->removeByIndex(rowIndex_, 1);
+        return this;
     }
 
 private:
@@ -1554,7 +1809,7 @@ public:
 
     cpo::uno::Reference<cpo::uno::XInterface> getuno() override { return table_; }
 
-    void clear() override {
+    cpo::uno::Reference<scriptinterop::XContainerElement> clear() override {
         throw cpo::uno::RuntimeException(u"Table.clear is not yet implemented"_ustr); // TODO
     }
 
@@ -1623,8 +1878,9 @@ public:
         return buf.makeStringAndClear();
     }
 
-    void removeFromParent() override {
+    cpo::uno::Reference<scriptinterop::XElement> removeFromParent() override {
         removeContent(cpo::uno::Reference<css::text::XTextContent>(table_, cpo::uno::UNO_QUERY_THROW));
+        return this;
     }
 
 private:
@@ -2054,11 +2310,12 @@ public:
 
     cpo::uno::Reference<cpo::uno::XInterface> getuno() override { return text_; }
 
-    void clear() override {
+    cpo::uno::Reference<scriptinterop::XContainerElement> clear() override {
         if (!text_.is()) {
             throw cpo::uno::RuntimeException(u"clear: the footnote section has no text"_ustr);
         }
         text_->setString(OUString());
+        return this;
     }
 
     // TODO: return a detached deep copy, not this; mutations on the "copy" write back to the live
@@ -2100,7 +2357,7 @@ public:
         return scriptinterop::ElementType_FOOTNOTE_SECTION;
     }
 
-    void removeFromParent() override {
+    cpo::uno::Reference<scriptinterop::XElement> removeFromParent() override {
         throw cpo::uno::RuntimeException(
             u"a footnote section cannot be removed on its own; remove its footnote instead"_ustr);
     }
@@ -2149,9 +2406,10 @@ public:
 
     scriptinterop::ElementType getType() override { return scriptinterop::ElementType_FOOTNOTE; }
 
-    void removeFromParent() override {
+    cpo::uno::Reference<scriptinterop::XElement> removeFromParent() override {
         removeContent(
             cpo::uno::Reference<css::text::XTextContent>(footnote_, cpo::uno::UNO_QUERY_THROW));
+        return this;
     }
 
 private:
@@ -2186,7 +2444,7 @@ public:
         return appendImpl(text, u""_ustr);
     }
 
-    void clear() override {
+    cpo::uno::Reference<scriptinterop::XContainerElement> clear() override {
         throw cpo::uno::RuntimeException(u"Body.clear is not yet implemented"_ustr); // TODO
     }
 
@@ -2232,7 +2490,7 @@ public:
         return scriptinterop::ElementType_BODY_SECTION;
     }
 
-    void removeFromParent() override {
+    cpo::uno::Reference<scriptinterop::XElement> removeFromParent() override {
         throw cpo::uno::RuntimeException(u"the body has no parent to remove it from"_ustr);
     }
 
@@ -2451,7 +2709,9 @@ public:
         return new RangeBuilderImpl;
     }
 
-    void setCursor(cpo::uno::Reference<scriptinterop::XCursor> const & position) override {
+    cpo::uno::Reference<scriptinterop::XDocument> setCursor(
+        cpo::uno::Reference<scriptinterop::XCursor> const & position) override
+    {
         if (!position.is()) {
             throw cpo::uno::RuntimeException(u"setCursor: the position must not be null"_ustr);
         }
@@ -2466,9 +2726,12 @@ public:
                 u"setCursor: the position is not somewhere the cursor can be"_ustr);
         }
         cursorPosition_ = position;
+        return this;
     }
 
-    void setSelection(cpo::uno::Reference<scriptinterop::XSelection> const & selection) override {
+    cpo::uno::Reference<scriptinterop::XDocument> setSelection(
+        cpo::uno::Reference<scriptinterop::XSelection> const & selection) override
+    {
         if (!selection.is()) {
             throw cpo::uno::RuntimeException(u"setSelection: the selection must not be null"_ustr);
         }
@@ -2483,10 +2746,11 @@ public:
             idx->getByIndex(0) >>= range;
             if (range.is()) {
                 sup->select(cpo::uno::Any(range));
-                return;
+                return this;
             }
         }
         sup->select(cpo::uno::Any(selection->getuno()));
+        return this;
     }
 
     cpo::uno::Sequence<cpo::uno::Reference<scriptinterop::XFootnote>> getFootnotes() override {

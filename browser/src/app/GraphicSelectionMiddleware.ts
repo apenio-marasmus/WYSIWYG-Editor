@@ -14,6 +14,18 @@
 declare var JSDialog: any;
 
 class GraphicSelection {
+	/*
+		The drawing objects the selection stands on, by the unique ids the engine gives them, empty
+		while nothing is selected. They all sit at the same level: directly on the page, or in one
+		and the same group.
+	*/
+	public static selectedObjectIDs: number[] = [];
+
+	/*
+		True when the selection that arrived last was made somewhere other than here - the
+		keyboard, an undo, another user - and false when it is the one this client asked for.
+	*/
+	public static selectionCameFromElsewhere: boolean = false;
 	public static rectangle: cool.SimpleRectangle | null = null;
 	public static extraInfo: any = null;
 	public static selectionAngle: number = 0;
@@ -34,7 +46,593 @@ class GraphicSelection {
 		this.updateGraphicSelection();
 	}
 
+	/*
+		Marks the drawing objects with the given unique ids, and nothing else. The engine is told
+		which objects they are rather than where the click was, so what the client hit and what the
+		engine marks are one thing. An empty list asks for no selection at all.
+	*/
+	public static selectObjects(objectIds: number[]) {
+		this.selectedObjectIDs = objectIds.slice();
+		app.socket.sendMessage('selectobjects ids=' + objectIds.join(','));
+	}
+
+	/*
+		Takes up the selection the engine reports and says whether it is another one than the
+		client holds. It is the same one whenever the client asked for it, since the answer names
+		the objects it named itself.
+	*/
+	public static selectionChanged(objectIds: number[]): boolean {
+		const changed =
+			objectIds.length !== this.selectedObjectIDs.length ||
+			objectIds.some(
+				(objectId: number, index: number) =>
+					objectId !== this.selectedObjectIDs[index],
+			);
+
+		// The keyboard works on a handle of what is selected, so another selection leaves it.
+		if (changed) GraphicSelection.leaveHandleMode();
+
+		this.selectedObjectIDs = objectIds.slice();
+		this.selectionCameFromElsewhere = changed;
+		return changed;
+	}
+
+	/// The objects the engine says are selected, in the order it marked them.
+	private static selectedObjectIDsOf(extraInfo: any): number[] {
+		const objectIds = extraInfo?.uniqueIds;
+		return Array.isArray(objectIds) ? objectIds : [];
+	}
+
+	/*
+		The boxes of the other objects of the page, in pixels, for a drag to snap to. While the
+		document is drawn from objects the client works them out from what it holds; otherwise they
+		are the ones the engine sends along with the selection. What is being dragged is left out,
+		since a drag does not snap to itself.
+	*/
+	public static snapRectangles(): number[][] {
+		if (RenderManager.isVectorRendering()) {
+			// The boxes the client holds are twips already, where the ones the engine sends are
+			// hundredths of a millimetre and are corrected on their way in.
+			const scale = app.twipsToPixels;
+			const rectangles: number[][] = [];
+
+			RenderGeometrySection.objectBoxes().forEach(
+				(box: number[], objectId: number) => {
+					if (this.selectedObjectIDs.includes(objectId)) return;
+					rectangles.push(box.map((value: number) => value * scale));
+				},
+			);
+
+			return rectangles;
+		}
+
+		const rectangles = this.extraInfo?.ObjectRectangles;
+		if (!Array.isArray(rectangles)) return [];
+
+		const ordNum = this.extraInfo.OrdNum;
+		return rectangles.filter((rectangle: number[]) => rectangle[4] !== ordNum);
+	}
+
+	/*
+		The eight handles that frame what is selected, in the order the engine numbers them: upper
+		left, upper, upper right, left, right, lower left, lower, lower right. One object is framed
+		by its own shape, so a rotated object is framed at its rotated corners; several objects are
+		framed by the upright box around all of them, which is what a drag on such a handle scales.
+	*/
+	private static framingHandles(objectIds: number[]): any[] | undefined {
+		const corners: number[][] = [];
+
+		if (objectIds.length === 1) {
+			const transform = RenderGeometrySection.objectOf(objectIds[0])?.transform;
+			if (!transform) return undefined;
+
+			const unitSquare = RenderGeometrySection.unitRectangleCorners(transform);
+			// The unit rectangle answers its four corners, and a framing handle sits on each of
+			// them and halfway along each side.
+			const [upperLeft, upperRight, lowerRight, lowerLeft] = unitSquare;
+			const middle = (one: number[], other: number[]) => [
+				(one[0] + other[0]) / 2,
+				(one[1] + other[1]) / 2,
+			];
+
+			corners.push(
+				upperLeft,
+				middle(upperLeft, upperRight),
+				upperRight,
+				middle(upperLeft, lowerLeft),
+				middle(upperRight, lowerRight),
+				lowerLeft,
+				middle(lowerLeft, lowerRight),
+				lowerRight,
+			);
+		} else {
+			let left = Infinity;
+			let top = Infinity;
+			let right = -Infinity;
+			let bottom = -Infinity;
+
+			for (const objectId of objectIds) {
+				const object = RenderGeometrySection.objectOf(objectId);
+				if (!object || object.x === undefined || object.y === undefined)
+					return undefined;
+
+				left = Math.min(left, object.x);
+				top = Math.min(top, object.y);
+				right = Math.max(right, object.x + (object.width ?? 0));
+				bottom = Math.max(bottom, object.y + (object.height ?? 0));
+			}
+
+			const middleX = (left + right) / 2;
+			const middleY = (top + bottom) / 2;
+			corners.push(
+				[left, top],
+				[middleX, top],
+				[right, top],
+				[left, middleY],
+				[right, middleY],
+				[left, bottom],
+				[middleX, bottom],
+				[right, bottom],
+			);
+		}
+
+		// The pointer the engine asks for at each of the eight, in the same order.
+		const pointers = [11, 7, 12, 9, 10, 13, 8, 14];
+
+		/*
+			An object without width or height would have handles on top of each other, so only the
+			ones that stand apart are made: the corners go where there is both width and height,
+			the handle in the middle of a side where the side has a length, and an object that is
+			a point keeps the upper left one alone. The engine draws them by the same rule.
+		*/
+		const [upperLeft, upperRight, lowerLeft] = [
+			corners[0],
+			corners[2],
+			corners[5],
+		];
+		const hasWidth =
+			upperLeft[0] !== upperRight[0] || upperLeft[1] !== upperRight[1];
+		const hasHeight =
+			upperLeft[0] !== lowerLeft[0] || upperLeft[1] !== lowerLeft[1];
+
+		const wanted = (kind: number): boolean => {
+			if (!hasWidth && !hasHeight) return kind === 1;
+			// The corners, and the middle of a side across the direction that has a length.
+			if (kind === 2 || kind === 7) return hasWidth;
+			if (kind === 4 || kind === 5) return hasHeight;
+			return hasWidth && hasHeight;
+		};
+
+		/*
+			What draws the handles expects the whole set of eight and reads them by kind, so an
+			object that would have fewer of them is left to the engine, which sends the handles
+			that object really has.
+		*/
+		if (![1, 2, 3, 4, 5, 6, 7, 8].every(wanted)) return undefined;
+
+		return corners.map((corner: number[], index: number) => ({
+			id: String(index + 1) + '.0.0',
+			name: String(index + 1) + '.0.0',
+			kind: String(index + 1),
+			pointer: String(pointers[index]),
+			point: { x: Math.round(corner[0]), y: Math.round(corner[1]) },
+		}));
+	}
+
+	/*
+		The handles of the selection, worked out from the objects the client holds: the eight that
+		frame it, and the ones that shape a single object, its corner radius and the points a
+		custom shape is shaped by. Each of them is named by what it is, which is how the engine is
+		told which handle a drag moved. Nothing where the client holds no geometry for what is
+		selected, so that the engine's own handles are used instead.
+	*/
+	public static localHandles(): any | undefined {
+		const objectIds = this.selectedObjectIDs;
+		if (!objectIds.length) return undefined;
+
+		const framing = GraphicSelection.framingHandles(objectIds);
+		if (!framing) return undefined;
+
+		const rectangle: any = {};
+		framing.forEach((handle: any) => {
+			rectangle[handle.kind] = [handle];
+		});
+
+		const shaping: any[] = [];
+		if (objectIds.length === 1) {
+			const object = RenderGeometrySection.objectOf(objectIds[0]);
+			for (const handle of object?.handles ?? []) {
+				const name =
+					String(handle.kind) +
+					'.' +
+					String(handle.polygon ?? 0) +
+					'.' +
+					String(handle.point ?? 0) +
+					(handle.behindThePoint ? '.behind' : '');
+
+				shaping.push({
+					id: name,
+					name: name,
+					kind: String(handle.kind),
+					pointer: '28',
+					point: { x: handle.x, y: handle.y },
+				});
+			}
+		}
+
+		const kinds: any = {
+			rectangle: rectangle,
+			poly: '',
+			anchor: '',
+			others: '',
+		};
+		if (shaping.length) kinds.custom = { '22': shaping };
+
+		return { kinds: kinds };
+	}
+
+	/// The handles the client last worked out, as text, to tell a set that moved from one that
+	/// did not.
+	private static lastLocalHandles: string | null = null;
+
+	/*
+		Puts the handles the client works out into the selection, and says whether they differ from
+		the ones drawn now.
+	*/
+	public static applyLocalHandles(): boolean {
+		if (!RenderManager.isVectorRendering() || !this.extraInfo) return false;
+
+		const handles = GraphicSelection.localHandles();
+		if (!handles) return false;
+
+		this.extraInfo.handles = handles;
+
+		const shape = JSON.stringify(handles);
+		const moved = shape !== this.lastLocalHandles;
+		this.lastLocalHandles = shape;
+		return moved;
+	}
+
+	/*
+		Works the handles out again from the objects as they stand now. The engine reports a
+		selection as soon as it changes, while the objects it stands on arrive with the update
+		that follows, so the handles of a shape that was just dragged are worked out once more when
+		that update lands. Without it they would show where the shape was before.
+
+		Objects change far more often than a selection does - one update per keystroke while
+		someone types - so the sections that draw the handles are built again only when the
+		handles really moved.
+	*/
+	public static refreshLocalHandles(): void {
+		if (GraphicSelection.applyLocalHandles() && this.handlesSection)
+			this.handlesSection.refreshInfo(this.extraInfo);
+	}
+
+	/*
+		The handle the keyboard works on, by the name that says what it is, or null while the
+		keyboard is not on a handle. A name outlives the handles being built again after every
+		move, where a place in a list would not.
+	*/
+	public static activeHandleName: string | null = null;
+
+	/*
+		Whether the active handle is drawn in this moment. It blinks at the speed the text cursor
+		blinks, half a second shown and half a second not, so that the handle the keyboard works on
+		is the one thing moving on the page.
+	*/
+	public static activeHandleVisible: boolean = true;
+	private static activeHandleBlink: ReturnType<typeof setInterval> | null =
+		null;
+
+	/*
+		How long the active handle stays shown, and then hidden, in milliseconds. The engine says
+		what the desktop of the person using it asks for; half a second stands in until it does,
+		which is what the text cursor of this client does anyway.
+	*/
+	public static blinkTime: number = 500;
+
+	/// Takes the blink speed the engine reports, and blinks at it from now on.
+	public static setBlinkTime(milliseconds: number): void {
+		if (!(milliseconds > 0) || milliseconds === this.blinkTime) return;
+
+		this.blinkTime = milliseconds;
+
+		// Start again at the new speed where the handle is blinking now.
+		if (this.activeHandleBlink !== null) {
+			GraphicSelection.blinkActiveHandle(false);
+			GraphicSelection.blinkActiveHandle(true);
+		}
+	}
+
+	/// Starts the active handle blinking, or stops it and leaves it shown.
+	private static blinkActiveHandle(wanted: boolean): void {
+		if (wanted === (this.activeHandleBlink !== null)) return;
+
+		if (!wanted) {
+			clearInterval(this.activeHandleBlink);
+			this.activeHandleBlink = null;
+			this.activeHandleVisible = true;
+			return;
+		}
+
+		this.activeHandleVisible = true;
+		this.activeHandleBlink = setInterval(() => {
+			GraphicSelection.activeHandleVisible =
+				!GraphicSelection.activeHandleVisible;
+			app.sectionContainer?.requestReDraw();
+		}, this.blinkTime);
+	}
+
+	/*
+		How far the view scrolls along one axis to show a stretch of the document that starts at
+		start and is length long, where the view shows viewStart and is viewLength long. Returns
+		the new start of the view.
+
+		A stretch that fits in the view is scrolled to in whole steps of the free space, the view
+		minus the stretch, so that there is room left between the stretch and the edge it came in
+		over. A stretch longer than the view is scrolled to by half a view, and only once it lies
+		outside the middle part of the view, which leaves the reader something to recognise. The
+		view only scrolls, it never zooms.
+	*/
+	private static scrolledStart(
+		viewStart: number,
+		viewLength: number,
+		start: number,
+		length: number,
+	): number {
+		const free = Math.min(viewLength - length, length);
+
+		if (viewLength < length) {
+			// A fifteenth-hundredth part of the view on each side is the middle part.
+			const border = Math.round((viewLength * 30) / 200);
+
+			if (viewStart + border > start + length)
+				return viewStart - Math.round(viewLength / 2);
+
+			if (viewStart + viewLength - border < start)
+				return viewStart + Math.round(viewLength / 2);
+
+			return viewStart;
+		}
+
+		if (free <= 0) return viewStart;
+
+		let scrolled = viewStart;
+
+		const beyondEnd = start + length - scrolled - viewLength;
+		if (beyondEnd > 0) scrolled += (Math.floor(beyondEnd / free) + 1) * free;
+
+		const beforeStart = scrolled - start;
+		if (beforeStart > 0)
+			scrolled -= (Math.floor(beforeStart / free) + 1) * free;
+
+		return scrolled;
+	}
+
+	/// Scrolls so that the whole rectangle is seen, the way a presentation scrolls to what it
+	/// marks. A rectangle that is seen already leaves the view where it is.
+	public static scrollRectangleIntoView(rectangle: cool.SimpleRectangle): void {
+		const viewed = app.activeDocument?.activeLayout?.viewedRectangle;
+		if (!viewed || viewed.containsRectangle(rectangle.toArray())) return;
+
+		const x = GraphicSelection.scrolledStart(
+			viewed.x1,
+			viewed.width,
+			rectangle.x1,
+			rectangle.width,
+		);
+
+		const y = GraphicSelection.scrolledStart(
+			viewed.y1,
+			viewed.height,
+			rectangle.y1,
+			rectangle.height,
+		);
+
+		if (x === viewed.x1 && y === viewed.y1) return;
+
+		app.map._docLayer.scrollByPoint(
+			new cool.SimplePoint(x - viewed.x1, y - viewed.y1),
+		);
+	}
+
+	/*
+		Brings a handle at that point on screen. What is kept on screen is the box the handle is
+		drawn as with one more box around it, so the handle itself is never up against an edge of
+		the view.
+	*/
+	private static scrollToHandleAt(x: number, y: number): void {
+		const size = ShapeHandlesSection.handleSize() * app.pixelsToTwips;
+
+		GraphicSelection.scrollRectangleIntoView(
+			new cool.SimpleRectangle(
+				x - 1.5 * size,
+				y - 1.5 * size,
+				3 * size,
+				3 * size,
+			),
+		);
+	}
+
+	/// Brings the handle the keyboard is on on screen.
+	private static scrollToActiveHandle(): void {
+		const handle = GraphicSelection.activeHandle();
+		if (!handle) return;
+
+		GraphicSelection.scrollToHandleAt(handle.point.x, handle.point.y);
+	}
+
+	/// The handle the keyboard works on, by name, with the blinking that shows which one it is.
+	private static setActiveHandle(name: string | null): void {
+		this.activeHandleName = name;
+		GraphicSelection.blinkActiveHandle(name !== null);
+		app.sectionContainer?.requestReDraw();
+		if (name !== null) GraphicSelection.scrollToActiveHandle();
+	}
+
+	/// The handles the keyboard can travel, in the order they are drawn, empty where the client
+	/// did not work them out itself and so cannot name them.
+	private static travelableHandles(): any[] {
+		/*
+			The handles as they are drawn: the eight that frame the selection and the ones that
+			shape the object, the corner radius of a rectangle among them. Only the ones the
+			client named are traveled, because a name is what the engine is told to move. The
+			handle that turns the selection carries none of it yet.
+		*/
+		return (GraphicSelection.handlesSection?.handleInfos() ?? []).filter(
+			(handle: any) => handle?.name,
+		);
+	}
+
+	/// The handle the keyboard works on, or nothing while it is on none.
+	public static activeHandle(): any | undefined {
+		return GraphicSelection.travelableHandles().find(
+			(handle: any) => handle.name === this.activeHandleName,
+		);
+	}
+
+	/*
+		Moves the keyboard from one handle of the selection to the next, or to the one before. It
+		starts at the first handle, or at the last one going backwards, and between the last and
+		the first it rests once on no handle at all, where the object is selected as it was. That
+		is the round the office goes.
+	*/
+	private static travelHandles(forward: boolean): boolean {
+		const handles = GraphicSelection.travelableHandles();
+		if (!handles.length) return false;
+
+		const at = handles.findIndex(
+			(handle: any) => handle.name === this.activeHandleName,
+		);
+
+		if (at < 0) {
+			GraphicSelection.setActiveHandle(
+				handles[forward ? 0 : handles.length - 1].name,
+			);
+			return true;
+		}
+
+		const next = at + (forward ? 1 : -1);
+
+		GraphicSelection.setActiveHandle(
+			next < 0 || next >= handles.length ? null : handles[next].name,
+		);
+		return true;
+	}
+
+	/// Puts the keyboard on the first handle of the selection, or on the last one.
+	private static travelToEnd(first: boolean): boolean {
+		const handles = GraphicSelection.travelableHandles();
+		if (!handles.length) return false;
+
+		GraphicSelection.setActiveHandle(
+			handles[first ? 0 : handles.length - 1].name,
+		);
+		return true;
+	}
+
+	/// Takes the keyboard off the handle it was on.
+	public static leaveHandleMode(): boolean {
+		if (this.activeHandleName === null) return false;
+
+		GraphicSelection.setActiveHandle(null);
+		return true;
+	}
+
+	/*
+		Moves the handle the keyboard is on, as dragging it with the mouse would. The step is the
+		one the office takes: a millimetre, ten of them with Shift, and the width of one pixel with
+		Alt, which is as fine as the screen goes.
+	*/
+	private static moveActiveHandle(
+		towards: number[],
+		event: KeyboardEvent,
+	): boolean {
+		const handle = GraphicSelection.activeHandle();
+		if (!handle) return false;
+
+		const step = GraphicSelection.keyboardStep(event);
+		const x = Math.round(handle.point.x + towards[0] * step);
+		const y = Math.round(handle.point.y + towards[1] * step);
+
+		app.map.sendUnoCommand('.uno:MoveShapeHandle', {
+			...ShapeHandlesSection.handleParameters(handle),
+			NewPosX: { type: 'long', value: x },
+			NewPosY: { type: 'long', value: y },
+		});
+
+		// The handle goes where it was asked to go, and the view follows it there. Where it lands
+		// is known here, while the handles the engine answers with arrive later.
+		GraphicSelection.scrollToHandleAt(x, y);
+
+		return true;
+	}
+
+	/*
+		How far a key moves what it works on, in twips: a millimetre, ten of them with Shift, and
+		the width of one pixel with Alt, which is as fine as the screen goes. These are the steps
+		the office takes, and moving an object from the keyboard should take them as well once the
+		client does that itself.
+	*/
+	public static keyboardStep(event: KeyboardEvent): number {
+		const millimetre = 1440 / 25.4;
+
+		if (event.shiftKey) return 10 * millimetre;
+		if (event.altKey) return app.pixelsToTwips;
+		return millimetre;
+	}
+
+	/*
+		What the keyboard does with the handles of a selection, which is what it does in the
+		office: Ctrl+Tab goes from one to the next and Shift with it goes back, Ctrl+Home and
+		Ctrl+End go to the first and the last, Escape leaves them again, and the cursor keys move
+		the one it is on. True when the key was used up here.
+
+		It answers for nothing while the document is not drawn from objects: the engine travels a
+		handle of its own then, and draws it too.
+	*/
+	public static handleKeyboard(event: KeyboardEvent): boolean {
+		if (!RenderManager.isVectorRendering()) return false;
+		if (!this.hasActiveSelection()) return false;
+
+		const towards: { [key: string]: number[] } = {
+			ArrowUp: [0, -1],
+			ArrowDown: [0, 1],
+			ArrowLeft: [-1, 0],
+			ArrowRight: [1, 0],
+		};
+
+		if (event.key === 'Tab' && (event.ctrlKey || event.altKey))
+			return GraphicSelection.travelHandles(!event.shiftKey);
+
+		if (event.key === 'Home' && event.ctrlKey)
+			return GraphicSelection.travelToEnd(true);
+
+		if (event.key === 'End' && event.ctrlKey)
+			return GraphicSelection.travelToEnd(false);
+
+		if (event.key === 'Escape') return GraphicSelection.leaveHandleMode();
+
+		if (towards[event.key] && this.activeHandleName !== null)
+			return GraphicSelection.moveActiveHandle(towards[event.key], event);
+
+		return false;
+	}
+
+	/*
+		What tells one selection from another: the objects it stands on, so a selection of two
+		shapes differs from a selection of one of them. The engine names every marked object, and
+		the first of them again on its own, which is what a payload from an older engine carries.
+	*/
+	private static selectionKeyOf(extraInfo: any): string {
+		const objectIds = GraphicSelection.selectedObjectIDsOf(extraInfo);
+		return objectIds.length ? String(objectIds) : String(extraInfo?.id);
+	}
+
 	static resetSelectionRanges() {
+		this.selectionChanged([]);
+		GraphicSelection.leaveHandleMode();
+		this.lastLocalHandles = null;
 		this.rectangle = null;
 		this.extraInfo = null;
 
@@ -240,7 +838,12 @@ class GraphicSelection {
 			let addHandlesSection = false;
 
 			if (!this.handlesSection) addHandlesSection = true;
-			else if (extraInfo.id !== this.handlesSection.sectionProperties.info.id) {
+			else if (
+				GraphicSelection.selectionKeyOf(extraInfo) !==
+				GraphicSelection.selectionKeyOf(
+					this.handlesSection.sectionProperties.info,
+				)
+			) {
 				// Another shape is selected.
 				this.handlesSection.removeSubSections();
 				app.sectionContainer.removeSection(this.handlesSection.name);
@@ -406,6 +1009,25 @@ class GraphicSelection {
 
 			this.extractAndSetGraphicSelection(msgData);
 
+			/*
+				Which objects the selection is about. A selection the client asked for names the
+				objects it named itself, so it arrives unchanged; one that differs was made
+				elsewhere, by the keyboard, an undo or another user. Everything below is set up
+				from the message either way, until the client builds it from what it holds.
+			*/
+			this.selectionChanged(
+				GraphicSelection.selectedObjectIDsOf(
+					msgData.length > 5 ? msgData[5] : null,
+				),
+			);
+
+			/*
+				While the document is drawn from objects, the handles are worked out here from the
+				geometry the client holds and named by what they are. The ones the engine sent are
+				used where the client holds nothing for what is selected.
+			*/
+			GraphicSelection.applyLocalHandles();
+
 			// Update the dark overlay on zooming & scrolling
 			if (!app.map._docLayer._oleCSelections.empty()) {
 				app.map._docLayer._oleCSelections.clear();
@@ -446,12 +1068,34 @@ class GraphicSelection {
 				app.socket.sendMessage('rendershapeselection mimetype=image/svg+xml');
 			}
 
-			// scroll to selected graphics, if it has no cursor
-			if (
-				!app.map._docLayer.isWriter() &&
-				this.rectangle &&
-				app.map._docLayer._allowViewJump()
-			) {
+			/*
+				Scroll to the object that is selected now, where it does not lie in what is on
+				screen. The view only scrolls, it never zooms, which is what the office does when
+				Tab walks from one object to the next. The two conditions below both hold the view
+				still in a case where the object then stays off screen, so a view that draws from
+				objects reads them differently.
+			*/
+			const drawsFromObjects = RenderManager.isVectorRendering();
+
+			/*
+				A jump waits while a selection is complex, which is about a selection of text that
+				a jump would tear the reader away from. A selection of an object is marked complex
+				a few lines below, so from the second selection on it is complex before it is even
+				looked at.
+			*/
+			const mayJump = drawsFromObjects || app.map._docLayer._allowViewJump();
+
+			/*
+				A jump also waits while the view follows a cursor, so that it stays with the person
+				being watched. A single person editing follows their own view, and there is nobody
+				else to stay with then.
+			*/
+			const followsAnotherView = drawsFromObjects
+				? !app.isFollowingOff() &&
+					Number(app.getFollowedViewId()) !== Number(app.map._docLayer._viewId)
+				: app.isFollowingEditor() || app.isFollowingUser();
+
+			if (!app.map._docLayer.isWriter() && this.rectangle && mayJump) {
 				if (
 					(!app.isPointVisibleInTheDisplayedArea([
 						this.rectangle.x1,
@@ -462,12 +1106,20 @@ class GraphicSelection {
 							this.rectangle.y2,
 						])) &&
 					!TextSelections.getEndRectangle() &&
-					!(app.isFollowingEditor() || app.isFollowingUser()) &&
+					!followsAnotherView &&
 					!app.map.calcInputBarHasFocus()
 				) {
-					app.map._docLayer.scrollToPos(
-						new cool.SimplePoint(this.rectangle.x1, this.rectangle.y1),
-					);
+					/*
+						A view that draws from objects scrolls no further than it has to, so that
+						the whole of what is selected lands on screen. The other one has the
+						corner it holds put in the middle of the view.
+					*/
+					if (drawsFromObjects)
+						GraphicSelection.scrollRectangleIntoView(this.rectangle);
+					else
+						app.map._docLayer.scrollToPos(
+							new cool.SimplePoint(this.rectangle.x1, this.rectangle.y1),
+						);
 				}
 			}
 		}
@@ -509,6 +1161,9 @@ class GraphicSelection {
 			* Users can select text, click, double click, triple click, quadruple click etc.
 	*/
 	public static onTextCursorVisibility(event: any) {
+		// Text is being edited, so the keyboard belongs to the text and no longer to a handle.
+		if (event.detail.visible) GraphicSelection.leaveHandleMode();
+
 		if (this.hasActiveSelection()) {
 			if (event.detail.visible) this.handlesSection.interactable = false;
 			else this.handlesSection.interactable = true;
